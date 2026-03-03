@@ -7,6 +7,7 @@ node_modules/
 # Agentic/Context files
 project_context.md
 reprompt.js
+migrate_tests.js
 code-reviews/
 
 # Logs
