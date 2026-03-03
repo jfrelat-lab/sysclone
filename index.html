@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sysclone - Nibbles</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #eee;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 2rem;
+        }
+        #vga-display {
+            background-color: #000;
+            border: 2px solid #555;
+            /* Ideal dimensions for an 80x25 text mode ratio */
+            width: 640px; 
+            height: 400px; 
+            image-rendering: pixelated; /* Keeps the retro look */
+        }
+    </style>
+</head>
+<body>
+    <h1>Sysclone - QBasic Test</h1>
+    <canvas id="vga-display" width="640" height="400"></canvas>
+    
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "sysclone",
+  "version": "1.0.0",
+  "description": "Universal Web Interpreter/JIT compiler",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node run_tests.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+[https://github.com/jfrelat-lab/sysclone.git](https://github.com/jfrelat-lab/sysclone.git)"
+  },
+  "author": "jfrelat-lab",
+  "license": "MIT"
+}

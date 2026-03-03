@@ -1,0 +1,113 @@
+# Roadmap: Sysclone - Milestone 1 (QBasic / Nibbles)
+
+## Phase 1: Foundation and Tooling (Monadic Parsers)
+*The objective is to implement the syntactic analysis engine in pure JavaScript.*
+
+- [x] **1.1. Implement the core Monadic Parser:**
+  - Create the base structure (`Parser(state) -> { result, rest, error }`).
+  - Implement fundamental combinators: `sequence`, `sequenceObj`, `choice`, `many`, `optional`, `lazy`.
+  - Implement transformation combinators: `map` (for AST generation).
+- [x] **1.2. Create base Lexers (Primitives):**
+  - **Line-Based Architecture:** Create the strict `eos` (End Of Statement) token to rigorously handle line breaks `\n`, colons `:`, and empty lines.
+  - Horizontal spaces (`ws`, `optWs`) and comments (ignored until line break).
+  - Numbers (integers and floats, e.g., `100`, `.5`).
+  - Strings (`"..."`).
+  - Case-insensitive identifiers (variables, function names, including type suffixes like `$`, `%`).
+
+## Phase 2: QBasic Grammar and AST Generation
+*Parse the Nibbles source code to build a typed Abstract Syntax Tree (AST).*
+
+- [x] **2.1. Parse Declarations and Types:**
+  - Handle `DEFINT A-Z`.
+  - Handle structure creation with `TYPE ... END TYPE`.
+  - Handle array and global variable declarations `DIM [SHARED] array(x TO y) AS type`.
+  - Handle constants `CONST name = value`.
+- [x] **2.2. Parse Control Flow:**
+  - Conditions: `IF ... THEN ... ELSE ... END IF`.
+  - Loops: `FOR ... TO ... STEP ... NEXT`, `DO ... LOOP UNTIL`.
+  - *To do (if necessary)*: `WHILE ... WEND`, `SELECT CASE ... END SELECT`.
+- [x] **2.3. Parse Subroutines and Functions:**
+  - `DECLARE SUB / FUNCTION`.
+  - Definitions `SUB name (args) ... END SUB`.
+- [x] **2.4. Parse Operators and Expressions:**
+  - Mathematical operators (`+`, `-`, `*`, `/`, `MOD`, `INT()`).
+  - Logical operators (`AND`, `OR`, `NOT`, `>`, `<`, `<>`).
+  - Complex access: array calls or type properties (`arena(r, c).sister`).
+
+## Phase 3: Runtime Environment
+*Create the state machine (Virtual Memory) that will store the program's state.*
+
+- [x] **3.1. Memory and Scope Management:**
+  - Create a chained `Environment` manager to store global and local variables.
+- [x] **3.2. QBasic Array Abstraction:**
+  - Implement the `QArray` class to flatten multi-dimensional arrays with custom bounds (e.g., `1 TO 50`).
+
+## Phase 4: Web Artifact Emulation (DOS/VGA System)
+*Bridge the gap between specific QBasic DOS commands and browser APIs.*
+
+- [x] **4.1. VGA Text Mode Video Engine (80x25):**
+  - Implement *Pixel-Perfect* rendering via bitwise manipulation of an `ImageData` buffer on a `<canvas>`.
+  - Use the authentic DOSBox bitmapped ROM (Code Page 437) for absolute block fidelity (CHR$ 219, 220, 223).
+  - Wire commands: `COLOR` (text, background), `CLS`, `LOCATE`, `PRINT`.
+- [x] **4.2. I/O Engine (Keyboard & Time):**
+  - Wire `INKEY$` to JavaScript `keydown`/`keyup` events with a FIFO keystroke buffer.
+  - Wire `TIMER` to local time (seconds since midnight).
+- [ ] **4.3. Basic Audio Engine (PC Speaker):**
+  - Wire the `PLAY` command (e.g., `"MBT160O1L8CDEDCDL4ECC"`) using the Web Audio API (Macro Music Language).
+- [x] **4.4. Motherboard and BIOS (Segmented Memory):**
+  - Purist wiring of a 1MB RAM space (Segment:Offset) for `DEF SEG`, `PEEK`, and `POKE`.
+  - Simulation of the BIOS Data Area (Equipment Word) and implementation of *Memory-Mapped I/O* (keyboard buffer flush hack via address `&H41A`).
+
+## Phase 5: Dynamic Evaluation (Virtual CPU)
+*Connect the AST to the hardware via a virtual processor.*
+
+- [x] **5.1. Generator-Based Evaluation Engine (Anti-Freeze):**
+  - Transform the Evaluator into a synchronous iterator (`function*` and `yield*`) to avoid Promise (`async/await`) hell and guarantee performance.
+- [x] **5.2. Parse Hardware Instructions:**
+  - Add instruction parsers (`statements.js`) for hardware: `CLS`, `PRINT`, `LOCATE`, `COLOR`, `POKE`, `ASSIGN`.
+- [x] **5.3. CPU Loop (Runner):**
+  - Implement "Instruction Cycle" (Ticks) pacing limited by `requestAnimationFrame` (e.g., 5000 cycles / frame) allowing total control over execution speed.
+
+## Phase 6: Advanced QBasic Features (Pre-Nibbles)
+*Implement complex structures necessary for game logic.*
+
+- [x] **6.1. Arrays and Types (UDT) at Runtime:**
+  - Teach the Evaluator to handle `TYPE_DECL` nodes (register the structure's "blueprint").
+  - Teach the Evaluator to instantiate `DIM` by creating `QArray` and composite objects in memory.
+- [x] **6.2. Subroutines (`SUB` and `FUNCTION`):**
+  - Handle `SUB` definition registration.
+  - Implement the `CALL` mechanism: creating a sub-scope (new memory "bubble") and passing arguments.
+  - **[CRITICAL]** Implement Pass-by-Reference for arguments.
+  - **[CRITICAL]** Handle `FUNCTION` return values (assignment to the function's name).
+- [x] **6.3. Jumps and Advanced Control Flow:**
+  - Implement `GOSUB ... RETURN` (heavily used in Nibbles for screen/music mini-routines).
+  - **[CRITICAL]** Refactor AST to allow Single-Line IFs (`IF ... THEN statement` without `END IF`).
+  - **[CRITICAL]** Add `WHILE ... WEND` loop structure.
+  - Add support for conditions at the beginning of DO loops (`DO WHILE/UNTIL cond ... LOOP`).
+- [ ] **6.4. Missing Operators and Literals:**
+  - Add integer division `\`, exponentiation `^`, and logical operators `XOR`, `EQV`, `IMP`.
+  - Add support for octal format (`&O`) and scientific notation (`E`, `D`).
+
+## Phase 7: Trial by Fire - Nibbles.bas (Update)
+*The final boss: Assemble everything to run the original game, correcting critical architectural flaws.*
+
+- [x] **7.1. Source File Integration:**
+  - Fetch text loading of the original `NIBBLES.BAS` file.
+  - Full end-to-to parsing (requires prior patching of the `eos` regex against ReDoS).
+- [x] **7.2. Debugging and Structural Corrections:**
+  - Scope Correction: Isolate `LABEL` tags by scope (Main vs Sub/Function) in `evaluator.js` to avoid collisions.
+  - Memory-Mapped VRAM: Link `POKE` instructions from the `&HB800` segment (Memory) to `VGA` engine cells.
+- [ ] **7.3. Engine Tweaks (Pre-JIT):**
+  - VGA Optimization: Implement rendering via `Uint32Array` and a "Dirty Rectangles" system to secure framerate.
+  - CPU Lightening: Remove generator delegations (`yield*`) from simple math and logic operations to save the Garbage Collector.
+- [x] **7.4. Play!**
+
+## Phase 8: JIT Evolution and Advanced Optimizations
+*Transform the interpreter into a true Just-In-Time compiler to fulfill the project's vision.*
+
+- [ ] **8.1. Strict Memory Typing:**
+  - Replace standard JS arrays in `QArray` with *Typed Arrays* (`Int16Array`, `Float32Array`) based on the defined QBasic type.
+- [ ] **8.2. AST to JS Compilation (Level 1 JIT):**
+  - Create an AST visitor that generates pure JavaScript code instead of evaluating it dynamically.
+- [ ] **8.3. WebAssembly Compilation (Level 2 JIT):**
+  - Translate the intermediate code (IR) into WASM binary for near-native performance.

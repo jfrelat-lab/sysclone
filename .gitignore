@@ -1,0 +1,19 @@
+# Node.js dependencies
+node_modules/
+
+# macOS system files
+.DS_Store
+
+# Agentic/Context files
+project_context.md
+reprompt.js
+code-reviews/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test and coverage (optional but recommended)
+.npm
+.eslintcache
