@@ -9,11 +9,12 @@ export const ws = regex(/^[ \t]+/);
 export const optWs = regex(/^[ \t]*/);
 
 /**
- * END OF STATEMENT (EOS)
- * Handles line-end spaces, comments ('), colons (:), and line breaks (\n, \r\n).
- * It aggressively consumes consecutive empty lines and trailing whitespace.
+ * End Of Statement (EOS)
+ * Handles optional whitespace, comments ('), colons (:), and line breaks.
+ * Optimized for linear matching to prevent backtracking on large legacy files.
+ * @type {Parser<string>}
  */
-export const eos = regex(/^([ \t]*(?:'[^\n]*)?(?:\r?\n|:)+[ \t\r\n]*)+/);
+export const eos = regex(/^[ \t]*(?:'[^\n]*)?(?:\r?\n|:)(?:[ \t\r\n]|(?:'[^\n]*))*/);
 
 // --- LITERALS ---
 
