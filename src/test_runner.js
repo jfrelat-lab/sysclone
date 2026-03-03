@@ -1,6 +1,12 @@
 // src/test_runner.js
 
 /**
+ * Global registry for test suites.
+ * Allows anonymous imports to register tests automatically.
+ */
+const registry = [];
+
+/**
  * Basic assertion utility for the Sysclone test suite.
  * Compares values using JSON serialization for deep comparison of objects and arrays.
  */
@@ -27,10 +33,22 @@ export function test(description, testFunction) {
 }
 
 /**
- * Groups multiple tests into a named suite for organized console output.
+ * Registers a suite in the global registry for organized execution.
+ * Replaces the old runSuite to allow for generic automated imports.
  */
-export function runSuite(suiteName, tests) {
-    console.group(`🧪 Test Suite: ${suiteName}`);
-    tests();
-    console.groupEnd();
+export function registerSuite(suiteName, tests) {
+    registry.push({ name: suiteName, testFn: tests });
+}
+
+/**
+ * Orchestrates the execution of all registered suites.
+ * Logs the start of the quality harness to the console.
+ */
+export function runAllTests() {
+    console.log("🚀 Starting Sysclone Quality Harness...");
+    registry.forEach(suite => {
+        console.group(`🧪 Test Suite: ${suite.name}`);
+        suite.testFn();
+        console.groupEnd();
+    });
 }
