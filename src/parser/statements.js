@@ -4,6 +4,16 @@ import { identifier, keyword, ws, optWs, numberLiteral, stringLiteral } from './
 import { expression, variableAccess } from './expressions.js';
 
 /**
+ * Reusable parser for graphical coordinates: (x, y)
+ */
+const coordParser = sequenceObj([
+    regex(/^\(/), optWs,
+    capture('x', expression), optWs, regex(/^,/), optWs,
+    capture('y', expression), optWs,
+    regex(/^\)/)
+]).map(obj => ({ x: obj.x, y: obj.y }));
+
+/**
  * Parses the PRINT statement, including the optional USING format block
  * and trailing separators (semicolons/commas) for line-wrapping control.
  */
@@ -131,6 +141,48 @@ export const restoreStmt = sequenceObj([
     label: obj.label || null 
 }));
 
+// --- ADVANCED GRAPHICS (Gorillas & Mandelbrot) ---
+
+/**
+ * WINDOW statement: Defines a logical coordinate system.
+ * Example: WINDOW (-2, 1.5)-(2, -1.5)
+ */
+export const windowStmt = sequenceObj([
+    keyword('WINDOW'), 
+    // QBasic allows "WINDOW SCREEN" to invert the Y-axis mathematically
+    capture('screenOpt', optional(sequenceOf([ws, keyword('SCREEN')]))),
+    ws,
+    capture('coord1', coordParser), optWs, regex(/^-/), optWs,
+    capture('coord2', coordParser)
+]).map(obj => ({
+    type: 'WINDOW',
+    invertY: obj.screenOpt !== null,
+    x1: obj.coord1.x, y1: obj.coord1.y,
+    x2: obj.coord2.x, y2: obj.coord2.y
+}));
+
+/**
+ * PSET statement: Draws a pixel at specific coordinates.
+ * Example: PSET (x, y), c
+ */
+export const psetStmt = sequenceObj([
+    keyword('PSET'), ws,
+    // QBasic allows PSET STEP (x, y) for relative coordinates
+    capture('stepOpt', optional(sequenceOf([keyword('STEP'), ws]))),
+    capture('coord', coordParser),
+    capture('colorOpt', optional(sequenceObj([
+        optWs, regex(/^,/), optWs, capture('c', expression)
+    ]).map(obj => obj.c)))
+]).map(obj => ({
+    type: 'PSET',
+    isStep: obj.stepOpt !== null,
+    x: obj.coord.x,
+    y: obj.coord.y,
+    color: obj.colorOpt || null
+}));
+
+// --- IMPLICIT STATEMENTS ---
+
 /**
  * IMPLICIT CALL (Native QBasic behavior)
  * Example: Intro  OR  GetInputs NumPlayers, speed
@@ -183,6 +235,7 @@ export const statement = choice([
     defSegStmt, pokeStmt, assignStmt, callStmt,
     gotoStmt, gosubStmt, returnStmt,
     randomizeStmt, screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
+    windowStmt, psetStmt,
     inputStmt,
     endStmt,
     implicitCallStmt
