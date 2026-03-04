@@ -314,12 +314,14 @@ export class Evaluator {
                 }
                 
                 if (this.hw.vga) {
-                    this.hw.vga.print(toCP437Array(output));
+                    // CPU Phase: Translate Unicode to CP437 bytes
+                    const byteStream = Array.from(toCP437Array(output));
+                    
+                    // Hardware Phase: Inject CR (13) and LF (10) if newline is required
                     if (node.newline) {
-                        this.hw.vga.cursorX = 0;
-                        this.hw.vga.cursorY++;
-                        if (this.hw.vga.cursorY >= this.hw.vga.rows) this.hw.vga.scrollUp();
+                        byteStream.push(13, 10);
                     }
+                    this.hw.vga.print(byteStream);
                 }
                 return null; 
             }
@@ -330,55 +332,40 @@ export class Evaluator {
                 }
 
                 let inputBuffer = "";
-                let cursorVisible = false;
+                
+                // Hardware Signal: Turn on the blinking cursor!
+                if (this.hw.vga) this.hw.vga.showCursor();
                 
                 while (true) {
                     yield; 
-                    if (this.hw.vga) {
-                        const now = Date.now();
-                        const shouldBlink = Math.floor(now / 400) % 2 === 0;
-                        if (cursorVisible !== shouldBlink) {
-                            cursorVisible = shouldBlink;
-                            this.hw.vga.vram[this.hw.vga.cursorY][this.hw.vga.cursorX] = { 
-                                charCode: cursorVisible ? 95 : 32, 
-                                fg: this.hw.vga.currentFg, 
-                                bg: this.hw.vga.currentBg 
-                            };
-                        }
-                    }
 
                     if (!this.hw.io) break; 
                     const key = this.hw.io.inkey();
                     if (!key) continue; 
 
-                    if (this.hw.vga) this.hw.vga.vram[this.hw.vga.cursorY][this.hw.vga.cursorX].charCode = 32;
-
                     if (key === String.fromCharCode(13)) { // Enter
-                        if (this.hw.vga) {
-                            this.hw.vga.cursorX = 0;
-                            this.hw.vga.cursorY++;
-                            if (this.hw.vga.cursorY >= this.hw.vga.rows) this.hw.vga.scrollUp();
-                        }
+                        if (this.hw.vga) this.hw.vga.print([13, 10]); // CR LF
                         break; 
                     }
                     
                     if (key === String.fromCharCode(8)) { // Backspace
                         if (inputBuffer.length > 0) {
                             inputBuffer = inputBuffer.slice(0, -1);
-                            if (this.hw.vga) {
-                                this.hw.vga.cursorX--;
-                                this.hw.vga.print(toCP437Array(" ")); 
-                                this.hw.vga.cursorX--; 
-                            }
+                            // Standard destructive backspace sequence for Terminals: BS, Space, BS
+                            if (this.hw.vga) this.hw.vga.print([8, 32, 8]); 
                         }
                         continue;
                     }
                     
                     if (key.length === 1) {
                         inputBuffer += key;
+                        // Echo the typed character natively
                         if (this.hw.vga) this.hw.vga.print(toCP437Array(key));
                     }
                 }
+
+                // Hardware Signal: Turn off the cursor
+                if (this.hw.vga) this.hw.vga.hideCursor();
 
                 const splitValues = inputBuffer.split(',');
                 for (let i = 0; i < node.targets.length; i++) {

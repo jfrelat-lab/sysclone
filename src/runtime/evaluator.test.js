@@ -217,3 +217,117 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
     });
 
 });
+
+/**
+ * Unit tests for Hardware Integration.
+ * Uses Dependency Injection to provide Mock Hardware to the Evaluator,
+ * ensuring that instructions like PRINT, INPUT, and CLS send the correct signals.
+ */
+registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
+
+    /**
+     * Helper to execute code with injected hardware mocks.
+     */
+    function executeWithHardware(env, hardware, code) {
+        const ast = block.run(code).result;
+        const evaluator = new Evaluator(env, hardware);
+        runSync(evaluator.evaluate(ast));
+    }
+
+    /**
+     * Helper for the mock to reconstruct strings from CP437 byte arrays 
+     * in order to make testing assertions readable.
+     */
+    function bytesToString(bytes) {
+        return Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+    }
+
+    test('Should interface correctly with VGA for CLS, COLOR, LOCATE, and PRINT', () => {
+        const env = new Environment();
+        
+        // 1. Build the updated VGA Mock (Byte-Array aware)
+        const mockVga = {
+            clsCalled: false,
+            located: null,
+            colored: null,
+            printed: [],
+            cls() { this.clsCalled = true; },
+            locate(r, c) { this.located = [r, c]; },
+            color(f, b) { this.colored = [f, b]; },
+            print(data) { 
+                // Decode the byte array back to a string for testing
+                this.printed.push(bytesToString(data)); 
+            }
+        };
+        
+        const code = `
+            CLS
+            COLOR 10, 2
+            LOCATE 5, 15
+            PRINT "SYSCLONE"
+        `;
+        
+        executeWithHardware(env, { vga: mockVga }, code);
+        
+        // 2. Assert that the CPU triggered the correct hardware states
+        assertEqual(mockVga.clsCalled, true);
+        assertEqual(mockVga.colored[0], 10); // Foreground
+        assertEqual(mockVga.colored[1], 2);  // Background
+        assertEqual(mockVga.located[0], 5);  // Row
+        assertEqual(mockVga.located[1], 15); // Col
+        
+        // Verify the PRINT signal was sent (Note: PRINT auto-appends CR/LF at the end of the line)
+        assertEqual(mockVga.printed[0], "SYSCLONE\r\n");
+    });
+
+    test('Should interface correctly with IO and VGA for INPUT polling', () => {
+        const env = new Environment();
+        
+        // 1. Build the updated VGA Mock (Cursor aware)
+        const mockVga = {
+            printed: [],
+            cursorVisible: false,
+            showCursor() { this.cursorVisible = true; },
+            hideCursor() { this.cursorVisible = false; },
+            print(data) { 
+                this.printed.push(bytesToString(data)); 
+            }
+        };
+        
+        // 2. Build the IO Mock (Simulate a user typing keys)
+        const mockIo = {
+            // Simulate typing '4', then '2', then hitting 'ENTER' (Char 13)
+            keyQueue: ['4', '2', String.fromCharCode(13)],
+            inkey() {
+                // The CPU will poll this in a while(true) loop
+                return this.keyQueue.length > 0 ? this.keyQueue.shift() : "";
+            }
+        };
+        
+        executeWithHardware(env, { vga: mockVga, io: mockIo }, 'INPUT "Age"; userAge');
+        
+        // 3. Assert the prompt was printed correctly
+        assertEqual(mockVga.printed[0], "Age? ");
+        
+        // 4. Assert that the hardware cursor was cleanly disabled after the input
+        assertEqual(mockVga.cursorVisible, false);
+
+        // 5. Assert the environment caught the parsed number
+        assertEqual(env.lookup('USERAGE'), 42);
+    });
+
+    test('Should interface correctly with Memory for POKE', () => {
+        const env = new Environment();
+        
+        const mockMemory = {
+            poked: null,
+            poke(address, value) { this.poked = { address, value }; }
+        };
+        
+        executeWithHardware(env, { memory: mockMemory }, 'POKE &H41A, 30');
+        
+        assertEqual(mockMemory.poked.address, 1050); // &H41A
+        assertEqual(mockMemory.poked.value, 30);
+    });
+
+});
