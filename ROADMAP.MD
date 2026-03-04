@@ -125,20 +125,21 @@
 - [ ] **9.3. Implicit Typing & Macros:**
   - [ ] Support `DEFINT`, `DEFSNG`, etc., for default variable typing.
   - [ ] Parse and evaluate single-line macros: `DEF FNname(args) = expr`.
-- [ ] **9.4. Math & Randomness:**
-  - [ ] Implement `RANDOMIZE (TIMER)`, `RND`, `ATN`, `COS`, `SIN`.
+- [x] **9.4. Math & Randomness:**
+  - [x] Implement `RANDOMIZE (TIMER)`, `RND`, `ATN`, `COS`, `SIN`, `ABS`.
 
 ## Phase 10: Advanced Graphics Engine (Gorillas & Mandelbrot)
 *Expand the engine capabilities to support computationally and graphically intensive classics.*
 
 - [ ] **10.1. Viewports & Coordinate Systems:**
-  - [ ] Support `WINDOW` to map logical coordinates to physical screen pixels.
+  - [x] Support `WINDOW` to map logical coordinates to physical screen pixels.
   - [ ] Support `VIEW PRINT` to restrict text rendering and scrolling to specific screen rows.
 - [ ] **10.2. Palettes & Screen Modes:**
-  - [ ] Implement default hardware palettes (CGA 4-color, EGA 16-color, MCGA/VGA 256-color).
+  - [x] Implement default hardware palettes (CGA 4-color, EGA 16-color, MCGA/VGA 256-color).
   - [ ] Add `PALETTE` and `PALETTE USING` mapping support.
 - [ ] **10.3. Geometry Primitives (SCREEN 7, 8, 13):**
-  - [ ] Implement `PSET` (Pixel Set) and `POINT` (Pixel Read - critical for collision detection).
+  - [x] Implement `PSET` (Pixel Set).
+  - [ ] Implement `POINT` (Pixel Read - critical for collision detection).
   - [ ] Add geometry rendering: `LINE`, `CIRCLE`.
   - [ ] Add algorithmic drawing: `PAINT` (Flood Fill algorithm).
 - [ ] **10.4. Hardware Blitting (`GET` / `PUT`):**

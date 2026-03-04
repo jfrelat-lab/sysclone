@@ -330,4 +330,23 @@ registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
         assertEqual(mockMemory.poked.value, 30);
     });
 
+    test('Should evaluate standard mathematical functions (SIN, COS, ATN, ABS)', () => {
+        const env = new Environment();
+        // We use ABS to avoid floating point precision issues in simple assertions
+        executeCode(env, `
+            s = SIN(0)
+            c = COS(0)
+            a = ABS(-42.5)
+            pi_approx = ATN(1) * 4
+        `);
+        
+        assertEqual(env.lookup('S'), 0);
+        assertEqual(env.lookup('C'), 1);
+        assertEqual(env.lookup('A'), 42.5);
+        
+        // Math.atan(1) * 4 should be roughly 3.14159...
+        const pi = env.lookup('PI_APPROX');
+        assertEqual(pi > 3.14 && pi < 3.15, true);
+    });
+
 });
