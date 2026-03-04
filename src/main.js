@@ -14,10 +14,11 @@ import { autoDecodeSource } from './hardware/encoding.js';
 
 console.log("🔥 Powering up the Sysclone Virtual Machine...");
 
-// 1. Hardware Initialization
-const screen = new VGA('vga-display');
+// 1. Hardware Initialization (Order matters!)
 const io = new IO();
 const memory = new Memory(io);
+// Inject Memory into VGA so it can map its VRAM to 0xB8000
+const screen = new VGA(memory, { canvasId: 'vga-display' });
 
 // 2. Runtime System Initialization
 const env = new Environment();
