@@ -78,17 +78,19 @@ export class VGA {
     }
 
     /**
-     * Equivalent to QBasic command: PRINT text
+     * Equivalent to QBasic command: PRINT
+     * @param {Uint8Array|number[]} bytes - Array of raw CP437 bytes to write to VRAM
      */
-    print(text) {
-        for (let i = 0; i < text.length; i++) {
+    print(bytes) {
+        for (let i = 0; i < bytes.length; i++) {
             if (this.cursorX >= this.cols) {
                 this.cursorX = 0;
                 this.cursorY++;
             }
             if (this.cursorY >= this.rows) this.scrollUp();
             
-            const code = text.charCodeAt(i) & 255;
+            // The VGA engine blindly writes the byte to VRAM
+            const code = bytes[i] & 255;
             this.vram[this.cursorY][this.cursorX] = {
                 charCode: code,
                 fg: this.currentFg,

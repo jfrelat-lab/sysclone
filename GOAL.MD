@@ -11,7 +11,7 @@ The primary objective is to create a universal execution engine running directly
   * *JIT Evolution:* Ultimately, translating the AST/IR into WebAssembly instructions for native performance.
 * **Hardware Abstraction Layer (HAL):** * Purist emulation of original hardware subsystems using modern Web APIs (Canvas, Web Audio).
   * Implementation of isolated components: addressable RAM, VGA/CGA/EGA rendering (bitmap ROM, hardware palettes), Keyboard I/O, and system clock.
-  * **Robust I/O Translation**: A strict CP437 to Unicode translation layer to allow execution of modern UTF-8 text files as if they were running on a 1990s MS-DOS machine.
+  * **Robust I/O Translation:** An intelligent, heuristic decoding layer that automatically bridges 1990s MS-DOS binary files (CP437) and modern UTF-8 environments. It actively detects and repairs corrupted text (e.g., GitHub Mojibake) on the fly, ensuring absolute visual fidelity for legacy text-graphics.
 
 ## Key Objectives & Target Languages
 * **Multi-Language Support:**

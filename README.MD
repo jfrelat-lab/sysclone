@@ -66,3 +66,17 @@ To run the automated test suite:
 ```bash
 npm test
 ```
+
+## 🧰 CLI Tools (Retro-Computing Utilities)
+
+Sysclone includes built-in tools to help bridge the gap between 1990s MS-DOS and the modern web.
+
+### MS-DOS Code Converter (`convert_bas.js`)
+When you copy-paste legacy QBasic code from GitHub or open old `.bas` files in modern editors, the extended ASCII block characters (like the Nibbles snake or UI borders) often turn into garbled "Mojibake" (e.g., `ÛßßÛ` instead of `█▀▀█`).
+
+This CLI tool reads the raw bytes of a legacy file, automatically detects if it's CP437 or Windows-1252 Mojibake, and outputs a pristine, fully compatible UTF-8 file.
+
+```bash
+# Convert a legacy or corrupted file to a clean UTF-8 format
+node convert_bas.js ./legacy_file.bas ./clean_utf8_file.bas
+```

@@ -1,5 +1,6 @@
 // src/runtime/evaluator.js
 import { Environment, QArray } from './environment.js';
+import { getCharFromCP437, getCP437FromChar, toCP437Array } from '../hardware/encoding.js';
 
 /**
  * The core execution engine of Sysclone.
@@ -313,7 +314,7 @@ export class Evaluator {
                 }
                 
                 if (this.hw.vga) {
-                    this.hw.vga.print(output);
+                    this.hw.vga.print(toCP437Array(output));
                     if (node.newline) {
                         this.hw.vga.cursorX = 0;
                         this.hw.vga.cursorY++;
@@ -325,7 +326,7 @@ export class Evaluator {
 
             case 'INPUT':
                 if (node.prompt !== undefined && this.hw.vga) {
-                    this.hw.vga.print(node.prompt + "? ");
+                    this.hw.vga.print(toCP437Array(node.prompt + "? "));
                 }
 
                 let inputBuffer = "";
@@ -366,7 +367,7 @@ export class Evaluator {
                             inputBuffer = inputBuffer.slice(0, -1);
                             if (this.hw.vga) {
                                 this.hw.vga.cursorX--;
-                                this.hw.vga.print(" "); 
+                                this.hw.vga.print(toCP437Array(" ")); 
                                 this.hw.vga.cursorX--; 
                             }
                         }
@@ -375,7 +376,7 @@ export class Evaluator {
                     
                     if (key.length === 1) {
                         inputBuffer += key;
-                        if (this.hw.vga) this.hw.vga.print(key);
+                        if (this.hw.vga) this.hw.vga.print(toCP437Array(key));
                     }
                 }
 
@@ -560,8 +561,8 @@ export class Evaluator {
         if (callee === 'RIGHT$') return String(args[0]).slice(-args[1]);
         if (callee === 'LEFT$') return String(args[0]).slice(0, args[1]);
         if (callee === 'MID$') return String(args[0]).substr(args[1] - 1, args[2]);
-        if (callee === 'CHR$') return String.fromCharCode(args[0]);
-        if (callee === 'ASC') return String(args[0]).charCodeAt(0) || 0;
+        if (callee === 'CHR$') return getCharFromCP437(args[0]);
+        if (callee === 'ASC') return getCP437FromChar(String(args[0]).charAt(0) || 0);
         if (callee === 'VAL') return parseFloat(args[0]) || 0;
         if (callee === 'INT') return Math.floor(args[0]);
         if (callee === 'RND') return Math.random();

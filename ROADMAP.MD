@@ -110,11 +110,10 @@
 ## Phase 8: I/O Encoding & Robust Loading
 *Ensure safe and authentic loading of legacy source files.*
 
-- [ ] **8.1. CP437 / Unicode Translation Layer:**
+- [x] **8.1. CP437 / Unicode Translation Layer:**
   - Create a bidirectional mapping table (`toCP437` / `fromCP437`).
   - Update `main.js` to load standard UTF-8 raw files from GitHub and transpile them into CP437 bytes for virtual RAM.
-  - Implement debugging helpers (e.g., `console.log(fromCP437(vramBuffer))`).
-
+  - Implement debugging and CLI helpers (`convert_bas.js`) for legacy file restoration.
 
 ## Phase 9: Advanced QBasic Semantics (Gorillas Prep)
 *Implement complex language features required by advanced Microsoft demos.*
