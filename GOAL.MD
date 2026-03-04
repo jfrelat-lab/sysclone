@@ -10,7 +10,8 @@ The primary objective is to create a universal execution engine running directly
   * This model enables execution paced by instruction cycles (Ticks), guaranteeing a non-blocking loop for the browser (anti-freeze) and a perfectly controlled framerate (`requestAnimationFrame`).
   * *JIT Evolution:* Ultimately, translating the AST/IR into WebAssembly instructions for native performance.
 * **Hardware Abstraction Layer (HAL):** * Purist emulation of original hardware subsystems using modern Web APIs (Canvas, Web Audio).
-  * Implementation of isolated components: addressable RAM, VGA text mode (bitmap ROM), Keyboard I/O, and system clock.
+  * Implementation of isolated components: addressable RAM, VGA/CGA/EGA rendering (bitmap ROM, hardware palettes), Keyboard I/O, and system clock.
+  * **Robust I/O Translation**: A strict CP437 to Unicode translation layer to allow execution of modern UTF-8 text files as if they were running on a 1990s MS-DOS machine.
 
 ## Key Objectives & Target Languages
 * **Multi-Language Support:**
@@ -18,7 +19,9 @@ The primary objective is to create a universal execution engine running directly
   * "Modern" Languages: Java, Python, C#, Rust, etc.
 * **Iterative Methodology:**
   * Develop incrementally, language by language, feature by feature.
-  * Use source code snippets from *Rosetta Code* to rigorously validate the grammars and execution of each new language.
+  * Use source code snippets from *Rosetta Code* and official Microsoft DOS demos to rigorously validate the grammars and execution.
 
 ## Milestones
-* **Milestone 1 (Proof of Concept - QBasic):** Perfectly execute the original source code of the game *Nibbles* (Microsoft QBasic DOS 5) in a fluid and playable manner, including direct memory management (`PEEK/POKE`) and VGA rendering.
+* **Milestone 1 (Proof of Concept - Completed):** Perfectly parse and execute the original source code of the game *Nibbles.bas* (Microsoft QBasic DOS 5) using basic text-mode VGA and memory-mapped I/O.
+* **Milestone 2 (Advanced Emulation - Current):** Execute graphically and computationally intensive classics like *Gorillas.bas* and *Mandelbrot (Rosetta Code)*. This requires EGA/VGA graphic primitives (`PSET`, `PAINT`), sprite blitting (`GET`/`PUT`), PC Speaker audio (`PLAY`), and robust exception handling.
+* **Milestone 3 (JIT Compilation - Planned):** Translate the AST directly into JavaScript or WebAssembly to achieve near-native performance for heavy computational loops.

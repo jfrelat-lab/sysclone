@@ -94,20 +94,76 @@
 - [x] **7.1. Source File Integration:**
   - Fetch text loading of the original `NIBBLES.BAS` file.
   - Full end-to-to parsing (requires prior patching of the `eos` regex against ReDoS).
-- [x] **7.2. Debugging and Structural Corrections:**
+- [ ] **7.2. Debugging and Structural Corrections:**
   - Scope Correction: Isolate `LABEL` tags by scope (Main vs Sub/Function) in `evaluator.js` to avoid collisions.
   - Memory-Mapped VRAM: Link `POKE` instructions from the `&HB800` segment (Memory) to `VGA` engine cells.
 - [ ] **7.3. Engine Tweaks (Pre-JIT):**
-  - VGA Optimization: Implement rendering via `Uint32Array` and a "Dirty Rectangles" system to secure framerate.
+  - VGA Optimization (Memory): Implement rendering via `Uint32Array` for fast buffer manipulation.
+  - VGA Optimization (CPU): Implement a "Dirty Rectangles" system to update only modified areas and secure framerate.
   - CPU Lightening: Remove generator delegations (`yield*`) from simple math and logic operations to save the Garbage Collector.
-- [x] **7.4. Play!**
+- [x] **7.4. Play Nibbles!**
 
-## Phase 8: JIT Evolution and Advanced Optimizations
+---
+
+# Roadmap: Sysclone - Milestone 2 (Gorillas & Mandelbrot)
+
+## Phase 8: I/O Encoding & Robust Loading
+*Ensure safe and authentic loading of legacy source files.*
+
+- [ ] **8.1. CP437 / Unicode Translation Layer:**
+  - Create a bidirectional mapping table (`toCP437` / `fromCP437`).
+  - Update `main.js` to load standard UTF-8 raw files from GitHub and transpile them into CP437 bytes for virtual RAM.
+  - Implement debugging helpers (e.g., `console.log(fromCP437(vramBuffer))`).
+
+
+## Phase 9: Advanced QBasic Semantics (Gorillas Prep)
+*Implement complex language features required by advanced Microsoft demos.*
+
+- [ ] **9.1. Static Data Structures:** Implement `DATA`, `READ`, and `RESTORE` with a global data pointer in the `Environment`.
+- [ ] **9.2. Exception Handling:** Implement `ON ERROR GOTO`, `RESUME`, and `RESUME NEXT` to catch runtime hardware/software faults.
+- [ ] **9.3. Implicit Typing & Macros:**
+  - Support `DEFINT`, `DEFSNG`, etc., for default variable typing.
+  - Parse and evaluate single-line macros: `DEF FNname(args) = expr`.
+- [ ] **9.4. Math & Randomness:** Implement `RANDOMIZE (TIMER)`, `RND`, `ATN`, `COS`, `SIN`.
+
+## Phase 10: Advanced Graphics Engine (Gorillas & Mandelbrot)
+*Expand the engine capabilities to support computationally and graphically intensive classics.*
+
+- [ ] **10.1. Viewports & Coordinate Systems:**
+  - Support `WINDOW` to map logical coordinates to physical screen pixels.
+  - Support `VIEW PRINT` to restrict text rendering and scrolling to specific screen rows.
+- [ ] **10.2. Palettes & Screen Modes:**
+  - Implement default hardware palettes (CGA 4-color, EGA 16-color, MCGA/VGA 256-color).
+  - Add `PALETTE` and `PALETTE USING` mapping support.
+- [ ] **10.3. Geometry Primitives (SCREEN 7, 8, 13):**
+  - Implement `PSET` (Pixel Set) and `POINT` (Pixel Read - critical for collision detection).
+  - Add geometry rendering: `LINE`, `CIRCLE`.
+  - Add algorithmic drawing: `PAINT` (Flood Fill algorithm).
+- [ ] **10.4. Hardware Blitting (`GET` / `PUT`):**
+  - Reverse-engineer QBasic sprite array formats (Header + Pixel data).
+  - Implement `GET` to capture screen regions into arrays.
+  - Implement `PUT` with bitwise operations (`PSET`, `XOR`, `AND`, `OR`).
+
+## Phase 11: Hardware Interrupts & Advanced Input
+- [ ] **11.1. Advanced Keyboard Controller:** Upgrade state tracking to support multiple simultaneous keys (crucial for Gorillas/Nibbles gameplay).
+- [ ] **11.2. The PC Speaker (Macro Music Language):**
+  - Wire `BEEP` and `SOUND` to the Web Audio API (`AudioContext`).
+  - Build a micro-parser for the `PLAY` command syntax.
+
+## Phase 12: The Grand Playtest
+- [ ] **12.1. Rosetta Code Mandelbrot:** Execute math-heavy visual rendering (`WINDOW`, `PSET`, MCGA).
+- [ ] **12.2. Gorillas.bas:** Full execution (projectile math, explosive `PAINT` rendering, `XOR` sprite blitting, sound effects).
+
+---
+
+# Roadmap: Sysclone - Milestone 3 (JIT Compilation)
+
+## Phase 13: JIT Evolution and Advanced Optimizations
 *Transform the interpreter into a true Just-In-Time compiler to fulfill the project's vision.*
 
-- [ ] **8.1. Strict Memory Typing:**
+- [ ] **13.1. Strict Memory Typing:**
   - Replace standard JS arrays in `QArray` with *Typed Arrays* (`Int16Array`, `Float32Array`) based on the defined QBasic type.
-- [ ] **8.2. AST to JS Compilation (Level 1 JIT):**
+- [ ] **13.2. AST to JS Compilation (Level 1 JIT):**
   - Create an AST visitor that generates pure JavaScript code instead of evaluating it dynamically.
-- [ ] **8.3. WebAssembly Compilation (Level 2 JIT):**
+- [ ] **13.3. WebAssembly Compilation (Level 2 JIT):**
   - Translate the intermediate code (IR) into WASM binary for near-native performance.
