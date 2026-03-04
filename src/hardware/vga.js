@@ -1,10 +1,10 @@
 // src/hardware/vga.js
-import { fontVGA } from './font.js';
+import { Mode0Text } from './video/mode0_text.js';
+import { Mode13Linear } from './video/mode13_linear.js';
 
 /**
- * Hardware Abstraction for the VGA Controller.
- * Reads directly from physical Memory (VRAM segments) and renders to a 32-bit pixel buffer.
- * Acts as a dumb terminal: processes control bytes (CR, LF, BS) natively.
+ * VGA Controller Router.
+ * Uses the Strategy Pattern to delegate rendering to the active video mode driver.
  */
 export class VGA {
     /**
@@ -13,25 +13,36 @@ export class VGA {
      */
     constructor(memory, options = {}) {
         this.memory = memory;
+        this.options = options;
         
-        // Mode 0 Metrics (Text 80x25)
-        this.cols = 80;
-        this.rows = 25;
-        this.charWidth = 8;
-        this.charHeight = 16;
+        // Initialize available hardware drivers
+        this.drivers = {
+            0: new Mode0Text(this.memory),
+            13: new Mode13Linear(this.memory)
+        };
         
-        const width = this.cols * this.charWidth;
-        const height = this.rows * this.charHeight;
+        this.mode = 0;
+        this.activeDriver = null;
+        this.display = null;
+        
+        this.setMode(0); // Boot in Text Mode
+    }
 
-        // Dependency Injection for the screen output (Canvas DOM or Test Mock)
-        if (options.displayAdapter) {
-            this.display = options.displayAdapter;
+    initDisplay(width, height) {
+        if (this.options.displayAdapter) {
+            this.display = this.options.displayAdapter;
+            this.display.width = width;
+            this.display.height = height;
         } else {
-            // Default DOM Canvas implementation
-            const canvas = document.getElementById(options.canvasId || 'vga-display');
+            const canvas = document.getElementById(this.options.canvasId || 'vga-display');
             canvas.width = width;
             canvas.height = height;
+            canvas.style.width = "640px";
+            canvas.style.height = "400px";
+            canvas.style.imageRendering = "pixelated";
+            
             const ctx = canvas.getContext('2d', { alpha: false });
+            // If the size changes, we must recreate the ImageData
             const imageData = ctx.createImageData(width, height);
             
             this.display = {
@@ -41,191 +52,38 @@ export class VGA {
                 commit: () => ctx.putImageData(imageData, 0, 0)
             };
         }
+    }
 
-        // Hardware state
-        this.cursorX = 0;
-        this.cursorY = 0;
-        this.cursorEnabled = false; // Hardware cursor flag
-        this.currentFg = 15; // Default White
-        this.currentBg = 0;  // Default Black
+    setMode(mode) {
+        if (!this.drivers[mode]) throw new Error(`Video mode ${mode} not implemented.`);
+        this.mode = mode;
+        this.activeDriver = this.drivers[mode];
         
-        // Physical memory pointers
-        this.TEXT_VRAM_BASE = 0xB8000; // Segment B800:0000
-        
-        this.initPalette32();
-        this.cls();
+        // Resize the actual display buffer to match the new driver's resolution
+        this.initDisplay(this.activeDriver.width, this.activeDriver.height);
+        this.activeDriver.cls();
     }
 
-    /**
-     * Pre-calculates the 16-color EGA palette into 32-bit Little-Endian integers (AABBGGRR).
-     * This saves thousands of bitwise operations per frame during rendering.
-     */
-    initPalette32() {
-        const rawPalette = [
-            [0,0,0],       [0,0,170],     [0,170,0],     [0,170,170],
-            [170,0,0],     [170,0,170],   [170,85,0],    [170,170,170],
-            [85,85,85],    [85,85,255],   [85,255,85],   [85,255,255],
-            [255,85,85],   [255,85,255],  [255,255,85],  [255,255,255]
-        ];
+    // --- DELEGATION TO ACTIVE DRIVER ---
 
-        this.palette32 = new Uint32Array(16);
-        for (let i = 0; i < 16; i++) {
-            const [r, g, b] = rawPalette[i];
-            // Little Endian format: 0xAABBGGRR (Alpha is 255 = 0xFF)
-            this.palette32[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-        }
-    }
-
-    color(fg, bg = this.currentBg) {
-        this.currentFg = fg % 16;
-        this.currentBg = bg % 16;
-    }
-
-    locate(row, col) {
-        if (row !== null && row !== undefined) {
-            const r = Math.floor(row); 
-            if (r >= 1 && r <= this.rows) this.cursorY = r - 1;
-        }
-        if (col !== null && col !== undefined) {
-            const c = Math.floor(col); 
-            if (c >= 1 && c <= this.cols) this.cursorX = c - 1;
-        }
-    }
-
-    showCursor() { this.cursorEnabled = true; }
-    hideCursor() { this.cursorEnabled = false; }
-
-    /**
-     * Clears the Text Mode VRAM (0xB8000 to 0xB8FA0)
-     */
-    cls() {
-        const attr = (this.currentBg << 4) | this.currentFg;
-        const end = this.TEXT_VRAM_BASE + (this.rows * this.cols * 2);
-        for (let addr = this.TEXT_VRAM_BASE; addr < end; addr += 2) {
-            this.memory.ram[addr] = 32;      // Space character
-            this.memory.ram[addr + 1] = attr; // Color attribute
-        }
-        this.cursorX = 0;
-        this.cursorY = 0;
-    }
-
-    scrollUp() {
-        // High-speed memory block transfer using TypedArrays
-        const rowBytes = this.cols * 2;
-        const totalBytes = this.rows * rowBytes;
-        this.memory.ram.copyWithin(
-            this.TEXT_VRAM_BASE,                  // Target: Line 0
-            this.TEXT_VRAM_BASE + rowBytes,       // Source: Line 1
-            this.TEXT_VRAM_BASE + totalBytes      // End of VRAM
-        );
-
-        // Clear the bottom line
-        const attr = (this.currentBg << 4) | this.currentFg;
-        const bottomLineAddr = this.TEXT_VRAM_BASE + totalBytes - rowBytes;
-        for (let i = 0; i < rowBytes; i += 2) {
-            this.memory.ram[bottomLineAddr + i] = 32;
-            this.memory.ram[bottomLineAddr + i + 1] = attr;
-        }
-        this.cursorY = this.rows - 1;
-    }
-
-    /**
-     * Prints raw bytes to the VRAM. Handles terminal control characters natively.
-     * @param {Uint8Array|number[]} bytes 
-     */
-    print(bytes) {
-        for (let i = 0; i < bytes.length; i++) {
-            const b = bytes[i];
-
-            // CR (Carriage Return)
-            if (b === 13) {
-                this.cursorX = 0;
-            } 
-            // LF (Line Feed)
-            else if (b === 10) {
-                this.cursorY++;
-                if (this.cursorY >= this.rows) this.scrollUp();
-            } 
-            // Backspace
-            else if (b === 8) {
-                if (this.cursorX > 0) {
-                    this.cursorX--;
-                } else if (this.cursorY > 0) {
-                    this.cursorX = this.cols - 1;
-                    this.cursorY--;
-                }
-            } 
-            // Standard Character Write
-            else {
-                if (this.cursorX >= this.cols) {
-                    this.cursorX = 0;
-                    this.cursorY++;
-                    if (this.cursorY >= this.rows) this.scrollUp();
-                }
-                
-                // Calculate physical VRAM address: 0xB8000 + (y * 80 + x) * 2
-                const addr = this.TEXT_VRAM_BASE + (this.cursorY * this.cols + this.cursorX) * 2;
-                
-                // Write Character and Attribute directly to RAM
-                this.memory.ram[addr] = b & 255;
-                this.memory.ram[addr + 1] = (this.currentBg << 4) | this.currentFg;
-                
-                this.cursorX++;
-            }
-        }
-    }
-
-    /**
-     * Rasterizer: Reads VRAM and blasts pixels to the 32-bit buffer.
-     * Includes hardware-level cursor blinking.
-     */
     render() {
-        const buffer = this.display.pixelBuffer32;
-        const screenWidth = this.display.width;
-        let vramAddr = this.TEXT_VRAM_BASE;
-
-        // Hardware blink logic (400ms interval)
-        const showBlink = this.cursorEnabled && (Math.floor(Date.now() / 400) % 2 === 0);
-
-        for (let ty = 0; ty < this.rows; ty++) {
-            for (let tx = 0; tx < this.cols; tx++) {
-                const charCode = this.memory.ram[vramAddr++];
-                const attr = this.memory.ram[vramAddr++];
-                
-                let fg32 = this.palette32[attr & 0x0F];
-                const bg32 = this.palette32[attr >> 4];
-                
-                const fontOffset = charCode * 16;
-                const baseX = tx * this.charWidth;
-                let baseY = ty * this.charHeight;
-
-                const isCursorCell = showBlink && (tx === this.cursorX) && (ty === this.cursorY);
-
-                for (let py = 0; py < this.charHeight; py++) {
-                    let glyphRow = fontVGA[fontOffset + py];
-                    
-                    // Hardware Cursor drawing (usually lines 14 and 15)
-                    if (isCursorCell && py >= 14) {
-                        glyphRow = 0xFF; // Fill the entire scanline row
-                        fg32 = this.palette32[this.currentFg]; 
-                    }
-
-                    let pixelIdx = (baseY * screenWidth) + baseX;
-
-                    // Loop Unrolling: Write 8 pixels simultaneously for max performance
-                    buffer[pixelIdx++] = (glyphRow & 128) ? fg32 : bg32;
-                    buffer[pixelIdx++] = (glyphRow & 64) ? fg32 : bg32;
-                    buffer[pixelIdx++] = (glyphRow & 32) ? fg32 : bg32;
-                    buffer[pixelIdx++] = (glyphRow & 16) ? fg32 : bg32;
-                    buffer[pixelIdx++] = (glyphRow & 8) ? fg32 : bg32;
-                    buffer[pixelIdx++] = (glyphRow & 4) ? fg32 : bg32;
-                    buffer[pixelIdx++] = (glyphRow & 2) ? fg32 : bg32;
-                    buffer[pixelIdx++] = (glyphRow & 1) ? fg32 : bg32;
-                    
-                    baseY++;
-                }
-            }
+        if (this.activeDriver && this.display) {
+            this.activeDriver.render(this.display);
+            this.display.commit();
         }
-        this.display.commit();
     }
+
+    cls() { this.activeDriver.cls(); }
+    print(bytes) { this.activeDriver.print(bytes); }
+    pset(x, y, color) { this.activeDriver.pset(x, y, color); }
+    color(fg, bg) { this.activeDriver.color(fg, bg); }
+    locate(row, col) { this.activeDriver.locate(row, col); }
+    showCursor() { this.activeDriver.showCursor(); }
+    hideCursor() { this.activeDriver.hideCursor(); }
+
+    // Expose structural metrics for the Evaluator (backward compatibility)
+    get rows() { return this.activeDriver.rows || 25; }
+    get cols() { return this.activeDriver.cols || 80; }
+    get cursorX() { return this.activeDriver.cursorX || 0; }
+    get cursorY() { return this.activeDriver.cursorY || 0; }
 }
