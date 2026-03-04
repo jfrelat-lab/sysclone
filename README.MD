@@ -5,6 +5,7 @@ A purist, dependency-free Universal Interpreter and Just-In-Time (JIT) compiler 
 The ultimate goal of this project is to execute historical and modern programming languages—starting with MS-DOS / QBasic—with absolute fidelity, without modifying the original source code, and without freezing the browser's main thread.
 
 ![Status](https://img.shields.io/badge/Status-Milestone%201%20Completed-success)
+![Milestone 2](https://img.shields.io/badge/Active-Milestone%202%20(Graphics%20%26%20Audio)-blue)
 ![Language](https://img.shields.io/badge/Language-JavaScript%20(ES6)-yellow)
 ![Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen)
 
@@ -12,9 +13,10 @@ The ultimate goal of this project is to execute historical and modern programmin
 
 To keep this repository organized, our documentation is split into dedicated files. Please explore them to understand the project's vision, inner workings, and future:
 
-* 🎯 **[The Goal & Vision (GOAL.MD)](./GOAL.MD)**: Why this project exists and what it aims to achieve.
+* 🎯 **[The Goal & Vision (GOAL.MD)](./GOAL.MD)**: Why this project exists and what it aims to achieve (from Nibbles to Gorillas and Mandelbrot).
 * 🏗️ **[Engine Architecture (ARCHITECTURE.MD)](./ARCHITECTURE.MD)**: Deep dive into the Monadic Parsers, Virtual CPU, and Hardware Abstraction Layer.
-* 🗺️ **[Project Roadmap (ROADMAP.MD)](./ROADMAP.MD)**: Current progress (Milestone 1 complete!) and what's coming next (JIT, Audio, New Languages).
+* 🗺️ **[Project Roadmap (ROADMAP.MD)](./ROADMAP.MD)**: Current progress and what's coming next (JIT, Audio, CP437, Advanced VGA).
+* 🤖 **[AI Collaboration Protocol (PROMPT.MD)](./PROMPT.MD)**: The strict engineering standards, language constraints, and metacognition rules governing our Agentic Workflow.
 
 ## 🤖 Built with AI Collaboration (Agentic Workflow)
 
@@ -23,12 +25,12 @@ This project is developed using a rigorous **Agentic Workflow**, where multiple 
 ### The Methodology
 
 1. **Full Context Reprompting**: Every major development cycle begins with a full-context synchronization using a custom reprompting tool. This tool aggregates the entire codebase and all specification files into a single context stream.
-2. **Document-Driven Development (DDD)**: All specifications are formalized in Markdown files (`GOAL.MD`, `ARCHITECTURE.MD`, `ROADMAP.MD`) before any code is written. These act as the "Source of Truth" for the agents.
+2. **Document-Driven Development (DDD)**: All specifications are formalized in Markdown files (`GOAL.MD`, `ARCHITECTURE.MD`, `ROADMAP.MD`, `PROMPT.MD`) before any code is written. These act as the absolute "Source of Truth" for the agents.
 3. **Cross-Model Reviews**: We utilize a "multi-agent" approach for validation. Architecture designed by one model is audited by another to identify potential edge cases or compatibility issues with MS-DOS legacy behaviors.
 4. **Agentic Audits**: Dedicated `code-reviews/` files are generated to document technical debt, performance bottlenecks, and compatibility gaps, ensuring a continuous improvement loop.
 5. **Quality Harness & CI/CD Ready**: 
-    * **Unit Testing**: A custom test runner (`test_runner.js`) is used to validate every engine component (Parsers, Evaluator, Memory) against expected QBasic behaviors.
-    * **Version Control (Git)**: Strict use of semantic commits and co-authoring metadata to track the evolution of the AI-human collaboration.
+    * **Unit Testing**: A custom test orchestrator (`test_runner.js` & `run_tests.js`) with recursive auto-discovery (`registerSuite`) is used to validate every engine component against expected QBasic behaviors.
+    * **Version Control (Git)**: Strict use of atomic semantic commits and co-authoring metadata to track the evolution of the AI-human collaboration.
     * **Static Analysis (Planned)**: Integration of strict linting rules to ensure consistency across all AI-generated modules.
 
 ### AI Stack & Model Roles
@@ -60,7 +62,7 @@ Since this project has **zero external dependencies**, running it is incredibly 
    http://localhost:3000
    ```
 
-To run the custom test suite:
+To run the automated test suite:
 ```bash
 npm test
 ```
