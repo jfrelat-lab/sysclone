@@ -24,6 +24,7 @@ export class VGA {
         this.mode = 0;
         this.activeDriver = null;
         this.display = null;
+        this.logicalWindow = null;
         
         this.setMode(0); // Boot in Text Mode
     }
@@ -59,9 +60,19 @@ export class VGA {
         this.mode = mode;
         this.activeDriver = this.drivers[mode];
         
+        // Reset logical window when changing modes
+        this.logicalWindow = null;
+
         // Resize the actual display buffer to match the new driver's resolution
         this.initDisplay(this.activeDriver.width, this.activeDriver.height);
         this.activeDriver.cls();
+    }
+
+    /**
+     * Defines a logical coordinate system mapping to the physical screen.
+     */
+    setWindow(invertY, x1, y1, x2, y2) {
+        this.logicalWindow = { invertY, x1, y1, x2, y2 };
     }
 
     // --- DELEGATION TO ACTIVE DRIVER ---
@@ -75,7 +86,38 @@ export class VGA {
 
     cls() { this.activeDriver.cls(); }
     print(bytes) { this.activeDriver.print(bytes); }
-    pset(x, y, color) { this.activeDriver.pset(x, y, color); }
+
+    /**
+     * Plots a pixel. If a logical WINDOW is active, projects coordinates to physical pixels first.
+     */
+    pset(x, y, color) { 
+        let px = x;
+        let py = y;
+
+        if (this.logicalWindow && this.activeDriver) {
+            const win = this.logicalWindow;
+            const width = this.activeDriver.width;
+            const height = this.activeDriver.height;
+
+            // Prevent division by zero
+            if (win.x2 === win.x1 || win.y2 === win.y1) return;
+
+            // X Linear Interpolation
+            px = ((x - win.x1) / (win.x2 - win.x1)) * width;
+
+            // Y Linear Interpolation
+            if (win.invertY) {
+                // WINDOW SCREEN: Y axis grows downwards
+                py = ((y - win.y1) / (win.y2 - win.y1)) * height;
+            } else {
+                // WINDOW: Cartesian format, Y axis grows upwards
+                py = ((win.y2 - y) / (win.y2 - win.y1)) * height;
+            }
+        }
+
+        this.activeDriver.pset(px, py, color); 
+    }
+
     color(fg, bg) { this.activeDriver.color(fg, bg); }
     locate(row, col) { this.activeDriver.locate(row, col); }
     showCursor() { this.activeDriver.showCursor(); }

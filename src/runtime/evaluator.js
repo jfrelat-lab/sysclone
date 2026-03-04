@@ -438,12 +438,44 @@ export class Evaluator {
 
             case 'END': return { _control: 'END' };
 
-            case 'DATA': case 'DECLARE': case 'DEFINT':
-            case 'RANDOMIZE':
+            // --- GRAPHICS STATEMENTS ---
             case 'SCREEN_STMT':
-            case 'WIDTH':
+                const mode = yield* this.evaluate(node.mode);
+                if (this.hw.vga) this.hw.vga.setMode(mode);
+                return null;
+
+            case 'PSET':
+                const x = yield* this.evaluate(node.x);
+                const y = yield* this.evaluate(node.y);
+                
+                // If color is omitted, fallback to the current foreground color
+                const color = node.color !== null ? yield* this.evaluate(node.color) : (this.hw.vga ? this.hw.vga.currentFg : 15);
+                
+                if (this.hw.vga) {
+                    // Send raw logical coordinates to the VGA router.
+                    // The hardware layer will automatically apply the active WINDOW transformation matrix.
+                    this.hw.vga.pset(x, y, color);
+                }
+                return null;
+
+            case 'WINDOW':
+                // Evaluate the boundaries of the new logical coordinate system
+                const x1 = yield* this.evaluate(node.x1);
+                const y1 = yield* this.evaluate(node.y1);
+                const x2 = yield* this.evaluate(node.x2);
+                const y2 = yield* this.evaluate(node.y2);
+
+                if (this.hw.vga) {
+                    // Instruct the VGA hardware to map these logical points to the physical screen
+                    this.hw.vga.setWindow(node.invertY, x1, y1, x2, y2);
+                }
+                return null;
+
+            // --- DOS / HARDWARE STUBS ---
+            case 'DATA': case 'DECLARE': case 'DEFINT':
+            case 'RANDOMIZE': case 'WIDTH':
                 // Gracefully ignore these specific DOS hardware commands
-                return null; 
+                return null;
 
             case 'VIEW':
                 // VIEW PRINT is a common statement in Nibbles, we stub it here
@@ -553,6 +585,12 @@ export class Evaluator {
         if (callee === 'VAL') return parseFloat(args[0]) || 0;
         if (callee === 'INT') return Math.floor(args[0]);
         if (callee === 'RND') return Math.random();
+
+        // --- MATH FUNCTIONS ---
+        if (callee === 'SIN') return Math.sin(args[0]);
+        if (callee === 'COS') return Math.cos(args[0]);
+        if (callee === 'ATN') return Math.atan(args[0]);
+        if (callee === 'ABS') return Math.abs(args[0]);
 
         // --- HARDWARE STUBS ---
         if (callee === 'PLAY' || callee === 'VIEW') {
