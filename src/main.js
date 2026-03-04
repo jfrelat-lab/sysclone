@@ -5,6 +5,7 @@ import { Memory } from './hardware/memory.js';
 import { Environment } from './runtime/environment.js';
 import { Evaluator } from './runtime/evaluator.js';
 import { block } from './parser/controlFlow.js';
+import { autoDecodeSource } from './hardware/encoding.js';
 
 /**
  * Sysclone - Universal JIT Web
@@ -36,14 +37,10 @@ async function loadAndRunGame() {
         const buffer = await response.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         
-        // 2. Reconstruct string with 1:1 mapping (0-255)
-        // This preserves original CP437 encoding for the VGA text mode!
-        let sourceCode = "";
-        for (let i = 0; i < bytes.length; i++) {
-            sourceCode += String.fromCharCode(bytes[i]);
-        }
+        // 2. Smart auto-decoding (handles Raw DOS or GitHub Mojibake magically)
+        const sourceCode = autoDecodeSource(bytes);
         
-        console.log(`✅ File loaded and decoded (${sourceCode.length} bytes). Starting Parser...`);
+        console.log(`✅ File loaded and auto-decoded (${sourceCode.length} chars). Starting Parser...`);
         
         // The core parsing logic
         const parsed = block.run(sourceCode);

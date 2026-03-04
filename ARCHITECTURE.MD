@@ -42,9 +42,10 @@ Old DOS games use `POKE` to write directly into system RAM (e.g., address `&H41A
 * **Arrays & Types:** QBasic allows arbitrary bounds (e.g., `DIM a(10 TO 50)`). The `QArray` class flattens these into a pure 1D mathematical array while natively handling index offsets. 
 * **Data Bank:** The Evaluator features a pre-execution scanning phase to hoist `LABEL`, `SUB`, and `DATA` statements, creating a sequential data bank accessed by `READ` and `RESTORE`.
 
-### 2.6. I/O Encoding: The CP437 Bridge
+### 2.6. I/O Encoding & The CP437 Bridge
 Modern web browsers fetch text files as UTF-8, which breaks legacy DOS games relying on extended ASCII characters for graphics (e.g., block characters in Nibbles).
-* **Architectural Choice:** Sysclone implements a strict bidirectional translation layer. Downloaded raw bytes are mapped 1:1 to Code Page 437 before entering the Virtual RAM, ensuring absolute block fidelity.
+* **Smart Heuristic Decoder:** Sysclone implements a content-sniffing layer (`autoDecodeSource`) that automatically detects whether a loaded file is Raw DOS binary (CP437), modern True Unicode, or corrupted GitHub Mojibake (Windows-1252 read as UTF-8), repairing the latter on the fly while preserving essential ASCII control characters (LF, CR, TAB).
+* **Architectural Boundary:** The AST and Virtual CPU operate entirely in standard JS Unicode. The strict bidirectional translation to 8-bit Code Page 437 bytes occurs *only* at the Hardware Abstraction Layer boundary (e.g., when the `PRINT` statement sends data to the VGA VRAM or when `CHR$` is called), ensuring absolute block fidelity without polluting the high-level execution logic.
 
 ### 2.7. Advanced Graphics Engine (VGA/EGA/CGA)
 Emulating `SCREEN 7`, `8`, and `13` requires heavy manipulation.
