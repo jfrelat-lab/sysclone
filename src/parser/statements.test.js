@@ -113,4 +113,40 @@ registerSuite('QBasic Instructions (Statements)', () => {
         assertEqual(rest2.result.label, 'INITCOLORS');
     });
 
+    test('Should parse WINDOW statements with math coordinates', () => {
+        // Mandelbrot coordinate mapping
+        const win = statement.run('WINDOW (-2, 1.5)-(2, -1.5)');
+        
+        assertEqual(win.result.type, 'WINDOW');
+        assertEqual(win.result.invertY, false);
+        
+        // Ensure negative numbers are parsed properly (Unary Operations)
+        assertEqual(win.result.x1.type, 'UNARY_OP');
+        assertEqual(win.result.x1.argument.value, 2);
+        assertEqual(win.result.y1.value, 1.5);
+        
+        assertEqual(win.result.x2.value, 2);
+        assertEqual(win.result.y2.type, 'UNARY_OP');
+        assertEqual(win.result.y2.argument.value, 1.5);
+
+        // QBasic allows WINDOW SCREEN to invert axis
+        const winScreen = statement.run('WINDOW SCREEN (0, 0)-(320, 200)');
+        assertEqual(winScreen.result.invertY, true);
+        assertEqual(winScreen.result.x2.value, 320);
+    });
+
+    test('Should parse PSET pixel drawing statements', () => {
+        const pset = statement.run('PSET (x, y), c');
+        
+        assertEqual(pset.result.type, 'PSET');
+        assertEqual(pset.result.isStep, false);
+        assertEqual(pset.result.x.value, 'X');
+        assertEqual(pset.result.y.value, 'Y');
+        assertEqual(pset.result.color.value, 'C');
+
+        // Without color parameter (uses default)
+        const psetNoColor = statement.run('PSET (10, 20)');
+        assertEqual(psetNoColor.result.color, null);
+    });
+
 });
