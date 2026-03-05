@@ -1,18 +1,24 @@
-// run_tests.js
-import { runAllTests } from './src/test_runner.js';
+// tests/orchestrator.js
+import { runAllTests } from '../src/test_runner.js';
 import fs from 'fs';
 import path from 'path';
-import { pathToFileURL } from 'url';
+import { pathToFileURL, fileURLToPath } from 'url';
 
 /**
  * Sysclone Test Orchestrator
  * Automatically discovers and executes all .test.js files within the src directory.
  */
 
+// --- Absolute Path Resolution ---
+// Ensures the script works perfectly regardless of the user's terminal CWD
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SRC_DIR = path.resolve(__dirname, '../src');
+
 /**
  * Recursively scans a directory for test files and imports them.
  * This triggers the auto-registration mechanism in the test runner.
- * * @param {string} dir - The starting directory for the scan.
+ * @param {string} dir - The starting directory for the scan.
  */
 async function discoverAndImportTests(dir) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -24,7 +30,7 @@ async function discoverAndImportTests(dir) {
             // Recursive call for subdirectories
             await discoverAndImportTests(fullPath);
         } else if (entry.name.endsWith('.test.js')) {
-            // Convert system path to File URL for ES Module compatibility
+            // Convert absolute system path to File URL for ES Module compatibility
             // This ensures cross-platform support (Windows/macOS/Linux)
             const fileURL = pathToFileURL(fullPath).href;
             await import(fileURL);
@@ -34,9 +40,10 @@ async function discoverAndImportTests(dir) {
 
 async function main() {
     try {
-        // 1. Scan the src directory for all test suites
-        // This eliminates the need for manual imports in this file.
-        await discoverAndImportTests('./src');
+        console.log(`🔍 Scanning for test suites in: ${SRC_DIR}`);
+        
+        // 1. Scan the src directory for all test suites using the absolute path
+        await discoverAndImportTests(SRC_DIR);
 
         // 2. Execute the global registry once all suites are loaded
         runAllTests();

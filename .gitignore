@@ -4,11 +4,10 @@ node_modules/
 # macOS system files
 .DS_Store
 
-# Agentic/Context files
-project_context.md
-reprompt.js
-migrate_tests.js
-code-reviews/
+# --- Agentic Workflow & Personal Intellectual Property ---
+# Exclude artifacts, agent memories, and internal code reviews 
+# to protect proprietary development methodology.
+artifacts/
 
 # Logs
 npm-debug.log*
