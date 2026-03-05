@@ -16,6 +16,12 @@ export const optWs = regex(/^[ \t]*/);
  */
 export const eos = regex(/^[ \t]*(?:'[^\n]*)?(?:\r?\n|:)(?:[ \t\r\n]|(?:'[^\n]*))*/);
 
+// --- ATOMIC LEXERS FOR UI TOKENIZATION ---
+
+export const commentLexer = regex(/^'[^\n]*/).map(val => ({ type: 'COMMENT', value: val }));
+export const whitespaceLexer = regex(/^[ \t\r\n]+/).map(val => ({ type: 'WHITESPACE', value: val }));
+export const symbolLexer = regex(/^[^a-zA-Z0-9_ \t\r\n"']+/).map(val => ({ type: 'SYMBOL', value: val }));
+
 // --- LITERALS ---
 
 /**
@@ -24,10 +30,10 @@ export const eos = regex(/^[ \t]*(?:'[^\n]*)?(?:\r?\n|:)(?:[ \t\r\n]|(?:'[^\n]*)
 export const numberLiteral = regex(/^(?:&H[0-9A-Fa-f]+|\d+(?:\.\d*)?|\.\d+)/i).map(n => {
     // Hexadecimal conversion (Base 16 to Base 10)
     if (n.toUpperCase().startsWith('&H')) {
-        return { type: 'NUMBER', value: parseInt(n.substring(2), 16) };
+        return { type: 'NUMBER', value: parseInt(n.substring(2), 16), raw: n };
     }
     // Standard decimal parsing
-    return { type: 'NUMBER', value: parseFloat(n) };
+    return { type: 'NUMBER', value: parseFloat(n), raw: n };
 });
 
 /**
@@ -39,7 +45,8 @@ export const stringLiteral = sequenceObj([
     regex(/^"/)
 ]).map(obj => ({
     type: 'STRING',
-    value: obj.text
+    value: obj.text,
+    raw: `"${obj.text}"`
 }));
 
 // --- IDENTIFIERS AND KEYWORDS ---
@@ -63,6 +70,51 @@ const RESERVED_KEYWORDS = new Set([
 ]);
 
 /**
+ * BUILT-IN FUNCTIONS: Recognized as identifiers by the parser but highlighted as keywords.
+ * Allows 'INT(5)' to be parsed as a CALL while remaining blue in the IDE.
+ */
+const BUILTIN_FUNCTIONS = new Set([
+    // Memory & Hardware
+    'PEEK', 'INP', 'OUT', 
+    // Math
+    'INT', 'FIX', 'ABS', 'SQR', 'RND', 'SIN', 'COS', 'TAN', 'ATN', 'LOG', 'EXP',
+    // String
+    'CHR$', 'STR$', 'VAL', 'LEN', 'MID$', 'LEFT$', 'RIGHT$', 'SPACE$', 'STRING$', 
+    'UCASE$', 'LCASE$', 'LTRIM$', 'RTRIM$',
+    // System
+    'INKEY$', 'TIMER', 'COMMAND$', 'ENVIRON$'
+]);
+
+/**
+ * Unified set for the UI Tokenizer.
+ */
+const HIGHLIGHT_KEYWORDS = new Set([...RESERVED_KEYWORDS, ...BUILTIN_FUNCTIONS]);
+
+/**
+ * anyKeywordLexer (Used by Tokenizer for UI only)
+ * Uses the extended set (HIGHLIGHT_KEYWORDS) for rich syntax highlighting.
+ */
+export const anyKeywordLexer = new Parser(state => {
+    const { targetString, index } = state;
+    const match = targetString.slice(index).match(/^[a-zA-Z_][a-zA-Z0-9_]*[%&!#$]?/);
+    
+    if (match && match.index === 0) {
+        const word = match[0].toUpperCase();
+        const wordWithoutSuffix = word.replace(/[%&!#$]$/, '');
+        
+        if (HIGHLIGHT_KEYWORDS.has(wordWithoutSuffix) || HIGHLIGHT_KEYWORDS.has(word)) {
+            return {
+                ...state,
+                index: index + match[0].length,
+                result: { type: 'KEYWORD', value: match[0] },
+                isError: false
+            };
+        }
+    }
+    return { ...state, isError: true, error: `Not a keyword at index ${index}` };
+});
+
+/**
  * Parses variable names or subroutine identifiers.
  * Rejects any word present in the RESERVED_KEYWORDS set.
  */
@@ -84,7 +136,8 @@ export const identifier = new Parser(state => {
         return {
             ...state,
             index: index + match[0].length,
-            result: { type: 'IDENTIFIER', value: word },
+            // Add 'raw' to preserve the user's original casing for UI highlighting
+            result: { type: 'IDENTIFIER', value: word, raw: match[0] },
             isError: false
         };
     }

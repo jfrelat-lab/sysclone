@@ -1,4 +1,5 @@
 // src/ui.js
+import { tokenize } from './parser/tokenizer.js';
 
 export class WebUI {
     constructor() {
@@ -54,16 +55,35 @@ export class WebUI {
     }
 
     /**
-     * Safely injects the source code. 
-     * Advanced Lexer-based Syntax Highlighting will be applied here in the next phase.
+     * Safely injects the source code using the native AST Tokenizer
+     * for zero-dependency, flawless syntax highlighting.
      */
     setSourceCode(filename, code) {
         if (this.sourceFilename) this.sourceFilename.textContent = filename;
         if (!this.sourceViewer) return;
 
-        // XSS Prevention & basic rendering (waiting for the Lexer)
-        const safeCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        this.sourceViewer.innerHTML = safeCode;
+        const tokens = tokenize(code);
+        let html = '';
+
+        for (const token of tokens) {
+            // Use the 'raw' original text if available, otherwise fallback to 'value'
+            const text = token.raw !== undefined ? token.raw : token.value;
+            
+            // Absolute XSS Prevention for each token
+            const safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+            // Apply syntax classes based on our native parser types
+            switch (token.type) {
+                case 'KEYWORD': html += `<span class="syn-kw">${safeText}</span>`; break;
+                case 'COMMENT': html += `<span class="syn-com">${safeText}</span>`; break;
+                case 'STRING':  html += `<span class="syn-str">${safeText}</span>`; break;
+                case 'NUMBER':  html += `<span class="syn-num">${safeText}</span>`; break;
+                // IDENTIFIER, WHITESPACE, SYMBOL, and UNKNOWN are printed as plain text
+                default: html += safeText; break;
+            }
+        }
+
+        this.sourceViewer.innerHTML = html;
     }
 
     _togglePlayPause() {
