@@ -117,21 +117,25 @@
 
 - [x] **7.6.1. Dynamic ROM Loader & Build System:**
   - [x] Implement VM reset capabilities (Clear RAM, Reset Environment, Cancel AnimationFrame) in `webvm.js`.
-  - [x] Create `tools/build_catalog.js` to statically generate a JSON list of available `.bas` ROMs.
+  - [x] Create `tools/build_catalog.js` with private draft filtering to statically generate the ROM index.
   - [x] Wire the `#rom-selector` to fetch the catalog and execute new `.bas` files on the fly.
 - [x] **7.6.2. Fullscreen & Pixel-Perfect Scaling:**
   - [x] Implement the HTML5 Fullscreen API.
   - [x] Add CSS logic to maintain the original 4:3 aspect ratio and `image-rendering: pixelated` during viewport resizes.
-- [ ] **7.6.3. Source Code Viewer:**
-  - [ ] Add a UI pane (`<pre><code>`) to display the raw `.bas` source code currently being executed.
-  - [ ] Add a toggle button (Show/Hide Code), ensuring it auto-hides during Fullscreen mode.
-- [ ] **7.6.4. VM Execution Controls (State Management):**
-  - [ ] Implement `Pause` (freeze the Virtual CPU `requestAnimationFrame` loop).
-  - [ ] Implement `Play` (resume the loop).
-  - [ ] Implement `Stop` (halt execution, reset iterator, and clear VRAM).
-- [ ] **7.6.5. Canvas Screenshot Tool:**
-  - [ ] Add a "Screenshot" button using native `canvas.toBlob`.
-  - [ ] Ensure the output is a clean, lossless PNG preserving the DOS pixel ratio.
+- [x] **7.6.3. Split-Screen Pro IDE Layout:**
+  - [x] Redesign the interface into a modern workspace (Editor on the left, Execution on the right).
+  - [x] Display the raw, original `.bas` source code currently being executed.
+  - [x] Upgrade the CPU speed visualizer to reflect realistic retro hardware frequencies (MHz).
+- [x] **7.6.4. VM Execution Controls (State Management):**
+  - [x] Implement a `Play / Pause` toggle to freeze/resume the Virtual CPU `requestAnimationFrame` loop.
+  - [x] Implement `Restart` (halt execution, clear VRAM, and reboot the current ROM).
+- [x] **7.6.5. Canvas Screenshot Tool:**
+  - [x] Add a "Screenshot" button using native `canvas.toBlob`.
+  - [x] Ensure the output is a clean, lossless PNG preserving the DOS pixel ratio.
+- [ ] **7.6.6. Native Syntax Highlighting (Dog Fooding):**
+  - [ ] Refactor `lexers.js` to explicitly yield `COMMENT` and `WHITESPACE` tokens instead of silently swallowing them in `eos`.
+  - [ ] Build a lightweight `Tokenizer` that processes the loaded source code through our Monadic Lexers.
+  - [ ] Render the token stream as colored HTML in the UI without external dependencies.
 
 ## Phase 7.7: Compatibility Documentation
 *Establish the visual proof of Sysclone's accuracy.*

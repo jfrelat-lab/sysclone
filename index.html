@@ -7,42 +7,68 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="sysclone-shell">
-        <header>
-            <h1>SYSCLONE <span>WebVM</span></h1>
-        </header>
+    <div id="ide-container">
         
-        <div id="sysclone-control-panel" class="toolbar">
+        <header class="ide-header">
+            <div class="logo">
+                <h1>SYSCLONE <span>WebVM</span></h1>
+            </div>
             
-            <div class="control-group">
-                <select id="rom-selector">
-                    <option value="nibbles.bas">Nibbles</option>
-                    <option value="mandel.bas">Mandelbrot</option>
-                    <option value="plasma.bas">Plasma</option>
-                </select>
-            </div>
-
-            <div class="control-group cpu-controls">
-                <label for="cpu-speed">
-                    CPU: <span id="speed-display" class="highlight">40 cycles/frame</span> 
-                </label>
-                <input type="range" id="cpu-speed" min="5" max="200" step="5" value="40">
+            <div class="ide-toolbar">
+                <div class="control-group">
+                    <label for="rom-selector">File:</label>
+                    <select id="rom-selector"></select>
+                </div>
                 
-                <span class="separator">|</span>
-                
-                <input type="checkbox" id="cpu-turbo">
-                <label for="cpu-turbo" class="danger">TURBO (MAX)</label>
+                <span class="separator"></span>
+
+                <div class="control-group cpu-group">
+                    <span class="cpu-badge" id="speed-display">40 Hz</span>
+                    <input type="range" id="cpu-speed" min="5" max="200" step="5" value="40" title="CPU Speed">
+                    <label class="turbo-label">
+                        <input type="checkbox" id="cpu-turbo"> TURBO
+                    </label>
+                </div>
             </div>
+        </header>
 
-            <div class="control-group">
-                <button id="btn-fullscreen">[ ] Fullscreen</button>
-            </div>
+        <main class="ide-workspace">
+            
+            <section class="panel editor-panel">
+                <div class="panel-header">
+                    <span class="tab active" id="source-filename">program.bas</span>
+                </div>
+                <div class="editor-content">
+                    <pre><code id="source-viewer"></code></pre>
+                </div>
+            </section>
 
-        </div>
+            <section class="panel execution-panel">
+                <div class="panel-header action-bar">
+                    <div class="action-left">
+                        <button id="btn-toggle-play" class="btn-icon" title="Play / Pause">
+                            <svg id="icon-pause" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                            <svg id="icon-play" viewBox="0 0 24 24" width="16" height="16" style="display:none;"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <button id="btn-restart" class="btn-icon" title="Restart VM">
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                        </button>
+                    </div>
+                    <div class="action-right">
+                        <button id="btn-screenshot" class="btn-icon" title="Take Screenshot">
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                        </button>
+                        <button id="btn-fullscreen" class="btn-icon" title="Fullscreen">
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="canvas-container" id="screen-container">
+                    <canvas id="vga-display" width="640" height="400"></canvas>
+                </div>
+            </section>
 
-        <div id="screen-container">
-            <canvas id="vga-display" width="640" height="400"></canvas>
-        </div>
+        </main>
     </div>
     
     <script type="module" src="./src/webvm.js"></script>
