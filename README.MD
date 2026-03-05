@@ -1,6 +1,8 @@
-# Sysclone 🚀
+# ![Sysclone Logo](./docs/assets/logo.svg) Sysclone WebVM 🚀
 
-A purist, dependency-free Universal Interpreter and Just-In-Time (JIT) compiler built entirely in JavaScript, designed to run directly in the browser. 
+**A purist, zero-dependency Universal Interpreter & Just-In-Time (JIT) compiler.**
+
+Built entirely in pure JavaScript (ES6), Sysclone is designed to run directly in the browser. It features a full split-screen Web IDE, real-time Virtual CPU controls, and pixel-perfect hardware emulation.
 
 The ultimate goal of this project is to execute historical and modern programming languages—starting with MS-DOS / QBasic—with absolute fidelity, without modifying the original source code, and without freezing the browser's main thread.
 
@@ -15,7 +17,7 @@ To keep this repository organized, our documentation is split into dedicated fil
 
 * 🎯 **[The Goal & Vision (GOAL.MD)](./docs/GOAL.MD)**: Why this project exists and what it aims to achieve (from Nibbles to Gorillas and Mandelbrot).
 * 🏗️ **[Engine Architecture (ARCHITECTURE.MD)](./docs/ARCHITECTURE.MD)**: Deep dive into the Monadic Parsers, Virtual CPU, and Hardware Abstraction Layer.
-* 🗺️ **[Project Roadmap (ROADMAP.MD)](./docs/ROADMAP.MD)**: Current progress and what's coming next (JIT, Audio, CP437, Advanced VGA).
+* 🗺️ **[Project Roadmap (ROADMAP.MD)](./docs/ROADMAP.MD)**: Current progress and what's coming next.
 * 🤖 **[AI Collaboration Protocol (PROMPT.MD)](./docs/PROMPT.MD)**: The strict engineering standards, language constraints, and metacognition rules governing our Agentic Workflow.
 
 ## 🤖 Built with AI Collaboration (Agentic Workflow)
