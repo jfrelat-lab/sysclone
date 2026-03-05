@@ -26,6 +26,11 @@ export class VGA {
         this.display = null;
         this.logicalWindow = null;
         
+        // --- VGA DAC Palette State Machine ---
+        this.paletteIndex = 0;
+        this.rgbState = 0; // 0: Red, 1: Green, 2: Blue
+        this.tempRGB = [0, 0, 0];
+
         this.setMode(0); // Boot in Text Mode
     }
 
@@ -66,6 +71,31 @@ export class VGA {
         // Resize the actual display buffer to match the new driver's resolution
         this.initDisplay(this.activeDriver.width, this.activeDriver.height);
         this.activeDriver.cls();
+    }
+
+    /**
+     * Handles hardware port writes (Memory-Mapped I/O equivalent).
+     */
+    out(port, val) {
+        if (port === 0x3C8) {
+            // Set DAC Write Index
+            this.paletteIndex = val & 0xFF;
+            this.rgbState = 0; 
+        } else if (port === 0x3C9) {
+            // Write DAC Data (R, then G, then B) - values are 6-bit (0-63)
+            this.tempRGB[this.rgbState] = val & 0x3F;
+            this.rgbState++;
+            
+            if (this.rgbState === 3) {
+                // Color is fully formed, send to active driver
+                if (this.activeDriver && typeof this.activeDriver.updatePalette === 'function') {
+                    this.activeDriver.updatePalette(this.paletteIndex, this.tempRGB[0], this.tempRGB[1], this.tempRGB[2]);
+                }
+                // Auto-increment the index after a full RGB write (Hardware feature)
+                this.paletteIndex = (this.paletteIndex + 1) & 0xFF;
+                this.rgbState = 0;
+            }
+        }
     }
 
     /**
