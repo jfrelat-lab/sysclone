@@ -3,43 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sysclone - Nibbles</title>
-    <style>
-        body {
-            background-color: #111;
-            color: #eee;
-            font-family: monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-top: 2rem;
-        }
-        #vga-display {
-            background-color: #000;
-            border: 2px solid #555;
-            /* Ideal dimensions for an 80x25 text mode ratio */
-            width: 640px; 
-            height: 400px; 
-            image-rendering: pixelated; /* Keeps the retro look */
-        }
-    </style>
+    <title>Sysclone WebVM</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Sysclone - QBasic Test</h1>
-    <div id="sysclone-control-panel" style="margin-top: 10px; font-family: monospace; background: #eee; padding: 10px; border-radius: 5px; display: inline-block;">
-        <label for="cpu-speed" style="margin-right: 10px;">
-            <strong>CPU Speed:</strong> 
-            <span id="speed-display" style="font-weight: bold; color: #007bff;">40 cycles/frame</span> 
-        </label>
-        <input type="range" id="cpu-speed" min="5" max="200" step="5" value="40" style="vertical-align: middle;">
+    <div id="sysclone-shell">
+        <header>
+            <h1>SYSCLONE <span>WebVM</span></h1>
+        </header>
         
-        <span style="margin: 0 15px;">|</span>
-        
-        <input type="checkbox" id="cpu-turbo" style="vertical-align: middle;">
-        <label for="cpu-turbo" style="color: #d00; font-weight: bold;">TURBO (MAX)</label>
+        <div id="sysclone-control-panel" class="toolbar">
+            
+            <div class="control-group">
+                <select id="rom-selector">
+                    <option value="nibbles.bas">Nibbles</option>
+                    <option value="mandel.bas">Mandelbrot</option>
+                    <option value="plasma.bas">Plasma</option>
+                </select>
+            </div>
+
+            <div class="control-group cpu-controls">
+                <label for="cpu-speed">
+                    CPU: <span id="speed-display" class="highlight">40 cycles/frame</span> 
+                </label>
+                <input type="range" id="cpu-speed" min="5" max="200" step="5" value="40">
+                
+                <span class="separator">|</span>
+                
+                <input type="checkbox" id="cpu-turbo">
+                <label for="cpu-turbo" class="danger">TURBO (MAX)</label>
+            </div>
+
+            <div class="control-group">
+                <button id="btn-fullscreen">[ ] Fullscreen</button>
+            </div>
+
+        </div>
+
+        <div id="screen-container">
+            <canvas id="vga-display" width="640" height="400"></canvas>
+        </div>
     </div>
-    <canvas id="vga-display" width="640" height="400"></canvas>
     
-    <script type="module" src="./src/main.js"></script>
+    <script type="module" src="./src/webvm.js"></script>
 </body>
 </html>
