@@ -132,17 +132,10 @@
 - [x] **7.6.5. Canvas Screenshot Tool:**
   - [x] Add a "Screenshot" button using native `canvas.toBlob`.
   - [x] Ensure the output is a clean, lossless PNG preserving the DOS pixel ratio.
-- [ ] **7.6.6. Native Syntax Highlighting (Dog Fooding):**
-  - [ ] Refactor `lexers.js` to explicitly yield `COMMENT` and `WHITESPACE` tokens instead of silently swallowing them in `eos`.
-  - [ ] Build a lightweight `Tokenizer` that processes the loaded source code through our Monadic Lexers.
-  - [ ] Render the token stream as colored HTML in the UI without external dependencies.
-
-## Phase 7.7: Compatibility Documentation
-*Establish the visual proof of Sysclone's accuracy.*
-
-- [ ] **7.7.1. The COMPATIBILITY.MD Ledger:**
-  - [ ] Create a documented gallery of working MS-DOS scripts (Nibbles, Mandelbrot, etc.).
-  - [ ] Use the new Screenshot tool to populate an `assets/` folder with pristine visual evidence of exact hardware emulation.
+- [X] **7.6.6. Native Syntax Highlighting (Dog Fooding):**
+  - [X] Refactor `lexers.js` to explicitly yield `COMMENT` and `WHITESPACE` tokens instead of silently swallowing them in `eos`.
+  - [X] Build a lightweight `Tokenizer` that processes the loaded source code through our Monadic Lexers.
+  - [X] Render the token stream as colored HTML in the UI without external dependencies.
 
 ---
 
