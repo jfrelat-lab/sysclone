@@ -349,4 +349,15 @@ registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
         assertEqual(pi > 3.14 && pi < 3.15, true);
     });
 
+    test('Should evaluate integer division (\\) with operand rounding', () => {
+        const env = new Environment();
+        executeCode(env, `
+            a = 10 \\ 3
+            b = 14.9 \\ 3.1
+        `);
+        // 10 \ 3 = 3
+        assertEqual(env.lookup('A'), 3);
+        // 14.9 rounds to 15, 3.1 rounds to 3 -> 15 \ 3 = 5
+        assertEqual(env.lookup('B'), 5); 
+    });
 });

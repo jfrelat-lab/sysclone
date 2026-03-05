@@ -60,4 +60,11 @@ registerSuite('QBasic Expressions and Precedence (AST)', () => {
         assertEqual(astLogic.left.argument.operator, '-');
         assertEqual(astLogic.left.argument.argument.value, 1);
     });
+
+    test('expression() should handle integer division (\\)', () => {
+        const ast = expression.run('10 \\ 3').result;
+        assertEqual(ast.operator, '\\');
+        assertEqual(ast.left.value, 10);
+        assertEqual(ast.right.value, 3);
+    });
 });

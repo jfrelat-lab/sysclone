@@ -78,8 +78,8 @@ const unaryMathExpr = choice([
 
 // --- 3. Operator Precedence Cascade ---
 
-// Level 4: Multiplication, Division, Modulo
-const mulOp = opSurroundedByWs(choice([regex(/^\*/), regex(/^\//), keyword('MOD')]));
+// Level 4: Multiplication, Division, Integer Division, Modulo
+const mulOp = opSurroundedByWs(choice([regex(/^\*/), regex(/^\//), regex(/^\\/), keyword('MOD')]));
 const mulExpr = chainLeft(unaryMathExpr, mulOp, astReducer); 
 
 // Level 3: Addition, Subtraction

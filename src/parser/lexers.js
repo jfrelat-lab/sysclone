@@ -1,5 +1,6 @@
 // src/parser/lexers.js
 import { regex, sequenceObj, capture, Parser } from './monad.js';
+import { BuiltIns } from '../runtime/builtins.js';
 
 /**
  * STRICT WHITESPACE MANAGEMENT (Horizontal only)
@@ -70,19 +71,19 @@ const RESERVED_KEYWORDS = new Set([
 ]);
 
 /**
- * BUILT-IN FUNCTIONS: Recognized as identifiers by the parser but highlighted as keywords.
- * Allows 'INT(5)' to be parsed as a CALL while remaining blue in the IDE.
+ * HARDWARE BUILT-INS
+ * These interact with the HAL and are handled directly in the Evaluator loop.
+ */
+const HARDWARE_BUILTINS = [
+    'PEEK', 'INP', 'OUT', 'INKEY$', 'TIMER', 'COMMAND$', 'ENVIRON$'
+];
+
+/**
+ * BUILT-IN FUNCTIONS (Dynamic generation from STDLIB + Hardware stubs)
  */
 const BUILTIN_FUNCTIONS = new Set([
-    // Memory & Hardware
-    'PEEK', 'INP', 'OUT', 
-    // Math
-    'INT', 'FIX', 'ABS', 'SQR', 'RND', 'SIN', 'COS', 'TAN', 'ATN', 'LOG', 'EXP',
-    // String
-    'CHR$', 'STR$', 'VAL', 'LEN', 'MID$', 'LEFT$', 'RIGHT$', 'SPACE$', 'STRING$', 
-    'UCASE$', 'LCASE$', 'LTRIM$', 'RTRIM$',
-    // System
-    'INKEY$', 'TIMER', 'COMMAND$', 'ENVIRON$'
+    ...Object.keys(BuiltIns),
+    ...HARDWARE_BUILTINS
 ]);
 
 /**

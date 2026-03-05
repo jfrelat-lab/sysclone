@@ -85,7 +85,9 @@
   - [x] **[CRITICAL]** Add `WHILE ... WEND` loop structure.
   - [x] Add support for conditions at the beginning of DO loops (`DO WHILE/UNTIL cond ... LOOP`).
 - [ ] **6.4. Missing Operators and Literals:**
-  - [ ] Add integer division `\`, exponentiation `^`, and logical operators `XOR`, `EQV`, `IMP`.
+  - [x] Add integer division `\` with operand rounding, and `MOD` operator.
+  - [x] Add logical operators `AND`, `OR`, `NOT`.
+  - [ ] Add exponentiation `^` and bitwise operators `XOR`, `EQV`, `IMP`.
   - [ ] Add support for octal format (`&O`) and scientific notation (`E`, `D`).
 
 ## Phase 7: Trial by Fire - Nibbles.bas (Update)
@@ -159,8 +161,10 @@
 - [ ] **9.3. Implicit Typing & Macros:**
   - [ ] Support `DEFINT`, `DEFSNG`, etc., for default variable typing.
   - [ ] Parse and evaluate single-line macros: `DEF FNname(args) = expr`.
-- [x] **9.4. Math & Randomness:**
-  - [x] Implement `RANDOMIZE (TIMER)`, `RND`, `ATN`, `COS`, `SIN`, `ABS`.
+- [x] **9.4. Math, Strings & Built-ins:**
+  - [x] Abstract all pure native functions into a `builtins.js` standard library.
+  - [x] Implement math: `INT`, `FIX`, `ABS`, `SQR`, `RND`, `SIN`, `COS`, `TAN`, `ATN`, `EXP`, `LOG`.
+  - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `VAL`, `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`.
 
 ## Phase 10: Advanced Graphics Engine (Gorillas & Mandelbrot)
 *Expand the engine capabilities to support computationally and graphically intensive classics.*
@@ -173,6 +177,7 @@
   - [ ] Add `PALETTE` and `PALETTE USING` mapping support.
 - [ ] **10.3. Geometry Primitives (SCREEN 7, 8, 13):**
   - [x] Implement `PSET` (Pixel Set).
+  - [x] Support native Text overlay in linear graphics modes using the 8x8 BIOS font.
   - [ ] Implement `POINT` (Pixel Read - critical for collision detection).
   - [ ] Add geometry rendering: `LINE`, `CIRCLE`.
   - [ ] Add algorithmic drawing: `PAINT` (Flood Fill algorithm).
