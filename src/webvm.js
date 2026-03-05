@@ -9,120 +9,113 @@ import { autoDecodeSource } from './hardware/encoding.js';
 import { WebUI } from './ui.js';
 
 /**
- * Sysclone Web Orchestrator
- * Connects the UI shell to the Hardware Abstraction Layer and CPU.
+ * Sysclone WebVM Orchestrator
+ * Pure lifecycle management: Connects the UI shell to the HAL and Virtual CPU.
  */
 
-console.log("🔥 Powering up the Sysclone WebVM...");
-
-// 1. Initialize the UI Shell
 const ui = new WebUI();
-
-// 2. Global Hardware State
 let io, memory, screen, env, evaluator, currentAnimationFrame;
+let currentProcess = null;
+let isPaused = false;
 
-/**
- * Initializes or resets the hardware and runtime environment.
- */
-function initHardware() {
-    // Kill any running CPU loop to prevent duplicate execution
+function resetHardware() {
     if (currentAnimationFrame) {
         cancelAnimationFrame(currentAnimationFrame);
         currentAnimationFrame = null;
     }
+    isPaused = false;
+    currentProcess = null;
 
     io = new IO();
     memory = new Memory(io);
     screen = new VGA(memory, { canvasId: 'vga-display' });
-    
     env = new Environment();
     evaluator = new Evaluator(env, { vga: screen, io: io, memory: memory });
+    
+    ui.forcePlayState(); // Ensure UI reflects the running state
 }
 
-/**
- * Downloads a script, parses the AST, and initiates the CPU loop.
- * @param {string} filename 
- */
+function cpuLoop() {
+    if (isPaused || !currentProcess) return;
+
+    try {
+        if (ui.isTurboMode) {
+            const frameStart = performance.now();
+            while (performance.now() - frameStart < 12) {
+                const state = currentProcess.next();
+                if (state.done) { finalizeExecution(); return; }
+            }
+        } else {
+            let cycles = ui.cyclesPerFrame;
+            while (cycles > 0) {
+                const state = currentProcess.next(); 
+                if (state.done) { finalizeExecution(); return; }
+                cycles--;
+            }
+        }
+    } catch (e) {
+        console.error("💥 CPU Execution Error:", e.message);
+        return;
+    }
+    
+    screen.render();
+    currentAnimationFrame = requestAnimationFrame(cpuLoop);
+}
+
+function finalizeExecution() {
+    console.log("🏁 Program terminated normally.");
+    currentProcess = null;
+    if (screen) screen.render();
+}
+
 async function boot(filename) {
-    console.log(`📥 Fetching ROM: ${filename}...`);
-    initHardware(); // Clean slate
+    console.log(`📥 Booting ROM: ${filename}...`);
+    resetHardware();
 
     try {
         const response = await fetch(`./examples/${filename}`);
         if (!response.ok) throw new Error("HTTP Error: " + response.status);
         
         const buffer = await response.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        const sourceCode = autoDecodeSource(bytes);
+        const sourceCode = autoDecodeSource(new Uint8Array(buffer));
         
-        console.log(`✅ File loaded and auto-decoded. Starting Parser...`);
+        ui.setSourceCode(filename, sourceCode);
+        
         const parsed = block.run(sourceCode);
-
-        if (parsed.isError) {
-            console.error("❌ Parser failed at index:", parsed.index);
-            return;
-        } 
+        if (parsed.isError) throw new Error(`Parser failed at index ${parsed.index}`);
         
-        console.log("🤯 Success! AST generated. Initializing CPU...");
-        const process = evaluator.evaluate(parsed.result);
-
-        function cpuLoop() {
-            try {
-                if (ui.isTurboMode) {
-                    // MODE TURBO: Time Budgeting (12ms max)
-                    const frameStart = performance.now();
-                    while (performance.now() - frameStart < 12) {
-                        const state = process.next();
-                        if (state.done) {
-                            console.log("🏁 Program terminated.");
-                            screen.render();
-                            return;
-                        }
-                    }
-                } else {
-                    // MODE RETRO: Cycle Counting
-                    let cycles = ui.cyclesPerFrame;
-                    while (cycles > 0) {
-                        const state = process.next(); 
-                        if (state.done) {
-                            console.log("🏁 Program terminated.");
-                            screen.render();
-                            return; 
-                        }
-                        cycles--;
-                    }
-                }
-            } catch (e) {
-                console.error("💥 CPU Crash:", e.message);
-                screen.render();
-                return;
-            }
-            
-            screen.render();
-            currentAnimationFrame = requestAnimationFrame(cpuLoop);
-        }
-
-        // Start the clock
+        currentProcess = evaluator.evaluate(parsed.result);
         cpuLoop();
-        
     } catch (error) {
-        console.error(`❌ Failed to boot ${filename}:`, error);
+        console.error(`❌ Boot Failure: ${error.message}`);
     }
 }
 
-// 3. Wire the UI ROM selector to the boot sequence
-ui.onRomLoadRequested = (filename) => {
-    boot(filename);
+// --- UI LIFECYCLE HOOKS ---
+
+ui.onRomLoadRequested = (filename) => boot(filename);
+
+ui.onActionRequested = (action) => {
+    if (action === 'pause') {
+        isPaused = true;
+        if (currentAnimationFrame) cancelAnimationFrame(currentAnimationFrame);
+    } 
+    else if (action === 'play') {
+        if (isPaused && currentProcess) {
+            isPaused = false;
+            cpuLoop();
+        }
+    }
+    else if (action === 'restart') {
+        // Hard reboot of the current ROM
+        boot(ui.romSelector.value);
+    }
 };
 
-// 4. Power On Sequence
-async function startSystem() {
-    // Wait for the UI to fetch the JSON catalog
+// --- SYSTEM IGNITION ---
+async function start() {
     await ui.loadCatalog('nibbles.bas');
-    
-    // Boot the engine with whatever the selector ended up on
-    const initialRom = document.getElementById('rom-selector').value || 'nibbles.bas';
-    boot(initialRom);
+    boot(ui.romSelector.value || 'nibbles.bas');
 }
 
-startSystem();
+start();
