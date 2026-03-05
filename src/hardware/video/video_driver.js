@@ -27,4 +27,5 @@ export class VideoDriver {
     color(fg, bg) { }
     showCursor() { }
     hideCursor() { }
+    updatePalette(index, r6, g6, b6) { /* Hardware DAC palette update */ }
 }

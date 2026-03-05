@@ -1,5 +1,7 @@
 [
   "graphics_test.bas",
   "mandelbrot.bas",
-  "nibbles.bas"
+  "matrix.bas",
+  "nibbles.bas",
+  "plasma.bas"
 ]

@@ -158,16 +158,22 @@ export class Evaluator {
             case 'IDENTIFIER': 
                 const varName = node.value.toUpperCase();
                 
-                // Hardware interception
+                // 1. Hardware interception (I/O)
                 if (varName === 'INKEY$') return this.hw.io ? this.hw.io.inkey() : "";
                 if (varName === 'TIMER')  return this.hw.io ? this.hw.io.timer() : 0;
                 
-                // Implicit function call (no parentheses)
+                // 2. Pure STDLIB interception (e.g., RND without parentheses)
+                if (BuiltIns[varName]) {
+                    return BuiltIns[varName]([]);
+                }
+
+                // 3. Implicit user function call (no parentheses)
                 const routine = this.env.getSub(varName);
                 if (routine && routine.type === 'FUNCTION_DEF') {
                     return yield* this.evaluateCall({ type: 'CALL', callee: node, args: [] });
                 }
                 
+                // 4. Standard variable lookup
                 return this.env.lookup(node.value);
 
             case 'BINARY_OP': return yield* this.evaluateBinaryOp(node);
@@ -427,6 +433,14 @@ export class Evaluator {
                 const pAddr = yield* this.evaluate(node.address);
                 const pVal = yield* this.evaluate(node.value);
                 if (this.hw.memory) this.hw.memory.poke(pAddr, pVal);
+                return null;
+
+            case 'OUT':
+                const port = yield* this.evaluate(node.port);
+                const val = yield* this.evaluate(node.value);
+                if (this.hw.vga) {
+                    this.hw.vga.out(port, val);
+                }
                 return null;
 
             case 'ASSIGN':

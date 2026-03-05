@@ -76,6 +76,21 @@ export class Mode13Linear extends VideoDriver {
         }
     }
 
+    /**
+     * Updates a single color in the VGA DAC.
+     * @param {number} index 0-255
+     * @param {number} r6 6-bit red (0-63)
+     * @param {number} g6 6-bit green (0-63)
+     * @param {number} b6 6-bit blue (0-63)
+     */
+    updatePalette(index, r6, g6, b6) {
+        const r8 = Math.round((r6 / 63) * 255);
+        const g8 = Math.round((g6 / 63) * 255);
+        const b8 = Math.round((b6 / 63) * 255);
+        // Pack into 32-bit Little-Endian (AABBGGRR)
+        this.palette32[index] = (0xFF << 24) | (b8 << 16) | (g8 << 8) | r8;
+    }
+
     cls() {
         const end = this.GRAPHICS_VRAM_BASE + (this.width * this.height);
         this.memory.ram.fill(this.currentBg, this.GRAPHICS_VRAM_BASE, end);

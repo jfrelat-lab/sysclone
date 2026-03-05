@@ -216,6 +216,21 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         assertEqual(env.lookup('FINISHED'), 1);
     });
 
+    test('Should evaluate built-in functions without parentheses (e.g., RND)', () => {
+        const env = new Environment();
+        executeCode(env, `
+            val1 = RND
+            val2 = RND
+        `);
+        // RND without parentheses should return a float between 0 and 1
+        const v1 = env.lookup('VAL1');
+        const v2 = env.lookup('VAL2');
+        
+        assertEqual(v1 >= 0 && v1 < 1, true);
+        assertEqual(v2 >= 0 && v2 < 1, true);
+        // They should ideally be different (though random implies a tiny chance of equality)
+        assertEqual(v1 !== v2, true);
+    });
 });
 
 /**

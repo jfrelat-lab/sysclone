@@ -38,6 +38,14 @@ export class Mode0Text extends VideoDriver {
         }
     }
 
+    updatePalette(index, r6, g6, b6) {
+        if (index > 15) return; // Mode 0 natively uses only the first 16 DAC registers
+        const r8 = Math.round((r6 / 63) * 255);
+        const g8 = Math.round((g6 / 63) * 255);
+        const b8 = Math.round((b6 / 63) * 255);
+        this.palette32[index] = (0xFF << 24) | (b8 << 16) | (g8 << 8) | r8;
+    }
+
     color(fg, bg = this.currentBg) {
         this.currentFg = fg % 16;
         this.currentBg = bg % 16;

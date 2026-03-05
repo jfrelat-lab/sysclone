@@ -79,6 +79,10 @@ export const assignStmt = sequenceObj([
     capture('target', variableAccess), optWs, regex(/^=/), optWs, capture('value', expression)
 ]).map(obj => ({ type: 'ASSIGN', target: obj.target, value: obj.value }));
 
+export const outStmt = sequenceObj([
+    keyword('OUT'), ws, capture('port', expression), optWs, regex(/^,/), optWs, capture('value', expression)
+]).map(obj => ({ type: 'OUT', port: obj.port, value: obj.value }));
+
 /**
  * Explicit CALL statement for subroutines with parentheses.
  */
@@ -232,7 +236,7 @@ export const endStmt = sequenceObj([
 export const statement = choice([
     labelDef, 
     clsStmt, printStmt, locateStmt, colorStmt, 
-    defSegStmt, pokeStmt, assignStmt, callStmt,
+    defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
     gotoStmt, gosubStmt, returnStmt,
     randomizeStmt, screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
     windowStmt, psetStmt,
