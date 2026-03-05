@@ -1,4 +1,5 @@
-// src/hardware/video/Mode13Linear.js
+// src/hardware/video/mode13_linear.js
+import { fontVGA8x8 } from '../font.js';
 import { VideoDriver } from './video_driver.js';
 
 export class Mode13Linear extends VideoDriver {
@@ -8,6 +9,15 @@ export class Mode13Linear extends VideoDriver {
         this.width = 320;
         this.height = 200;
         this.GRAPHICS_VRAM_BASE = 0xA0000;
+        
+        // --- Mode 13h Text State ---
+        this.cols = 40;
+        this.rows = 25;
+        this.cursorX = 0;
+        this.cursorY = 0;
+        this.currentFg = 15;
+        this.currentBg = 0;
+
         this.initPalette32();
     }
 
@@ -68,7 +78,9 @@ export class Mode13Linear extends VideoDriver {
 
     cls() {
         const end = this.GRAPHICS_VRAM_BASE + (this.width * this.height);
-        this.memory.ram.fill(0, this.GRAPHICS_VRAM_BASE, end);
+        this.memory.ram.fill(this.currentBg, this.GRAPHICS_VRAM_BASE, end);
+        this.cursorX = 0;
+        this.cursorY = 0;
     }
 
     pset(x, y, color) {
@@ -79,10 +91,66 @@ export class Mode13Linear extends VideoDriver {
         this.memory.ram[addr] = color & 255;
     }
 
-    // Hardware stubs for text commands sent while in graphics mode
-    print(bytes) { /* TODO: Draw text pixels using fontROM in graphics mode */ }
-    locate(row, col) {}
-    color(fg, bg) {}
+    locate(row, col) {
+        if (row !== null && row !== undefined) {
+            const r = Math.floor(row);
+            if (r >= 1 && r <= this.rows) this.cursorY = r - 1;
+        }
+        if (col !== null && col !== undefined) {
+            const c = Math.floor(col);
+            if (c >= 1 && c <= this.cols) this.cursorX = c - 1;
+        }
+    }
+
+    color(fg, bg = this.currentBg) {
+        if (fg !== null) this.currentFg = fg % 256;
+        if (bg !== null) this.currentBg = bg % 256;
+    }
+
+    /**
+     * Renders text directly into the graphics VRAM using the 8x8 BIOS font.
+     * @param {number[]|Uint8Array} bytes 
+     */
+    print(bytes) {
+        for (let i = 0; i < bytes.length; i++) {
+            const b = bytes[i];
+            
+            if (b === 13) {
+                this.cursorX = 0;
+            } else if (b === 10) {
+                this.cursorY++;
+            } else if (b === 8) {
+                if (this.cursorX > 0) this.cursorX--;
+            } else {
+                if (this.cursorX >= this.cols) {
+                    this.cursorX = 0;
+                    this.cursorY++;
+                }
+                
+                const fontOffset = b * 8;
+                const px = this.cursorX * 8;
+                const py = this.cursorY * 8; 
+
+                if (py < this.height) {
+                    for (let y = 0; y < 8; y++) {
+                        const glyphRow = fontVGA8x8[fontOffset + y];
+                        for (let x = 0; x < 8; x++) {
+                            const isPixel = glyphRow & (128 >> x);
+                            const addr = this.GRAPHICS_VRAM_BASE + ((py + y) * this.width) + (px + x);
+                            
+                            if (isPixel) {
+                                this.memory.ram[addr] = this.currentFg;
+                            } else if (this.currentBg !== 0) { 
+                                this.memory.ram[addr] = this.currentBg;
+                            }
+                        }
+                    }
+                }
+                this.cursorX++;
+            }
+        }
+    }
+
     showCursor() {}
     hideCursor() {}
 

@@ -1,5 +1,6 @@
 // src/runtime/evaluator.js
 import { Environment, QArray } from './environment.js';
+import { BuiltIns } from './builtins.js';
 import { getCharFromCP437, getCP437FromChar, toCP437Array } from '../hardware/encoding.js';
 
 /**
@@ -556,51 +557,36 @@ export class Evaluator {
             return returnValue; 
         }
 
-        // Standard QBasic Library and array access
-        let val = this.env.variables.get(callee);
-        let currEnv = this.env.parent;
-        while (!val && currEnv) { val = currEnv.variables.get(callee); currEnv = currEnv.parent; }
-        
-        if (val && val.constructor.name === 'QArray') {
-            if (node.args.length === 0) return val;
-            const indices = [];
-            for (let arg of node.args) indices.push(yield* this.evaluate(arg));
-            return val.get(indices);
-        }
-
+        // --- FACTORIZED ARGUMENT EVALUATION ---
         const args = [];
         if (node.args) {
             for (let arg of node.args) args.push(yield* this.evaluate(arg));
         }
 
-        // STDLIB Implementation
-        if (callee === 'PEEK') return this.hw.memory ? this.hw.memory.peek(args[0]) : 0;
-        if (callee === 'LEN') return String(args[0]).length;
-        if (callee === 'UCASE$') return String(args[0]).toUpperCase();
-        if (callee === 'SPACE$') return " ".repeat(Math.max(0, args[0]));
-        if (callee === 'STR$') return args[0] >= 0 ? " " + args[0] : String(args[0]);
-        if (callee === 'RIGHT$') return String(args[0]).slice(-args[1]);
-        if (callee === 'LEFT$') return String(args[0]).slice(0, args[1]);
-        if (callee === 'MID$') return String(args[0]).substr(args[1] - 1, args[2]);
-        if (callee === 'CHR$') return getCharFromCP437(args[0]);
-        if (callee === 'ASC') return getCP437FromChar(String(args[0]).charAt(0) || 0);
-        if (callee === 'VAL') return parseFloat(args[0]) || 0;
-        if (callee === 'INT') return Math.floor(args[0]);
-        if (callee === 'RND') return Math.random();
-
-        // --- MATH FUNCTIONS ---
-        if (callee === 'SIN') return Math.sin(args[0]);
-        if (callee === 'COS') return Math.cos(args[0]);
-        if (callee === 'ATN') return Math.atan(args[0]);
-        if (callee === 'ABS') return Math.abs(args[0]);
-
-        // --- HARDWARE STUBS ---
-        if (callee === 'PLAY' || callee === 'VIEW') {
-            // Ignore music and text viewport resizing to prevent regressions
-            return null; 
+        // --- 2. NATIVE BUILT-INS (STDLIB) ---
+        if (BuiltIns[callee]) {
+            return BuiltIns[callee](args);
         }
 
-        throw new Error(`Routine or Array not found: ${callee}`);
+        // --- 3. HARDWARE-DEPENDENT BUILT-INS ---
+        if (callee === 'PEEK') {
+            return this.hw.memory ? this.hw.memory.peek(args[0]) : 0;
+        }
+
+        // --- 4. HARDWARE STUBS (Prevent crashes) ---
+        if (callee === 'PLAY' || callee === 'VIEW') return null; 
+
+        // --- 5. RESOLVE ARRAYS IN ENVIRONMENT ---
+        let val = this.env.variables.get(callee);
+        let currEnv = this.env.parent;
+        while (!val && currEnv) { val = currEnv.variables.get(callee); currEnv = currEnv.parent; }
+        
+        if (val && val.constructor.name === 'QArray') {
+            if (args.length === 0) return val;
+            return val.get(args); // Uses the factorized 'args' directly!
+        }
+
+        throw new Error(`Routine, Function, or Array not found: ${callee}`);
     }
 
     *evaluateBinaryOp(node) {
@@ -609,6 +595,7 @@ export class Evaluator {
         switch (node.operator) {
             case '+': return left + right; case '-': return left - right;
             case '*': return left * right; case '/': return left / right;
+            case '\\': return Math.trunc(Math.round(left) / Math.round(right)); // Pure QBasic Integer Division
             case 'MOD': return left % right;
             case '=': return left === right ? -1 : 0; case '<>': return left !== right ? -1 : 0;
             case '>': return left > right ? -1 : 0; case '<': return left < right ? -1 : 0;

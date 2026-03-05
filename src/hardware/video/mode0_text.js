@@ -1,5 +1,5 @@
 // src/hardware/video/mode0_text.js
-import { fontVGA } from '../font.js';
+import { fontVGA8x16 } from '../font.js';
 import { VideoDriver } from './video_driver.js';
 
 export class Mode0Text extends VideoDriver {
@@ -135,7 +135,7 @@ export class Mode0Text extends VideoDriver {
                 const isCursorCell = showBlink && (tx === this.cursorX) && (ty === this.cursorY);
 
                 for (let py = 0; py < this.charHeight; py++) {
-                    let glyphRow = fontVGA[fontOffset + py];
+                    let glyphRow = fontVGA8x16[fontOffset + py];
                     if (isCursorCell && py >= 14) {
                         glyphRow = 0xFF; 
                         fg32 = this.palette32[this.currentFg]; 
