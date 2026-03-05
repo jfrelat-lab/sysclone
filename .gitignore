@@ -9,6 +9,11 @@ node_modules/
 # to protect proprietary development methodology.
 artifacts/
 
+# --- Private ROM Drafts ---
+# Ignore all MS-DOS Basic files prefixed with an underscore
+examples/_*.bas
+examples/lab/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

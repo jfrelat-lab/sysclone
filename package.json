@@ -4,7 +4,8 @@
   "description": "Universal Web Interpreter/JIT compiler",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "build:catalog": "node tools/build_catalog.js",
+    "start": "npm run build:catalog && node server.js",
     "test": "node tests/orchestrator.js"
   },
   "repository": {

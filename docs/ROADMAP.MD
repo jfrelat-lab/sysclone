@@ -103,18 +103,42 @@
   - [x] CPU Lightening: Optimize Generator Tick frequency (per-statement instead of per-node) and implement Hybrid Runner (Retro/Turbo UI).
 - [x] **7.4. Play Nibbles!**
 
-## Phase 7.5: Web Shell & Display UX (Polishing)
-*Transform the raw technical test into a polished, user-friendly web emulator.*
+## Phase 7.5: Architecture Refactoring (The Web Shell)
+*Decouple the Virtual Machine core from the Web interface to ensure a clean architecture.*
 
-- [ ] **7.5.1. Branding & UI Overhaul:**
-  - [ ] Rename the document title from "Sysclone - Qbasic test" to a definitive and professional name (e.g., "Sysclone: Web-Based QBasic Environment" or "Sysclone WebVM").
-  - [ ] Restructure the HTML/CSS layout to create a clean, retro-inspired control panel (grouping the CPU speed, Turbo mode, and future toggles).
-- [ ] **7.5.2. Dynamic ROM Loading:**
-  - [ ] Implement a UI menu (dropdown or quick-launch buttons) to fetch and swap `.bas` examples (Nibbles, Mandelbrot, Plasma) dynamically without refreshing the page.
-  - [ ] Retain `nibbles.bas` as the default auto-loaded script on startup.
-- [ ] **7.5.3. Fullscreen & Advanced Scaling:**
-  - [ ] Wire the HTML5 Fullscreen API to a dedicated UI button.
-  - [ ] Implement Integer Scaling / Pixel-Perfect resizing using CSS (`image-rendering: pixelated`) to maintain crisp, native DOS resolutions (e.g., 320x200 or 80x25) on modern high-DPI monitors without blurring.
+- [x] **7.5.1. Entry Point Renaming:**
+  - [x] Rename `main.js` to `webvm.js` to explicitly designate it as the browser orchestrator.
+- [x] **7.5.2. UI Logic Extraction:**
+  - [x] Create `src/ui.js` to encapsulate all DOM manipulations (Sliders, Checkboxes, Event Listeners).
+  - [x] Establish a clean event-driven communication layer between `ui.js` and `webvm.js`.
+
+## Phase 7.6: The WebVM Developer Experience (DX)
+*Finalize the user experience with dynamic loading, emulator-standard controls, and source inspection.*
+
+- [x] **7.6.1. Dynamic ROM Loader & Build System:**
+  - [x] Implement VM reset capabilities (Clear RAM, Reset Environment, Cancel AnimationFrame) in `webvm.js`.
+  - [x] Create `tools/build_catalog.js` to statically generate a JSON list of available `.bas` ROMs.
+  - [x] Wire the `#rom-selector` to fetch the catalog and execute new `.bas` files on the fly.
+- [x] **7.6.2. Fullscreen & Pixel-Perfect Scaling:**
+  - [x] Implement the HTML5 Fullscreen API.
+  - [x] Add CSS logic to maintain the original 4:3 aspect ratio and `image-rendering: pixelated` during viewport resizes.
+- [ ] **7.6.3. Source Code Viewer:**
+  - [ ] Add a UI pane (`<pre><code>`) to display the raw `.bas` source code currently being executed.
+  - [ ] Add a toggle button (Show/Hide Code), ensuring it auto-hides during Fullscreen mode.
+- [ ] **7.6.4. VM Execution Controls (State Management):**
+  - [ ] Implement `Pause` (freeze the Virtual CPU `requestAnimationFrame` loop).
+  - [ ] Implement `Play` (resume the loop).
+  - [ ] Implement `Stop` (halt execution, reset iterator, and clear VRAM).
+- [ ] **7.6.5. Canvas Screenshot Tool:**
+  - [ ] Add a "Screenshot" button using native `canvas.toBlob`.
+  - [ ] Ensure the output is a clean, lossless PNG preserving the DOS pixel ratio.
+
+## Phase 7.7: Compatibility Documentation
+*Establish the visual proof of Sysclone's accuracy.*
+
+- [ ] **7.7.1. The COMPATIBILITY.MD Ledger:**
+  - [ ] Create a documented gallery of working MS-DOS scripts (Nibbles, Mandelbrot, etc.).
+  - [ ] Use the new Screenshot tool to populate an `assets/` folder with pristine visual evidence of exact hardware emulation.
 
 ---
 
@@ -186,3 +210,19 @@
   - [ ] Create an AST visitor that generates pure JavaScript code instead of evaluating it dynamically.
 - [ ] **13.3. WebAssembly Compilation (Level 2 JIT):**
   - [ ] Translate the intermediate code (IR) into WASM binary for near-native performance.
+
+---
+
+# Roadmap: Sysclone - Milestone 4 (Headless & CLI)
+
+## Phase 14: Headless Execution (Node.js Integration)
+*Bring the Sysclone engine to the backend, allowing QBasic scripts to be executed or compiled as standalone CLI applications.*
+
+- [ ] **14.1. Core CLI Orchestrator:**
+  - [ ] Create `tools/nodevm.js` (or a compiler CLI) to load, parse, and execute `.bas` files directly from the terminal.
+  - [ ] Implement command-line argument handling (e.g., `node tools/nodevm.js script.bas`).
+- [ ] **14.2. Headless Hardware Abstraction (HAL):**
+  - [ ] Implement `ConsoleVGA`: A headless display driver that maps basic `PRINT` statements to `process.stdout` and ignores graphical commands (`PSET`, `WINDOW`).
+  - [ ] Implement `NodeIO`: A headless input driver mapping `INKEY$` and `INPUT` to `process.stdin`.
+- [ ] **14.3. Backend Math & Logic:**
+  - [ ] Validate the execution of heavy computational scripts (e.g., algorithmic math, text-based data processing) without browser overhead.
