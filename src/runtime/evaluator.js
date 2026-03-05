@@ -84,6 +84,8 @@ export class Evaluator {
             if (isTopLevel) this.topLevelBlock = node;
 
             while (i < currentBlock.length) {
+                yield; // Virtual CPU TICK
+
                 const stmt = currentBlock[i];
                 const result = yield* this.evaluate(stmt);
 
@@ -117,8 +119,6 @@ export class Evaluator {
             return null;
         }
 
-        yield; // Virtual CPU TICK
-
         switch (node.type) {
             case 'LABEL': return null;
                 
@@ -137,6 +137,8 @@ export class Evaluator {
 
                 // Isolated execution loop (Mini-CallStack)
                 while (subIndex < subBlock.length) {
+                    yield; // Virtual CPU TICK
+
                     const res = yield* this.evaluate(subBlock[subIndex]);
                     if (res && res._control === 'RETURN') break; 
                     
