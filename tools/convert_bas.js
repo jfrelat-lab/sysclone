@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// convert_bas.js
+// tools/convert_bas.js
 import fs from 'fs';
 import path from 'path';
-import { autoDecodeSource } from './src/hardware/encoding.js';
+import { autoDecodeSource } from '../src/hardware/encoding.js';
 
 /**
  * Sysclone - Legacy MS-DOS QBasic File Converter

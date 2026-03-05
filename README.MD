@@ -13,10 +13,10 @@ The ultimate goal of this project is to execute historical and modern programmin
 
 To keep this repository organized, our documentation is split into dedicated files. Please explore them to understand the project's vision, inner workings, and future:
 
-* 🎯 **[The Goal & Vision (GOAL.MD)](./GOAL.MD)**: Why this project exists and what it aims to achieve (from Nibbles to Gorillas and Mandelbrot).
-* 🏗️ **[Engine Architecture (ARCHITECTURE.MD)](./ARCHITECTURE.MD)**: Deep dive into the Monadic Parsers, Virtual CPU, and Hardware Abstraction Layer.
-* 🗺️ **[Project Roadmap (ROADMAP.MD)](./ROADMAP.MD)**: Current progress and what's coming next (JIT, Audio, CP437, Advanced VGA).
-* 🤖 **[AI Collaboration Protocol (PROMPT.MD)](./PROMPT.MD)**: The strict engineering standards, language constraints, and metacognition rules governing our Agentic Workflow.
+* 🎯 **[The Goal & Vision (GOAL.MD)](./docs/GOAL.MD)**: Why this project exists and what it aims to achieve (from Nibbles to Gorillas and Mandelbrot).
+* 🏗️ **[Engine Architecture (ARCHITECTURE.MD)](./docs/ARCHITECTURE.MD)**: Deep dive into the Monadic Parsers, Virtual CPU, and Hardware Abstraction Layer.
+* 🗺️ **[Project Roadmap (ROADMAP.MD)](./docs/ROADMAP.MD)**: Current progress and what's coming next (JIT, Audio, CP437, Advanced VGA).
+* 🤖 **[AI Collaboration Protocol (PROMPT.MD)](./docs/PROMPT.MD)**: The strict engineering standards, language constraints, and metacognition rules governing our Agentic Workflow.
 
 ## 🤖 Built with AI Collaboration (Agentic Workflow)
 
@@ -78,5 +78,6 @@ This CLI tool reads the raw bytes of a legacy file, automatically detects if it'
 
 ```bash
 # Convert a legacy or corrupted file to a clean UTF-8 format
-node convert_bas.js ./legacy_file.bas ./clean_utf8_file.bas
+# From the project root:
+node tools/convert_bas.js ./examples/nibbles.bas ./examples/modern_nibbles.bas
 ```

@@ -103,6 +103,19 @@
   - [x] CPU Lightening: Optimize Generator Tick frequency (per-statement instead of per-node) and implement Hybrid Runner (Retro/Turbo UI).
 - [x] **7.4. Play Nibbles!**
 
+## Phase 7.5: Web Shell & Display UX (Polishing)
+*Transform the raw technical test into a polished, user-friendly web emulator.*
+
+- [ ] **7.5.1. Branding & UI Overhaul:**
+  - [ ] Rename the document title from "Sysclone - Qbasic test" to a definitive and professional name (e.g., "Sysclone: Web-Based QBasic Environment" or "Sysclone WebVM").
+  - [ ] Restructure the HTML/CSS layout to create a clean, retro-inspired control panel (grouping the CPU speed, Turbo mode, and future toggles).
+- [ ] **7.5.2. Dynamic ROM Loading:**
+  - [ ] Implement a UI menu (dropdown or quick-launch buttons) to fetch and swap `.bas` examples (Nibbles, Mandelbrot, Plasma) dynamically without refreshing the page.
+  - [ ] Retain `nibbles.bas` as the default auto-loaded script on startup.
+- [ ] **7.5.3. Fullscreen & Advanced Scaling:**
+  - [ ] Wire the HTML5 Fullscreen API to a dedicated UI button.
+  - [ ] Implement Integer Scaling / Pixel-Perfect resizing using CSS (`image-rendering: pixelated`) to maintain crisp, native DOS resolutions (e.g., 320x200 or 80x25) on modern high-DPI monitors without blurring.
+
 ---
 
 # Roadmap: Sysclone - Milestone 2 (Gorillas & Mandelbrot)
