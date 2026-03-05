@@ -26,6 +26,18 @@
 </head>
 <body>
     <h1>Sysclone - QBasic Test</h1>
+    <div id="sysclone-control-panel" style="margin-top: 10px; font-family: monospace; background: #eee; padding: 10px; border-radius: 5px; display: inline-block;">
+        <label for="cpu-speed" style="margin-right: 10px;">
+            <strong>CPU Speed:</strong> 
+            <span id="speed-display" style="font-weight: bold; color: #007bff;">40 cycles/frame</span> 
+        </label>
+        <input type="range" id="cpu-speed" min="5" max="200" step="5" value="40" style="vertical-align: middle;">
+        
+        <span style="margin: 0 15px;">|</span>
+        
+        <input type="checkbox" id="cpu-turbo" style="vertical-align: middle;">
+        <label for="cpu-turbo" style="color: #d00; font-weight: bold;">TURBO (MAX)</label>
+    </div>
     <canvas id="vga-display" width="640" height="400"></canvas>
     
     <script type="module" src="./src/main.js"></script>

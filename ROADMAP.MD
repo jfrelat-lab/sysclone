@@ -100,7 +100,7 @@
 - [ ] **7.3. Engine Tweaks (Pre-JIT):**
   - [x] VGA Optimization (Memory): Implement rendering via `Uint32Array` for fast buffer manipulation.
   - [ ] VGA Optimization (CPU): Implement a "Dirty Rectangles" system to update only modified areas and secure framerate.
-  - [ ] CPU Lightening: Remove generator delegations (`yield*`) from simple math and logic operations to save the Garbage Collector.
+  - [x] CPU Lightening: Optimize Generator Tick frequency (per-statement instead of per-node) and implement Hybrid Runner (Retro/Turbo UI).
 - [x] **7.4. Play Nibbles!**
 
 ---

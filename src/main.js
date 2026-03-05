@@ -24,6 +24,44 @@ const screen = new VGA(memory, { canvasId: 'vga-display' });
 const env = new Environment();
 const evaluator = new Evaluator(env, { vga: screen, io: io, memory: memory });
 
+// ============================================================================
+// UX & CPU CLOCK MANAGEMENT
+// ============================================================================
+const speedSlider = document.getElementById('cpu-speed');
+const speedDisplay = document.getElementById('speed-display');
+const turboCheckbox = document.getElementById('cpu-turbo');
+
+// Valeurs par défaut (sécurisées si le HTML n'est pas encore chargé)
+let currentCyclesPerFrame = speedSlider ? parseInt(speedSlider.value, 10) : 40;
+let isTurboMode = turboCheckbox ? turboCheckbox.checked : false;
+
+function updateSpeedDisplay(cycles) {
+    if (!speedDisplay) return;
+    if (isTurboMode) {
+        speedDisplay.innerText = "MAX Speed";
+        return;
+    }
+    const hz = cycles * 60; 
+    speedDisplay.innerText = `${cycles} cycles/frame (~${hz} Hz)`;
+}
+
+// Câblage des événements UI
+if (speedSlider && turboCheckbox) {
+    updateSpeedDisplay(currentCyclesPerFrame);
+
+    speedSlider.addEventListener('input', (e) => {
+        currentCyclesPerFrame = parseInt(e.target.value, 10);
+        updateSpeedDisplay(currentCyclesPerFrame);
+    });
+
+    turboCheckbox.addEventListener('change', (e) => {
+        isTurboMode = e.target.checked;
+        speedSlider.disabled = isTurboMode;
+        updateSpeedDisplay(currentCyclesPerFrame);
+    });
+}
+// ============================================================================
+
 /**
  * Downloads the source code, parses the AST, and initiates the execution loop.
  */
@@ -56,28 +94,41 @@ async function loadAndRunGame() {
             console.log("🤯 Success! Full AST generated. Initializing CPU...");
             
             const process = evaluator.evaluate(parsed.result);
-            const CYCLES_PER_FRAME = 200; 
 
             /**
              * Virtual CPU clock loop using Generators for non-blocking execution.
+             * Features a Hybrid Core: Strict Cycle Counting (Retro) or Time Budgeting (Turbo).
              */
             function cpuLoop() {
-                let cycles = CYCLES_PER_FRAME;
-                
-                // CPU execution safety net
                 try {
-                    while (cycles > 0) {
-                        const state = process.next(); 
-                        if (state.done) {
-                            console.log("🏁 Program execution finished.");
-                            screen.render(); // Ensure final render
-                            return; 
+                    if (isTurboMode) {
+                        // --- TURBO MODE (Maximum Math/Graphics Output) ---
+                        const frameStart = performance.now();
+                        // Allow CPU to run freely for 12ms per 16.6ms frame
+                        while (performance.now() - frameStart < 12) {
+                            const state = process.next();
+                            if (state.done) {
+                                console.log("🏁 Program execution finished.");
+                                screen.render();
+                                return;
+                            }
                         }
-                        cycles--;
+                    } else {
+                        // --- RETRO MODE (Strict Deterministic Speed) ---
+                        let cycles = currentCyclesPerFrame;
+                        while (cycles > 0) {
+                            const state = process.next(); 
+                            if (state.done) {
+                                console.log("🏁 Program execution finished.");
+                                screen.render(); // Ensure final render
+                                return; 
+                            }
+                            cycles--;
+                        }
                     }
                 } catch (e) {
                     console.error("💥 CPU Crash:", e.message);
-                    screen.render(); // Draw current state before crash
+                    screen.render(); // Draw current state before crash to help debug
                     return;
                 }
                 
