@@ -170,17 +170,19 @@
 *Expand the engine capabilities to support computationally and graphically intensive classics.*
 
 - [ ] **10.1. Viewports & Coordinate Systems:**
-  - [x] Support `WINDOW` to map logical coordinates to physical screen pixels.
+  - [x] Support `WINDOW` to map logical coordinates to physical screen pixels natively in the VGA router.
+  - [x] Support `STEP` relative coordinate tracking (Graphic Cursor) across all geometry primitives.
   - [ ] Support `VIEW PRINT` to restrict text rendering and scrolling to specific screen rows.
 - [ ] **10.2. Palettes & Screen Modes:**
   - [x] Implement default hardware palettes (CGA 4-color, EGA 16-color, MCGA/VGA 256-color).
+  - [x] Implement high-resolution simplified `SCREEN 9` (EGA 640x350) alongside `SCREEN 13` (VGA 320x200).
   - [ ] Add `PALETTE` and `PALETTE USING` mapping support.
-- [ ] **10.3. Geometry Primitives (SCREEN 7, 8, 13):**
+- [ ] **10.3. Geometry Primitives (SCREEN 7, 8, 9, 13):**
   - [x] Implement `PSET` (Pixel Set).
-  - [x] Support native Text overlay in linear graphics modes using the 8x8 BIOS font.
-  - [ ] Implement `POINT` (Pixel Read - critical for collision detection).
-  - [ ] Add geometry rendering: `LINE`, `CIRCLE`.
-  - [ ] Add algorithmic drawing: `PAINT` (Flood Fill algorithm).
+  - [x] Support native Text overlay in linear graphics modes using the 8x8 BIOS font via template rendering.
+  - [x] Add geometry rendering: `LINE` (Bresenham, Box, Box Fill), `CIRCLE` (Midpoint Circle with Arc support).
+  - [x] Add algorithmic drawing: `PAINT` (Iterative Stack-based Flood Fill algorithm to prevent Call Stack Overflow).
+  - [ ] Implement `POINT` (Pixel Read - critical for collision detection in QBasic).
 - [ ] **10.4. Hardware Blitting (`GET` / `PUT`):**
   - [ ] Reverse-engineer QBasic sprite array formats (Header + Pixel data).
   - [ ] Implement `GET` to capture screen regions into arrays.
@@ -194,8 +196,8 @@
   - [ ] Build a micro-parser for the `PLAY` command syntax.
 
 ## Phase 12: The Grand Playtest
-- [ ] **12.1. Rosetta Code Mandelbrot:**
-  - [ ] Execute math-heavy visual rendering (`WINDOW`, `PSET`, MCGA).
+- [x] **12.1. Rosetta Code Mandelbrot:**
+  - [x] Execute math-heavy visual rendering (`WINDOW`, `PSET`, MCGA).
 - [ ] **12.2. Gorillas.bas:**
   - [ ] Full execution (projectile math, explosive `PAINT` rendering, `XOR` sprite blitting, sound effects).
 

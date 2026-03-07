@@ -1,11 +1,14 @@
 // src/hardware/video/mode0_text.js
 import { fontVGA8x16 } from '../font.js';
-import { VideoDriver } from './video_driver.js';
+import { TextModeDriver } from './text_mode_driver.js';
 
-export class Mode0Text extends VideoDriver {
+/**
+ * Concrete Driver for VGA Mode 0 (80x25 Text Mode, 16 Colors).
+ * Translates CP437 character memory (0xB8000) into pixels using an 8x16 BIOS font.
+ */
+export class Mode0Text extends TextModeDriver {
     constructor(memory) {
         super(memory);
-        this.memory = memory;
         this.cols = 80;
         this.rows = 25;
         this.charWidth = 8;
@@ -14,13 +17,6 @@ export class Mode0Text extends VideoDriver {
         this.width = this.cols * this.charWidth;
         this.height = this.rows * this.charHeight;
 
-        this.cursorX = 0;
-        this.cursorY = 0;
-        this.cursorEnabled = false;
-        this.currentFg = 15;
-        this.currentBg = 0;
-        
-        this.TEXT_VRAM_BASE = 0xB8000;
         this.initPalette32();
     }
 
@@ -39,88 +35,12 @@ export class Mode0Text extends VideoDriver {
     }
 
     updatePalette(index, r6, g6, b6) {
-        if (index > 15) return; // Mode 0 natively uses only the first 16 DAC registers
+        if (index > 15) return; 
         const r8 = Math.round((r6 / 63) * 255);
         const g8 = Math.round((g6 / 63) * 255);
         const b8 = Math.round((b6 / 63) * 255);
         this.palette32[index] = (0xFF << 24) | (b8 << 16) | (g8 << 8) | r8;
     }
-
-    color(fg, bg = this.currentBg) {
-        this.currentFg = fg % 16;
-        this.currentBg = bg % 16;
-    }
-
-    locate(row, col) {
-        if (row !== null && row !== undefined) {
-            const r = Math.floor(row); 
-            if (r >= 1 && r <= this.rows) this.cursorY = r - 1;
-        }
-        if (col !== null && col !== undefined) {
-            const c = Math.floor(col); 
-            if (c >= 1 && c <= this.cols) this.cursorX = c - 1;
-        }
-    }
-
-    showCursor() { this.cursorEnabled = true; }
-    hideCursor() { this.cursorEnabled = false; }
-
-    cls() {
-        const attr = (this.currentBg << 4) | this.currentFg;
-        const end = this.TEXT_VRAM_BASE + (this.rows * this.cols * 2);
-        for (let addr = this.TEXT_VRAM_BASE; addr < end; addr += 2) {
-            this.memory.ram[addr] = 32;     
-            this.memory.ram[addr + 1] = attr; 
-        }
-        this.cursorX = 0;
-        this.cursorY = 0;
-    }
-
-    scrollUp() {
-        const rowBytes = this.cols * 2;
-        const totalBytes = this.rows * rowBytes;
-        this.memory.ram.copyWithin(
-            this.TEXT_VRAM_BASE,
-            this.TEXT_VRAM_BASE + rowBytes,
-            this.TEXT_VRAM_BASE + totalBytes
-        );
-        const attr = (this.currentBg << 4) | this.currentFg;
-        const bottomLineAddr = this.TEXT_VRAM_BASE + totalBytes - rowBytes;
-        for (let i = 0; i < rowBytes; i += 2) {
-            this.memory.ram[bottomLineAddr + i] = 32;
-            this.memory.ram[bottomLineAddr + i + 1] = attr;
-        }
-        this.cursorY = this.rows - 1;
-    }
-
-    print(bytes) {
-        for (let i = 0; i < bytes.length; i++) {
-            const b = bytes[i];
-            if (b === 13) this.cursorX = 0;
-            else if (b === 10) {
-                this.cursorY++;
-                if (this.cursorY >= this.rows) this.scrollUp();
-            } else if (b === 8) {
-                if (this.cursorX > 0) this.cursorX--;
-                else if (this.cursorY > 0) {
-                    this.cursorX = this.cols - 1;
-                    this.cursorY--;
-                }
-            } else {
-                if (this.cursorX >= this.cols) {
-                    this.cursorX = 0;
-                    this.cursorY++;
-                    if (this.cursorY >= this.rows) this.scrollUp();
-                }
-                const addr = this.TEXT_VRAM_BASE + (this.cursorY * this.cols + this.cursorX) * 2;
-                this.memory.ram[addr] = b & 255;
-                this.memory.ram[addr + 1] = (this.currentBg << 4) | this.currentFg;
-                this.cursorX++;
-            }
-        }
-    }
-
-    pset(x, y, color) { /* Ignored in Text Mode */ }
 
     render(display) {
         const buffer = display.pixelBuffer32;
@@ -145,7 +65,7 @@ export class Mode0Text extends VideoDriver {
                 for (let py = 0; py < this.charHeight; py++) {
                     let glyphRow = fontVGA8x16[fontOffset + py];
                     if (isCursorCell && py >= 14) {
-                        glyphRow = 0xFF; 
+                        glyphRow = 0xFF;
                         fg32 = this.palette32[this.currentFg]; 
                     }
                     let pixelIdx = (baseY * screenWidth) + baseX;

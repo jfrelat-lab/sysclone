@@ -1,6 +1,10 @@
 // src/hardware/vga.js
 import { Mode0Text } from './video/mode0_text.js';
 import { Mode13Linear } from './video/mode13_linear.js';
+import { Mode9EGA } from './video/mode9_ega.js';
+
+const VGA_PORT_DAC_INDEX = 0x3C8; // Palette Address Register
+const VGA_PORT_DAC_DATA  = 0x3C9; // Palette Data Register
 
 /**
  * VGA Controller Router.
@@ -18,6 +22,7 @@ export class VGA {
         // Initialize available hardware drivers
         this.drivers = {
             0: new Mode0Text(this.memory),
+            9: new Mode9EGA(this.memory),
             13: new Mode13Linear(this.memory)
         };
         
@@ -25,6 +30,8 @@ export class VGA {
         this.activeDriver = null;
         this.display = null;
         this.logicalWindow = null;
+        this.lastX = 0; // Graphic Cursor X
+        this.lastY = 0; // Graphic Cursor Y
         
         // --- VGA DAC Palette State Machine ---
         this.paletteIndex = 0;
@@ -34,7 +41,7 @@ export class VGA {
         this.setMode(0); // Boot in Text Mode
     }
 
-    initDisplay(width, height) {
+initDisplay(width, height) {
         if (this.options.displayAdapter) {
             this.display = this.options.displayAdapter;
             this.display.width = width;
@@ -43,12 +50,18 @@ export class VGA {
             const canvas = document.getElementById(this.options.canvasId || 'vga-display');
             canvas.width = width;
             canvas.height = height;
+            
+            // Dynamic CSS height calculation to maintain square pixels
+            // We fix the physical CSS width to 640px (standard emulator UI width)
+            const scale = 640 / width;
+            const physicalHeight = Math.floor(height * scale);
+            
             canvas.style.width = "640px";
-            canvas.style.height = "400px";
+            canvas.style.height = `${physicalHeight}px`;
             canvas.style.imageRendering = "pixelated";
             
             const ctx = canvas.getContext('2d', { alpha: false });
-            // If the size changes, we must recreate the ImageData
+            // Recreate ImageData when the underlying resolution changes
             const imageData = ctx.createImageData(width, height);
             
             this.display = {
@@ -75,13 +88,16 @@ export class VGA {
 
     /**
      * Handles hardware port writes (Memory-Mapped I/O equivalent).
+     * Intercepts standard VGA registers.
+     * @param {number} port - The 16-bit hardware port address
+     * @param {number} val  - The 8-bit value written to the port
      */
     out(port, val) {
-        if (port === 0x3C8) {
+        if (port === VGA_PORT_DAC_INDEX) {
             // Set DAC Write Index
             this.paletteIndex = val & 0xFF;
             this.rgbState = 0; 
-        } else if (port === 0x3C9) {
+        } else if (port === VGA_PORT_DAC_DATA) {
             // Write DAC Data (R, then G, then B) - values are 6-bit (0-63)
             this.tempRGB[this.rgbState] = val & 0x3F;
             this.rgbState++;
@@ -118,34 +134,73 @@ export class VGA {
     print(bytes) { this.activeDriver.print(bytes); }
 
     /**
-     * Plots a pixel. If a logical WINDOW is active, projects coordinates to physical pixels first.
+     * Resolves logical coordinates into physical driver coordinates, applying STEP and WINDOW.
      */
-    pset(x, y, color) { 
-        let px = x;
-        let py = y;
+    resolveCoords(x, y, isStep) {
+        // 1. Apply STEP relative positioning
+        let logicalX = isStep ? this.lastX + x : x;
+        let logicalY = isStep ? this.lastY + y : y;
+        
+        // Update the graphic cursor
+        this.lastX = logicalX;
+        this.lastY = logicalY;
+
+        // 2. Apply WINDOW projection if active
+        let physX = logicalX;
+        let physY = logicalY;
 
         if (this.logicalWindow && this.activeDriver) {
-            const win = this.logicalWindow;
+            const { invertY, x1, y1, x2, y2 } = this.logicalWindow;
             const width = this.activeDriver.width;
             const height = this.activeDriver.height;
 
-            // Prevent division by zero
-            if (win.x2 === win.x1 || win.y2 === win.y1) return;
-
-            // X Linear Interpolation
-            px = ((x - win.x1) / (win.x2 - win.x1)) * width;
-
-            // Y Linear Interpolation
-            if (win.invertY) {
-                // WINDOW SCREEN: Y axis grows downwards
-                py = ((y - win.y1) / (win.y2 - win.y1)) * height;
-            } else {
-                // WINDOW: Cartesian format, Y axis grows upwards
-                py = ((win.y2 - y) / (win.y2 - win.y1)) * height;
-            }
+            physX = ((logicalX - x1) / (x2 - x1)) * width;
+            
+            let mappedY = ((logicalY - y1) / (y2 - y1)) * height;
+            physY = invertY ? (height - mappedY) : mappedY;
         }
 
-        this.activeDriver.pset(px, py, color); 
+        return { px: Math.round(physX), py: Math.round(physY) };
+    }
+
+    pset(x, y, color, isStep = false) {
+        if (!this.activeDriver) return;
+        const { px, py } = this.resolveCoords(x, y, isStep);
+        this.activeDriver.pset(px, py, color);
+    }
+
+    line(x1, y1, x2, y2, color, box, startIsStep, endIsStep) {
+        if (!this.activeDriver || typeof this.activeDriver.line !== 'function') return;
+        const p1 = this.resolveCoords(x1, y1, startIsStep);
+        
+        // In QBasic, the second STEP is relative to the first coordinate of the LINE, not the previous cursor!
+        if (endIsStep) {
+            this.lastX = x1;
+            this.lastY = y1;
+        }
+        const p2 = this.resolveCoords(x2, y2, endIsStep);
+        
+        this.activeDriver.line(p1.px, p1.py, p2.px, p2.py, color, box);
+    }
+
+    circle(x, y, radius, color, start, end, aspect, isStep) {
+        if (!this.activeDriver || typeof this.activeDriver.circle !== 'function') return;
+        const { px, py } = this.resolveCoords(x, y, isStep);
+        
+        // Scale radius if WINDOW is active
+        let physRadius = radius;
+        if (this.logicalWindow) {
+            const { x1, x2 } = this.logicalWindow;
+            physRadius = (radius / Math.abs(x2 - x1)) * this.activeDriver.width;
+        }
+        
+        this.activeDriver.circle(px, py, Math.round(physRadius), color, start, end, aspect);
+    }
+
+    paint(x, y, paintColor, borderColor, isStep) {
+        if (!this.activeDriver || typeof this.activeDriver.paint !== 'function') return;
+        const { px, py } = this.resolveCoords(x, y, isStep);
+        this.activeDriver.paint(px, py, paintColor, borderColor);
     }
 
     color(fg, bg) { this.activeDriver.color(fg, bg); }

@@ -65,7 +65,7 @@ const RESERVED_KEYWORDS = new Set([
     'SUB', 'FUNCTION', 'DECLARE', 'DIM', 'SHARED', 'AS', 'TYPE', 'CONST', 'DEFINT', 'DEF', 'SEG', 'ANY', 'STATIC',
     // System and Hardware Instructions
     'PRINT', 'USING', 'CLS', 'LOCATE', 'COLOR', 'POKE', 'OUT', 'RANDOMIZE', 'SCREEN', 'WIDTH', 'DATA', 'READ', 'RESTORE', 'INPUT',
-    'WINDOW', 'PSET',
+    'WINDOW', 'PSET', 'CIRCLE', 'LINE', 'PAINT',
     // Logical and Mathematical textual operators
     'AND', 'OR', 'NOT', 'MOD'
 ]);
