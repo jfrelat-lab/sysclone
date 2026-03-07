@@ -1,30 +1,25 @@
 // src/hardware/video/mode13_linear.js
-import { fontVGA8x8 } from '../font.js';
-import { VideoDriver } from './video_driver.js';
+import { GraphicsModeDriver } from './graphics_mode_driver.js';
 
-export class Mode13Linear extends VideoDriver {
+/**
+ * Concrete Driver for VGA Mode 13h (320x200, 256 colors).
+ * Uses a linear framebuffer starting at 0xA0000.
+ */
+export class Mode13Linear extends GraphicsModeDriver {
     constructor(memory) {
         super(memory);
-        this.memory = memory;
         this.width = 320;
         this.height = 200;
         this.GRAPHICS_VRAM_BASE = 0xA0000;
         
-        // --- Mode 13h Text State ---
         this.cols = 40;
         this.rows = 25;
-        this.cursorX = 0;
-        this.cursorY = 0;
-        this.currentFg = 15;
-        this.currentBg = 0;
 
         this.initPalette32();
     }
 
     initPalette32() {
         this.palette32 = new Uint32Array(256);
-
-        // Pure hardware DAC values extracted from DOSBox (6-bit: 0x00 to 0x3F)
         const vgaDac = [
             [0x00,0x00,0x00],[0x00,0x00,0x2a],[0x00,0x2a,0x00],[0x00,0x2a,0x2a],[0x2a,0x00,0x00],[0x2a,0x00,0x2a],[0x2a,0x15,0x00],[0x2a,0x2a,0x2a],
             [0x15,0x15,0x15],[0x15,0x15,0x3f],[0x15,0x3f,0x15],[0x15,0x3f,0x3f],[0x3f,0x15,0x15],[0x3f,0x15,0x3f],[0x3f,0x3f,0x15],[0x3f,0x3f,0x3f],
@@ -62,34 +57,24 @@ export class Mode13Linear extends VideoDriver {
         for (let i = 0; i < 256; i++) {
             if (i < vgaDac.length) {
                 const [r, g, b] = vgaDac[i];
-                // Convert 6-bit DAC (0-63) to 8-bit RGB (0-255)
                 const r8 = Math.round((r / 63) * 255);
                 const g8 = Math.round((g / 63) * 255);
                 const b8 = Math.round((b / 63) * 255);
-                
-                // Pack into 32-bit Little-Endian: AABBGGRR
                 this.palette32[i] = (0xFF << 24) | (b8 << 16) | (g8 << 8) | r8;
             } else {
-                // The remaining 8 colors (248-255) in standard VGA are just pure black
                 this.palette32[i] = 0xFF000000;
             }
         }
     }
 
-    /**
-     * Updates a single color in the VGA DAC.
-     * @param {number} index 0-255
-     * @param {number} r6 6-bit red (0-63)
-     * @param {number} g6 6-bit green (0-63)
-     * @param {number} b6 6-bit blue (0-63)
-     */
     updatePalette(index, r6, g6, b6) {
         const r8 = Math.round((r6 / 63) * 255);
         const g8 = Math.round((g6 / 63) * 255);
         const b8 = Math.round((b6 / 63) * 255);
-        // Pack into 32-bit Little-Endian (AABBGGRR)
         this.palette32[index] = (0xFF << 24) | (b8 << 16) | (g8 << 8) | r8;
     }
+
+    // --- LINEAR HARDWARE PRIMITIVES ---
 
     cls() {
         const end = this.GRAPHICS_VRAM_BASE + (this.width * this.height);
@@ -98,85 +83,30 @@ export class Mode13Linear extends VideoDriver {
         this.cursorY = 0;
     }
 
-    pset(x, y, color) {
-        const px = Math.floor(x);
-        const py = Math.floor(y);
-        if (px < 0 || px >= this.width || py < 0 || py >= this.height) return;
-        const addr = this.GRAPHICS_VRAM_BASE + (py * this.width) + px;
-        this.memory.ram[addr] = color & 255;
-    }
-
-    locate(row, col) {
-        if (row !== null && row !== undefined) {
-            const r = Math.floor(row);
-            if (r >= 1 && r <= this.rows) this.cursorY = r - 1;
-        }
-        if (col !== null && col !== undefined) {
-            const c = Math.floor(col);
-            if (c >= 1 && c <= this.cols) this.cursorX = c - 1;
-        }
-    }
-
-    color(fg, bg = this.currentBg) {
-        if (fg !== null) this.currentFg = fg % 256;
-        if (bg !== null) this.currentBg = bg % 256;
-    }
-
-    /**
-     * Renders text directly into the graphics VRAM using the 8x8 BIOS font.
-     * @param {number[]|Uint8Array} bytes 
-     */
-    print(bytes) {
-        for (let i = 0; i < bytes.length; i++) {
-            const b = bytes[i];
-            
-            if (b === 13) {
-                this.cursorX = 0;
-            } else if (b === 10) {
-                this.cursorY++;
-            } else if (b === 8) {
-                if (this.cursorX > 0) this.cursorX--;
-            } else {
-                if (this.cursorX >= this.cols) {
-                    this.cursorX = 0;
-                    this.cursorY++;
-                }
-                
-                const fontOffset = b * 8;
-                const px = this.cursorX * 8;
-                const py = this.cursorY * 8; 
-
-                if (py < this.height) {
-                    for (let y = 0; y < 8; y++) {
-                        const glyphRow = fontVGA8x8[fontOffset + y];
-                        for (let x = 0; x < 8; x++) {
-                            const isPixel = glyphRow & (128 >> x);
-                            const addr = this.GRAPHICS_VRAM_BASE + ((py + y) * this.width) + (px + x);
-                            
-                            if (isPixel) {
-                                this.memory.ram[addr] = this.currentFg;
-                            } else if (this.currentBg !== 0) { 
-                                this.memory.ram[addr] = this.currentBg;
-                            }
-                        }
-                    }
-                }
-                this.cursorX++;
-            }
-        }
-    }
-
-    showCursor() {}
-    hideCursor() {}
-
     render(display) {
         const buffer = display.pixelBuffer32;
         let vramAddr = this.GRAPHICS_VRAM_BASE;
         const totalPixels = this.width * this.height;
-        
         for (let i = 0; i < totalPixels; i++) {
-            const colorIndex = this.memory.ram[vramAddr++];
-            buffer[i] = this.palette32[colorIndex];
+            buffer[i] = this.palette32[this.memory.ram[vramAddr++]];
         }
+    }
+
+    getPixel(x, y) {
+        const px = Math.floor(x);
+        const py = Math.floor(y);
+        if (px < 0 || px >= this.width || py < 0 || py >= this.height) return -1;
+        return this.memory.ram[this.GRAPHICS_VRAM_BASE + (py * this.width) + px];
+    }
+
+    pset(x, y, color) {
+        const px = Math.floor(x);
+        const py = Math.floor(y);
+        if (px < 0 || px >= this.width || py < 0 || py >= this.height) return;
+        const finalColor = color !== null && color !== undefined ? color : this.currentFg;
+        
+        // Exact 0xA0000 linear mapping!
+        const addr = this.GRAPHICS_VRAM_BASE + (py * this.width) + px;
+        this.memory.ram[addr] = finalColor & 255;
     }
 }

@@ -14,6 +14,28 @@ const coordParser = sequenceObj([
 ]).map(obj => ({ x: obj.x, y: obj.y }));
 
 /**
+ * Parses a coordinate, optionally preceded by the STEP keyword for relative positioning.
+ * Example: STEP (10, 20) or just (10, 20)
+ */
+const stepCoordParser = sequenceObj([
+    capture('stepOpt', optional(sequenceOf([keyword('STEP'), ws]))),
+    capture('coord', coordParser)
+]).map(obj => ({
+    isStep: obj.stepOpt !== null,
+    x: obj.coord.x,
+    y: obj.coord.y
+}));
+
+/**
+ * Helper for optional comma-separated arguments.
+ * Safely handles empty arguments like: , , BF
+ */
+const commaArg = optional(sequenceObj([
+    regex(/^[ \t]*,[ \t]*/),
+    capture('val', optional(expression))
+]).map(obj => obj.val));
+
+/**
  * Parses the PRINT statement, including the optional USING format block
  * and trailing separators (semicolons/commas) for line-wrapping control.
  */
@@ -166,24 +188,83 @@ export const windowStmt = sequenceObj([
 }));
 
 /**
- * PSET statement: Draws a pixel at specific coordinates.
- * Example: PSET (x, y), c
+ * PSET statement
  */
 export const psetStmt = sequenceObj([
     keyword('PSET'), ws,
-    // QBasic allows PSET STEP (x, y) for relative coordinates
-    capture('stepOpt', optional(sequenceOf([keyword('STEP'), ws]))),
-    capture('coord', coordParser),
+    capture('coord', stepCoordParser),
     capture('colorOpt', optional(sequenceObj([
         optWs, regex(/^,/), optWs, capture('c', expression)
     ]).map(obj => obj.c)))
 ]).map(obj => ({
     type: 'PSET',
-    isStep: obj.stepOpt !== null,
+    isStep: obj.coord.isStep,
     x: obj.coord.x,
     y: obj.coord.y,
     color: obj.colorOpt || null
 }));
+
+/**
+ * LINE statement: LINE [STEP] (x1,y1) - [STEP] (x2,y2) [, color] [, B|BF]
+ */
+export const lineStmt = sequenceObj([
+    keyword('LINE'), ws,
+    capture('start', stepCoordParser), optWs, regex(/^-/), optWs,
+    capture('end', stepCoordParser),
+    capture('colorOpt', commaArg),
+    capture('boxOpt', commaArg)
+]).map(obj => {
+    let box = null;
+    // Safely check if the second optional argument is the identifier B or BF
+    if (obj.boxOpt && obj.boxOpt.type === 'IDENTIFIER') {
+        const flag = obj.boxOpt.value.toUpperCase();
+        if (flag === 'B' || flag === 'BF') box = flag;
+    }
+    return {
+        type: 'LINE',
+        startX: obj.start.x, startY: obj.start.y, startIsStep: obj.start.isStep,
+        endX: obj.end.x, endY: obj.end.y, endIsStep: obj.end.isStep,
+        color: obj.colorOpt || null,
+        box: box
+    };
+});
+
+/**
+ * CIRCLE statement: CIRCLE [STEP] (x,y), radius [, color] [, start] [, end] [, aspect]
+ */
+export const circleStmt = sequenceObj([
+    keyword('CIRCLE'), ws,
+    capture('center', stepCoordParser), optWs, regex(/^,/), optWs,
+    capture('radius', expression),
+    capture('color', commaArg),
+    capture('start', commaArg),
+    capture('end', commaArg),
+    capture('aspect', commaArg)
+]).map(obj => ({
+    type: 'CIRCLE',
+    x: obj.center.x, y: obj.center.y, isStep: obj.center.isStep,
+    radius: obj.radius,
+    color:  obj.color || null,
+    start:  obj.start || null,
+    end:    obj.end || null,
+    aspect: obj.aspect || null
+}));
+
+/**
+ * PAINT statement: PAINT [STEP] (x,y) [, paint_color] [, border_color]
+ */
+export const paintStmt = sequenceObj([
+    keyword('PAINT'), ws,
+    capture('start', stepCoordParser),
+    capture('paintColor', commaArg),
+    capture('borderColor', commaArg)
+]).map(obj => ({
+    type: 'PAINT',
+    x: obj.start.x, y: obj.start.y, isStep: obj.start.isStep,
+    paintColor:  obj.paintColor || null,
+    borderColor: obj.borderColor || null
+}));
+
 
 // --- IMPLICIT STATEMENTS ---
 
@@ -239,7 +320,7 @@ export const statement = choice([
     defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
     gotoStmt, gosubStmt, returnStmt,
     randomizeStmt, screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
-    windowStmt, psetStmt,
+    windowStmt, psetStmt, lineStmt, circleStmt, paintStmt,
     inputStmt,
     endStmt,
     implicitCallStmt

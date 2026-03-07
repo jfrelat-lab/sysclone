@@ -476,31 +476,47 @@ export class Evaluator {
                 if (this.hw.vga) this.hw.vga.setMode(mode);
                 return null;
 
-            case 'PSET':
-                const x = yield* this.evaluate(node.x);
-                const y = yield* this.evaluate(node.y);
-                
-                // If color is omitted, fallback to the current foreground color
-                const color = node.color !== null ? yield* this.evaluate(node.color) : (this.hw.vga ? this.hw.vga.currentFg : 15);
-                
-                if (this.hw.vga) {
-                    // Send raw logical coordinates to the VGA router.
-                    // The hardware layer will automatically apply the active WINDOW transformation matrix.
-                    this.hw.vga.pset(x, y, color);
-                }
+            case 'WINDOW':
+                const wX1 = yield* this.evaluate(node.x1);
+                const wY1 = yield* this.evaluate(node.y1);
+                const wX2 = yield* this.evaluate(node.x2);
+                const wY2 = yield* this.evaluate(node.y2);
+                if (this.hw.vga) this.hw.vga.setWindow(node.invertY, wX1, wY1, wX2, wY2);
                 return null;
 
-            case 'WINDOW':
-                // Evaluate the boundaries of the new logical coordinate system
-                const x1 = yield* this.evaluate(node.x1);
-                const y1 = yield* this.evaluate(node.y1);
-                const x2 = yield* this.evaluate(node.x2);
-                const y2 = yield* this.evaluate(node.y2);
+            case 'PSET':
+                const pX = yield* this.evaluate(node.x);
+                const pY = yield* this.evaluate(node.y);
+                const pCol = node.color !== null ? yield* this.evaluate(node.color) : null;
+                if (this.hw.vga) this.hw.vga.pset(pX, pY, pCol, node.isStep);
+                return null;
 
-                if (this.hw.vga) {
-                    // Instruct the VGA hardware to map these logical points to the physical screen
-                    this.hw.vga.setWindow(node.invertY, x1, y1, x2, y2);
-                }
+            case 'LINE':
+                const lX1 = yield* this.evaluate(node.startX);
+                const lY1 = yield* this.evaluate(node.startY);
+                const lX2 = yield* this.evaluate(node.endX);
+                const lY2 = yield* this.evaluate(node.endY);
+                const lCol = node.color !== null ? yield* this.evaluate(node.color) : null;
+                if (this.hw.vga) this.hw.vga.line(lX1, lY1, lX2, lY2, lCol, node.box, node.startIsStep, node.endIsStep);
+                return null;
+
+            case 'CIRCLE':
+                const cX = yield* this.evaluate(node.x);
+                const cY = yield* this.evaluate(node.y);
+                const cR = yield* this.evaluate(node.radius);
+                const cCol = node.color !== null ? yield* this.evaluate(node.color) : null;
+                const cSt = node.start !== null ? yield* this.evaluate(node.start) : null;
+                const cEnd = node.end !== null ? yield* this.evaluate(node.end) : null;
+                const cAsp = node.aspect !== null ? yield* this.evaluate(node.aspect) : null;
+                if (this.hw.vga) this.hw.vga.circle(cX, cY, cR, cCol, cSt, cEnd, cAsp, node.isStep);
+                return null;
+
+            case 'PAINT':
+                const ptX = yield* this.evaluate(node.x);
+                const ptY = yield* this.evaluate(node.y);
+                const ptC = node.paintColor !== null ? yield* this.evaluate(node.paintColor) : null;
+                const pbC = node.borderColor !== null ? yield* this.evaluate(node.borderColor) : null;
+                if (this.hw.vga) this.hw.vga.paint(ptX, ptY, ptC, pbC, node.isStep);
                 return null;
 
             // --- DOS / HARDWARE STUBS ---

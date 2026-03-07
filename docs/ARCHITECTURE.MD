@@ -48,10 +48,11 @@ Modern web browsers fetch text files as UTF-8, which breaks legacy DOS games rel
 * **Architectural Boundary:** The AST and Virtual CPU operate entirely in standard JS Unicode. The strict bidirectional translation to 8-bit Code Page 437 bytes occurs *only* at the Hardware Abstraction Layer boundary (e.g., when the `PRINT` statement sends data to the VGA VRAM or when `CHR$` is called), ensuring absolute block fidelity without polluting the high-level execution logic.
 
 ### 2.7. Advanced Graphics Engine (VGA/EGA/CGA)
-Emulating `SCREEN 7`, `8`, and `13` requires heavy manipulation.
-* **Rendering Optimization:** The VRAM buffer is designed to migrate towards `Uint32Array` for fast byte manipulation.
-* **Dirty Rectangles:** To maintain 60FPS during complex renders (like *Mandelbrot* or *Gorillas*), the engine uses a Dirty Rectangles pattern, updating only the modified portions of the Canvas context rather than redrawing the entire screen.
-* **Hardware Blitting:** Support for `GET` and `PUT` instructions, enabling bitwise array-to-screen transfers (`XOR`, `PSET`, `AND`) crucial for sprite animation.
+Emulating legacy graphics modes (`SCREEN 7`, `9`, `13`) requires intensive memory manipulation and geometric calculations.
+* **Multi-Mode Architecture (Template Method):** To maintain the DRY (Don't Repeat Yourself) principle across wildly different hardware modes, the video routing uses a Strategy pattern (`VGA` router) delegating to a Template Method hierarchy (`TextModeDriver` and `GraphicsModeDriver`). Complex algorithms (Bresenham, Flood Fill) are shared in the base classes, while concrete drivers (like `Mode13Linear` or `Mode9EGA`) only implement raw memory access primitives (`pset`, `getPixel`).
+* **Algorithmic Purity & Safety:** The `PAINT` command utilizes a flat, iterative stack-based Flood Fill algorithm rather than native recursion. This allows filling entire 640x400 screens without triggering the JavaScript engine's maximum call stack size limits.
+* **Pixel Aspect Ratio (PAR) Correction:** Legacy DOS resolutions rarely used square pixels (e.g., Mode 9 is 640x350). The `VGA` hardware router dynamically calculates the CSS canvas scaling against a fixed UI baseline (640px). This guarantees perfectly round circles and undistorted native rendering regardless of the active QBasic `SCREEN` mode.
+* **Rendering Optimization:** The VRAM buffer migrates physical pixel mapping directly into a `Uint32Array` for ultra-fast byte manipulation and direct canvas `ImageData` commits.
 
 ### 2.8. PC Speaker and Audio
 * **Architectural Choice:** Mapping `SOUND` and `PLAY` commands to the native browser **Web Audio API** (`AudioContext`).

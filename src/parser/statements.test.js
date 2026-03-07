@@ -149,4 +149,27 @@ registerSuite('QBasic Instructions (Statements)', () => {
         assertEqual(psetNoColor.result.color, null);
     });
 
+    test('Should parse Gorillas Geometry (LINE, CIRCLE, PAINT) with optional args', () => {
+        // 1. LINE with missing color and BF flag
+        const line = statement.run('LINE (10, 10)-(20, 20), , BF');
+        assertEqual(line.result.type, 'LINE');
+        assertEqual(line.result.startX.value, 10);
+        assertEqual(line.result.color, null); // Color was omitted
+        assertEqual(line.result.box, 'BF');   // Box fill correctly identified
+
+        // 2. CIRCLE with step and radians (Sun Smile)
+        const circle = statement.run('CIRCLE STEP (x, y), 8, 0, 3.14, 6.28');
+        assertEqual(circle.result.type, 'CIRCLE');
+        assertEqual(circle.result.isStep, true);
+        assertEqual(circle.result.radius.value, 8);
+        assertEqual(circle.result.color.value, 0);
+        assertEqual(circle.result.start.value, 3.14);
+
+        // 3. PAINT
+        const paint = statement.run('PAINT (x, y), SUNATTR');
+        assertEqual(paint.result.type, 'PAINT');
+        assertEqual(paint.result.paintColor.value, 'SUNATTR');
+        assertEqual(paint.result.borderColor, null);
+    });
+
 });
