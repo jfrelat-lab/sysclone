@@ -9,12 +9,26 @@ import { block } from './controlFlow.js';
  */
 const paramParser = sequenceObj([
     capture('id', identifier),
-    optional(regex(/^\(\)/)), // Handles array parentheses in signatures
+    optional(sequenceOf([optWs, regex(/^\(\)/)])), // Handles array parentheses in signatures
     optional(sequenceObj([
-        ws, keyword('AS'), ws, 
+        optWs, keyword('AS'), optWs, 
         choice([identifier, keyword('ANY')])
     ]))
 ]).map(obj => obj.id.value); // Currently, we only need the variable name for the AST
+
+/**
+ * Parses the optional parameter list for declarations and definitions.
+ * Safely handles omitted parentheses, empty parentheses '()', and populated lists.
+ */
+const parameterList = optional(sequenceObj([
+    optWs, regex(/^\(/), optWs,
+    // The actual list of variables inside the parentheses is strictly optional
+    capture('args', optional(sequenceOf([
+        paramParser,
+        many(sequenceOf([optWs, regex(/^,/), optWs, paramParser]).map(arr => arr[3]))
+    ]).map(arr => [arr[0], ...arr[1]]))),
+    optWs, regex(/^\)/)
+]).map(obj => obj.args || [])).map(res => res || []); // Ensure we always return an array, even if no parens exist
 
 /**
  * Parses DECLARE statements used at the top of legacy files.
@@ -24,34 +38,21 @@ export const declareStmt = sequenceObj([
     keyword('DECLARE'), ws,
     capture('subType', choice([keyword('SUB'), keyword('FUNCTION')])), ws,
     capture('name', identifier),
-    capture('paramsOpt', optional(sequenceObj([
-        optWs, regex(/^\(/), optWs,
-        capture('params', optional(sequenceOf([
-            paramParser,
-            many(sequenceOf([optWs, regex(/^,/), optWs, paramParser]).map(arr => arr[3]))
-        ]).map(arr => [arr[0], ...arr[1]]))),
-        optWs, regex(/^\)/)
-    ]).map(obj => obj.params || [])))
+    capture('params', parameterList) // Replaced with DRY parser
 ]).map(obj => ({
     type: 'DECLARE',
     subType: obj.subType, 
     name: obj.name.value,
-    params: obj.paramsOpt ? obj.paramsOpt : []
+    params: obj.params
 }));
 
 /**
  * Parses SUB definition blocks.
+ * Supports static scope declarations and QBasic syntax quirks.
  */
 export const subDef = lazy(() => sequenceObj([
     keyword('SUB'), ws, capture('name', identifier),
-    capture('paramsOpt', optional(sequenceObj([
-        optWs, regex(/^\(/), optWs,
-        capture('params', optional(sequenceOf([
-            paramParser,
-            many(sequenceOf([optWs, regex(/^,/), optWs, paramParser]).map(arr => arr[3]))
-        ]).map(arr => [arr[0], ...arr[1]]))),
-        optWs, regex(/^\)/)
-    ]).map(obj => obj.params || []))),
+    capture('params', parameterList), // Replaced with DRY parser
     capture('isStatic', optional(sequenceOf([optWs, keyword('STATIC')]))),
     eos,
     capture('body', block),
@@ -59,23 +60,17 @@ export const subDef = lazy(() => sequenceObj([
 ]).map(obj => ({
     type: 'SUB_DEF',
     name: obj.name.value,
-    params: obj.paramsOpt ? obj.paramsOpt : [],
+    params: obj.params,
     body: obj.body
 })));
 
 /**
  * Parses FUNCTION definition blocks.
+ * Supports static scope declarations and QBasic syntax quirks.
  */
 export const functionDef = lazy(() => sequenceObj([
     keyword('FUNCTION'), ws, capture('name', identifier),
-    capture('paramsOpt', optional(sequenceObj([
-        optWs, regex(/^\(/), optWs,
-        capture('params', optional(sequenceOf([
-            paramParser,
-            many(sequenceOf([optWs, regex(/^,/), optWs, paramParser]).map(arr => arr[3]))
-        ]).map(arr => [arr[0], ...arr[1]]))),
-        optWs, regex(/^\)/)
-    ]).map(obj => obj.params || []))),
+    capture('params', parameterList), // Replaced with DRY parser
     capture('isStatic', optional(sequenceOf([optWs, keyword('STATIC')]))),
     eos,
     capture('body', block),
@@ -83,6 +78,6 @@ export const functionDef = lazy(() => sequenceObj([
 ]).map(obj => ({
     type: 'FUNCTION_DEF',
     name: obj.name.value,
-    params: obj.paramsOpt ? obj.paramsOpt : [],
+    params: obj.params,
     body: obj.body
 })));

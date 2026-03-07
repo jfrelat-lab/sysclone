@@ -22,27 +22,42 @@ const statementList = sequenceObj([
 ]).map(obj => [obj.first, ...obj.rest]);
 
 /**
+ * Parses a single item within a CASE statement.
+ * Handles both exact values (CASE 5) and ranges (CASE 3 TO 5).
+ */
+const caseItem = sequenceObj([
+    capture('low', expression),
+    capture('highOpt', optional(sequenceObj([
+        ws, keyword('TO'), ws, capture('high', expression)
+    ]).map(obj => obj.high)))
+]).map(obj => {
+    // If 'TO' was found, return a range node
+    if (obj.highOpt) {
+        return { type: 'CASE_RANGE', low: obj.low, high: obj.highOpt };
+    }
+    return obj.low;
+});
+
+/**
  * SELECT CASE ... END SELECT
- * Handles multiple expressions per CASE and an optional CASE ELSE.
+ * Handles multiple expressions per CASE, ranges (TO), and an optional CASE ELSE.
  */
 export const selectCaseStmt = lazy(() => sequenceObj([
     keyword('SELECT'), ws, keyword('CASE'), optWs, capture('testExpr', expression), 
     skipEmpty,
     
-    // Capture all 'CASE val1, val2...' blocks
     capture('cases', many(sequenceObj([
         keyword('CASE'), ws, 
-        // Force at least one expression so it doesn't accidentally match 'CASE ELSE'
+        // Capture a comma-separated list of caseItems (values or ranges)
         capture('exprs', sequenceOf([
-            expression,
-            many(sequenceOf([optWs, regex(/^,/), optWs, expression]).map(arr => arr[3]))
+            caseItem,
+            many(sequenceOf([optWs, regex(/^,/), optWs, caseItem]).map(arr => arr[3]))
         ]).map(arr => [arr[0], ...arr[1]])), 
         skipEmpty,
         capture('body', block), 
         skipEmpty
     ]).map(obj => ({ exprs: obj.exprs, body: obj.body })))),
     
-    // Capture optional 'CASE ELSE'
     capture('caseElse', optional(sequenceObj([
         keyword('CASE'), ws, keyword('ELSE'), skipEmpty,
         capture('body', block), 

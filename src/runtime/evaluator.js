@@ -189,8 +189,9 @@ export class Evaluator {
                 return null;
 
             case 'SUB_DEF':
-                const params = node.parameters || node.params || [];
-                this.env.defineSub(node.name, params, node.body);
+            case 'FUNCTION_DEF':
+                // The definitions are hoisted during scanLabels(). 
+                // When the CPU actually reaches them in the code flow, it should just step over them.
                 return null;
 
             case 'TYPE_DECL':
@@ -255,11 +256,25 @@ export class Evaluator {
                 for (const c of node.cases) {
                     let caseMatch = false;
                     for (const expr of c.exprs) {
-                        if (testVal === (yield* this.evaluate(expr))) {
-                            caseMatch = true;
-                            break;
+                        // Handle RANGE evaluations (CASE X TO Y)
+                        if (expr.type === 'CASE_RANGE') {
+                            const lowVal = yield* this.evaluate(expr.low);
+                            const highVal = yield* this.evaluate(expr.high);
+                            // Inclusive boundary check
+                            if (testVal >= lowVal && testVal <= highVal) {
+                                caseMatch = true;
+                                break;
+                            }
+                        } else {
+                            // Handle standard VALUE evaluations (CASE X)
+                            const val = yield* this.evaluate(expr);
+                            if (testVal === val) {
+                                caseMatch = true;
+                                break;
+                            }
                         }
                     }
+                    // Execute block if a match was found in the current CASE line
                     if (caseMatch) {
                         const res = yield* this.evaluate(c.body);
                         if (res && res._control) return res;
@@ -268,6 +283,7 @@ export class Evaluator {
                     }
                 }
                 
+                // Fallback to CASE ELSE if no matches were found
                 if (!matched && node.caseElse && node.caseElse.length > 0) {
                     const res = yield* this.evaluate(node.caseElse);
                     if (res && res._control) return res;

@@ -1,5 +1,5 @@
 // src/parser/subroutines.test.js
-import { declareStmt, subDef } from './subroutines.js';
+import { declareStmt, subDef, functionDef } from './subroutines.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
 /**
@@ -8,19 +8,25 @@ import { test, assertEqual, registerSuite } from '../test_runner.js';
  */
 registerSuite('QBasic Subroutines and Functions (AST)', () => {
 
+    // --- DECLARE STATEMENTS ---
+
     test('declareStmt() should parse DECLARE statements with parameters', () => {
         const dec1 = declareStmt.run('DECLARE SUB Intro ()');
+        assertEqual(dec1.isError, false);
         assertEqual(dec1.result.subType, 'SUB');
-        assertEqual(dec1.result.name, 'INTRO');
+        assertEqual(dec1.result.name.toUpperCase(), 'INTRO');
         assertEqual(dec1.result.params.length, 0);
 
         // Validating multi-parameter signatures
         const dec2 = declareStmt.run('DECLARE SUB Level (WhatToDO, sammy)');
-        assertEqual(dec2.result.name, 'LEVEL');
+        assertEqual(dec2.isError, false);
+        assertEqual(dec2.result.name.toUpperCase(), 'LEVEL');
         assertEqual(dec2.result.params.length, 2);
-        assertEqual(dec2.result.params[0], 'WHATTODO'); // Now correctly mapped as a string array
-        assertEqual(dec2.result.params[1], 'SAMMY');
+        assertEqual(dec2.result.params[0].toUpperCase(), 'WHATTODO'); // Map resolves to uppercase string
+        assertEqual(dec2.result.params[1].toUpperCase(), 'SAMMY');
     });
+
+    // --- SUBROUTINES (SUB) ---
 
     test('subDef() should parse a full SUB block', () => {
         const code = `SUB Center (row, text$)
@@ -29,9 +35,9 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
 
         const success = subDef.run(code);
         assertEqual(success.isError, false);
-        assertEqual(success.result.name, 'CENTER');
+        assertEqual(success.result.name.toUpperCase(), 'CENTER');
         assertEqual(success.result.params.length, 2);
-        assertEqual(success.result.params[1], 'TEXT$'); 
+        assertEqual(success.result.params[1].toUpperCase(), 'TEXT$'); 
         
         // Verifying that the body correctly contains the inner statement
         assertEqual(success.result.body[0].type, 'PRINT');
@@ -41,7 +47,60 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         const code = `SUB Level (WhatToDO) STATIC\n PRINT "Level"\n END SUB`;
         const success = subDef.run(code);
         assertEqual(success.isError, false);
-        assertEqual(success.result.name, 'LEVEL');
+        assertEqual(success.result.name.toUpperCase(), 'LEVEL');
+    });
+
+    test('subDef() should strictly support empty parentheses for no-arg routines', () => {
+        const codeWithParens = `SUB MakeCityScape () \n PRINT "Building" \n END SUB`;
+        const codeWithoutParens = `SUB MakeCityScape \n PRINT "Building" \n END SUB`;
+        
+        const successParens = subDef.run(codeWithParens);
+        assertEqual(successParens.isError, false);
+        assertEqual(successParens.result.name.toUpperCase(), 'MAKECITYSCAPE');
+        assertEqual(successParens.result.params.length, 0); // Empty array, no crash!
+
+        const successNoParens = subDef.run(codeWithoutParens);
+        assertEqual(successNoParens.isError, false);
+        assertEqual(successNoParens.result.name.toUpperCase(), 'MAKECITYSCAPE');
+        assertEqual(successNoParens.result.params.length, 0);
+    });
+
+    test('subDef() should parse complex parameter signatures (AS TYPE, Arrays)', () => {
+        // This is crucial for Nibbles and Gorillas which pass typed arrays
+        const code = `SUB DrawRect (x, y, col AS INTEGER, snake() AS ANY)\n PRINT "Drawing"\nEND SUB`;
+        const success = subDef.run(code);
+        
+        assertEqual(success.isError, false);
+        assertEqual(success.result.params.length, 4);
+        assertEqual(success.result.params[0].toUpperCase(), 'X');
+        assertEqual(success.result.params[2].toUpperCase(), 'COL');
+        assertEqual(success.result.params[3].toUpperCase(), 'SNAKE');
+    });
+
+    // --- FUNCTIONS (FUNCTION) ---
+
+    test('functionDef() should parse a full FUNCTION block', () => {
+        const code = `FUNCTION FnRan (x)\n  FnRan = INT(RND(1) * x) + 1\nEND FUNCTION`;
+        
+        const success = functionDef.run(code);
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'FUNCTION_DEF');
+        assertEqual(success.result.name.toUpperCase(), 'FNRAN');
+        assertEqual(success.result.params.length, 1);
+        assertEqual(success.result.params[0].toUpperCase(), 'X');
+        
+        // Ensure the body captured the assignment
+        assertEqual(success.result.body[0].type, 'ASSIGN');
+    });
+
+    test('functionDef() should handle empty or omitted parentheses', () => {
+        const code = `FUNCTION GetTime\n GetTime = TIMER\nEND FUNCTION`;
+        
+        const success = functionDef.run(code);
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'FUNCTION_DEF');
+        assertEqual(success.result.name.toUpperCase(), 'GETTIME');
+        assertEqual(success.result.params.length, 0);
     });
 
 });
