@@ -177,4 +177,31 @@ registerSuite('QBasic Control Flow (AST)', () => {
         assertEqual(success.result.body[0].type, 'PRINT');
     });
 
+    test('selectCaseStmt() should parse mixed lists with TO ranges', () => {
+        const code = `SELECT CASE level
+            CASE 1, 3 TO 5, 8
+                PRINT "Special Level"
+        END SELECT`;
+        
+        const success = selectCaseStmt.run(code);
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'SELECT_CASE');
+        
+        const caseList = success.result.cases[0].exprs;
+        assertEqual(caseList.length, 3);
+        
+        // 1st element: CASE 1 (Nœud AST standard)
+        assertEqual(caseList[0].type, 'NUMBER');
+        assertEqual(caseList[0].value, 1);
+        
+        // 2nd element: CASE 3 TO 5 (Nœud Range)
+        assertEqual(caseList[1].type, 'CASE_RANGE');
+        assertEqual(caseList[1].low.value, 3);
+        assertEqual(caseList[1].high.value, 5);
+        
+        // 3rd element: CASE 8 (Nœud AST standard)
+        assertEqual(caseList[2].type, 'NUMBER');
+        assertEqual(caseList[2].value, 8);
+    });
+
 });
