@@ -1,5 +1,5 @@
 // src/parser/controlFlow.test.js
-import { forStmt, doLoopStmt, ifStmt, selectCaseStmt, whileWendStmt } from './controlFlow.js';
+import { forStmt, doPreCondStmt, doPostCondStmt, ifStmt, selectCaseStmt, whileWendStmt } from './controlFlow.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
 /**
@@ -25,25 +25,41 @@ registerSuite('QBasic Control Flow (AST)', () => {
         assertEqual(stepFor.result.step.value, 5);
     });
 
-    test('doLoopStmt() should parse DO ... LOOP UNTIL', () => {
-        const code = `DO
-            PRINT "Game Over"
-        LOOP UNTIL playerDied = -1`; // Corrected to -1 for QBasic True
-        
-        const success = doLoopStmt.run(code);
+    test('doPostCondStmt() should parse DO ... LOOP UNTIL', () => {
+        const code = `DO\n PRINT "Game Over"\n LOOP UNTIL playerDied = -1`; 
+        const success = doPostCondStmt.run(code);
         assertEqual(success.isError, false);
-        
-        assertEqual(success.result.type, 'DO_LOOP'); 
+        assertEqual(success.result.type, 'DO_POST_COND'); 
         assertEqual(success.result.loopType, 'UNTIL'); 
+    });
+
+    test('doPostCondStmt() should parse multiplexed DO: LOOP UNTIL with colons', () => {
+        const code = `DO: LOOP UNTIL TIMER - t > 1`;
+        const success = doPostCondStmt.run(code);
         
-        const cond = success.result.condition;
-        assertEqual(cond.type, 'BINARY_OP');
-        assertEqual(cond.operator, '=');
-        assertEqual(cond.left.value, 'PLAYERDIED');
-        assertEqual(cond.right.type, 'UNARY_OP'); // -1 is an operator applied to 1
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'DO_POST_COND');
+        assertEqual(success.result.loopType, 'UNTIL');
+        assertEqual(success.result.body.length, 0); 
+    });
+
+    test('doPostCondStmt() should parse infinite DO ... LOOP', () => {
+        const code = `DO\n a = 1\n LOOP`;
+        const success = doPostCondStmt.run(code);
         
-        assertEqual(success.result.body[0].type, 'PRINT');
-        assertEqual(success.result.body[0].values[0].value, 'Game Over');
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'DO_POST_COND');
+        assertEqual(success.result.loopType, 'NONE');
+        assertEqual(success.result.condition, null);
+    });
+
+    test('doPreCondStmt() should parse DO WHILE ... LOOP', () => {
+        const code = `DO WHILE a < 10\n a = a + 1\n LOOP`;
+        const success = doPreCondStmt.run(code);
+        
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'DO_PRE_COND');
+        assertEqual(success.result.loopType, 'WHILE');
     });
 
     test('ifStmt() should handle nested blocks (IF inside IF)', () => {

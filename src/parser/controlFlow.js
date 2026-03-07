@@ -1,5 +1,5 @@
 // src/parser/controlFlow.js
-import { choice, many, regex, optional, capture, sequenceObj, lazy, sepBy, sequenceOf, Parser } from './monad.js';
+import { choice, many, regex, optional, capture, sequenceObj, lazy, sequenceOf } from './monad.js';
 import { identifier, keyword, optWs, ws, eos } from './lexers.js';
 import { expression } from './expressions.js';
 import { statement } from './statements.js';
@@ -70,7 +70,8 @@ const anyStatement = lazy(() => choice([
     constDecl,
     ifStmt, 
     forStmt, 
-    doLoopStmt, 
+    doPreCondStmt,
+    doPostCondStmt, 
     selectCaseStmt,
     whileWendStmt,
     statement 
@@ -155,18 +156,35 @@ export const forStmt = sequenceObj([
     body: obj.body
 }));
 
-// --- 3. DO ... LOOP ---
+// --- 3A. DO {WHILE | UNTIL} cond ... LOOP (Pre-Condition) ---
 
-export const doLoopStmt = sequenceObj([
-    keyword('DO'),
+export const doPreCondStmt = sequenceObj([
+    keyword('DO'), ws,
+    capture('loopType', choice([keyword('UNTIL'), keyword('WHILE')])), ws,
+    capture('condition', expression),
     capture('body', block),
-    keyword('LOOP'), ws, 
-    capture('loopType', choice([keyword('UNTIL'), keyword('WHILE')])), ws, 
-    capture('condition', expression)
+    keyword('LOOP')
 ]).map(obj => ({
-    type: 'DO_LOOP', 
+    type: 'DO_PRE_COND', 
     loopType: obj.loopType.toUpperCase(), 
     condition: obj.condition, 
+    body: obj.body
+}));
+
+// --- 3B. DO ... LOOP [{WHILE | UNTIL} cond] (Post-Condition or Infinite) ---
+
+export const doPostCondStmt = sequenceObj([
+    keyword('DO'),
+    capture('body', block),
+    keyword('LOOP'),
+    capture('condOpt', optional(sequenceObj([
+        ws, capture('loopType', choice([keyword('UNTIL'), keyword('WHILE')])), ws, 
+        capture('condition', expression)
+    ])))
+]).map(obj => ({
+    type: 'DO_POST_COND', 
+    loopType: obj.condOpt ? obj.condOpt.loopType.toUpperCase() : 'NONE', 
+    condition: obj.condOpt ? obj.condOpt.condition : null, 
     body: obj.body
 }));
 
