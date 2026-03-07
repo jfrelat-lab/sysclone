@@ -274,15 +274,30 @@ export class Evaluator {
                 }
                 return null;
 
-            case 'DO_LOOP':
+            case 'DO_PRE_COND':
+                while (true) {
+                    yield; 
+                    const cond = yield* this.evaluate(node.condition);
+                    
+                    if (node.loopType === 'UNTIL' && cond !== 0 && cond !== false) break;
+                    if (node.loopType === 'WHILE' && (cond === 0 || cond === false)) break;
+
+                    const res = yield* this.evaluate(node.body);
+                    if (res && res._control) return res;
+                }
+                return null;
+
+            case 'DO_POST_COND':
                 while (true) {
                     yield; 
                     const res = yield* this.evaluate(node.body);
                     if (res && res._control) return res;
                     
-                    const cond = yield* this.evaluate(node.condition);
-                    if (node.loopType === 'UNTIL' && cond !== 0 && cond !== false) break;
-                    if (node.loopType === 'WHILE' && (cond === 0 || cond === false)) break;
+                    if (node.condition) {
+                        const cond = yield* this.evaluate(node.condition);
+                        if (node.loopType === 'UNTIL' && cond !== 0 && cond !== false) break;
+                        if (node.loopType === 'WHILE' && (cond === 0 || cond === false)) break;
+                    }
                 }
                 return null;
 
