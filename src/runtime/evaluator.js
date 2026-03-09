@@ -38,9 +38,11 @@ export class Evaluator {
                             index: i,
                             dataIndex: this.dataBank.length
                         });
-                    } else if (node[i].type === 'SUB_DEF' || node[i].type === 'FUNCTION_DEF') {
+                    } else if (node[i].type === 'SUB_DEF' || node[i].type === 'FUNCTION_DEF' || node[i].type === 'DEF_FN') {
                         const params = node[i].params || [];
-                        this.env.defineSub(node[i].name, params, node[i].body, node[i].type);
+                        // For DEF_FN macros, the "body" is simply the AST expression to evaluate
+                        const body = node[i].type === 'DEF_FN' ? node[i].expression : node[i].body;                        
+                        this.env.defineSub(node[i].name, params, body, node[i].type);
                     } else if (node[i].type === 'DEFINT') {
                         this.env.defineDefInt(node[i].range);
                     } else if (node[i].type === 'TYPE_DECL') {
@@ -190,6 +192,7 @@ export class Evaluator {
 
             case 'SUB_DEF':
             case 'FUNCTION_DEF':
+            case 'DEF_FN':
                 // The definitions are hoisted during scanLabels(). 
                 // When the CPU actually reaches them in the code flow, it should just step over them.
                 return null;
@@ -218,16 +221,34 @@ export class Evaluator {
                 return null;
 
             // --- CONTROL FLOW ---
-            case 'IF':
+            case 'IF': {
+                // 1. Check primary IF condition
                 const condition = yield* this.evaluate(node.condition);
                 if (condition !== 0 && condition !== false) {
                     const res = yield* this.evaluate(node.thenBlock);
                     if (res && res._control) return res; 
-                } else if (node.elseBlock && node.elseBlock.length > 0) {
+                    return null; // Exit early if branch matched
+                } 
+                
+                // 2. Check all ELSEIF conditions sequentially
+                if (node.elseIfBlocks && node.elseIfBlocks.length > 0) {
+                    for (let elseIf of node.elseIfBlocks) {
+                        const elseIfCond = yield* this.evaluate(elseIf.condition);
+                        if (elseIfCond !== 0 && elseIfCond !== false) {
+                            const res = yield* this.evaluate(elseIf.block);
+                            if (res && res._control) return res;
+                            return null; // Exit early if branch matched
+                        }
+                    }
+                }
+
+                // 3. Fallback to ELSE block
+                if (node.elseBlock && node.elseBlock.length > 0) {
                     const res = yield* this.evaluate(node.elseBlock);
                     if (res && res._control) return res;
                 }
                 return null;
+            }
 
             case 'FOR':
                 const startVal = yield* this.evaluate(node.start);
@@ -540,9 +561,16 @@ export class Evaluator {
             case 'RANDOMIZE': case 'WIDTH':
                 // Gracefully ignore these specific DOS hardware commands
                 return null;
+            case 'ON_ERROR':
+            case 'RESUME':
+                // Legacy hardware error handling is stubbed. 
+                // We ignore the error registration and the return jump.
+                return null;
 
             case 'VIEW':
-                // VIEW PRINT is a common statement in Nibbles, we stub it here
+            case 'VIEW_PRINT':
+            case 'PLAY':
+                // VIEW and PLAY are natively ignored to avoid crashing
                 return null;
 
             default: throw new Error(`Unknown node type: ${node.type}`);
@@ -600,6 +628,15 @@ export class Evaluator {
             }
             
             const subEvaluator = new Evaluator(childEnv, this.hw);
+
+            // --- Immediate return for single-line macros ---
+            if (subDef.type === 'DEF_FN') {
+                // The body of a DEF_FN is just an expression.
+                // Evaluating it directly yields the final mathematical result.
+                return yield* subEvaluator.evaluate(subDef.body);
+            }
+            // -----------------------------------------------------------
+
             yield* subEvaluator.evaluate(subDef.body);
             
             let returnValue = (subDef.type === 'FUNCTION_DEF') ? childEnv.lookup(callee) : null;
@@ -634,10 +671,7 @@ export class Evaluator {
             return this.hw.memory ? this.hw.memory.peek(args[0]) : 0;
         }
 
-        // --- 4. HARDWARE STUBS (Prevent crashes) ---
-        if (callee === 'PLAY' || callee === 'VIEW') return null; 
-
-        // --- 5. RESOLVE ARRAYS IN ENVIRONMENT ---
+        // --- 4. RESOLVE ARRAYS IN ENVIRONMENT ---
         let val = this.env.variables.get(callee);
         let currEnv = this.env.parent;
         while (!val && currEnv) { val = currEnv.variables.get(callee); currEnv = currEnv.parent; }
@@ -654,6 +688,7 @@ export class Evaluator {
         const left = yield* this.evaluate(node.left);
         const right = yield* this.evaluate(node.right);
         switch (node.operator) {
+            case '^': return left ** right;
             case '+': return left + right; case '-': return left - right;
             case '*': return left * right; case '/': return left / right;
             case '\\': return Math.trunc(Math.round(left) / Math.round(right)); // Pure QBasic Integer Division

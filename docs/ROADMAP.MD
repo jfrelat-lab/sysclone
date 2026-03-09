@@ -160,7 +160,7 @@
   - [ ] Implement `ON ERROR GOTO`, `RESUME`, and `RESUME NEXT` to catch runtime hardware/software faults.
 - [ ] **9.3. Implicit Typing & Macros:**
   - [ ] Support `DEFINT`, `DEFSNG`, etc., for default variable typing.
-  - [ ] Parse and evaluate single-line macros: `DEF FNname(args) = expr`.
+  - [x] Parse and evaluate single-line macros: `DEF FNname(args) = expr`.
 - [x] **9.4. Math, Strings & Built-ins:**
   - [x] Abstract all pure native functions into a `builtins.js` standard library.
   - [x] Implement math: `INT`, `FIX`, `ABS`, `SQR`, `RND`, `SIN`, `COS`, `TAN`, `ATN`, `EXP`, `LOG`.

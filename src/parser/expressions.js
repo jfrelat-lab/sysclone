@@ -1,5 +1,5 @@
 // src/parser/expressions.js
-import { choice, regex, capture, sequenceObj, lazy, chainLeft, sepBy, many } from './monad.js';
+import { choice, capture, sequenceObj, lazy, chainLeft, sepBy, many, str } from './monad.js';
 import { identifier, numberLiteral, stringLiteral, optWs, keyword } from './lexers.js';
 
 /**
@@ -9,22 +9,22 @@ import { identifier, numberLiteral, stringLiteral, optWs, keyword } from './lexe
 export const expression = lazy(() => logicExpr);
 
 const parensExpr = sequenceObj([
-    regex(/^\(/), optWs, capture('expr', expression), optWs, regex(/^\)/)
+    str('('), optWs, capture('expr', expression), optWs, str(')')
 ]).map(obj => obj.expr);
 
 // --- 1. Function Calls and Property Access ---
-const commaSep = sequenceObj([optWs, regex(/^,/), optWs]);
+const commaSep = sequenceObj([optWs, str(','), optWs]);
 
 // a. Call modifier: ( arg1, arg2 )
 const argList = sequenceObj([
-    regex(/^\(/), optWs,
+    str('('), optWs,
     capture('args', sepBy(expression, commaSep)),
-    optWs, regex(/^\)/)
+    optWs, str(')')
 ]).map(obj => ({ type: 'MOD_CALL', args: obj.args }));
 
 // b. Property access modifier: .property
 const propAccess = sequenceObj([
-    regex(/^\./), capture('prop', identifier)
+    str('.'), capture('prop', identifier)
 ]).map(obj => ({ type: 'MOD_PROP', property: obj.prop.value }));
 
 // c. Postfix modifiers (Subscripts or Members)
@@ -66,7 +66,7 @@ const opSurroundedByWs = (opParser) => sequenceObj([optWs, capture('op', opParse
 
 
 // --- 2. Unary Mathematical Operator (-) ---
-const unaryMathOp = opSurroundedByWs(regex(/^\-/));
+const unaryMathOp = opSurroundedByWs(str('-'));
 const unaryMathExpr = choice([
     sequenceObj([
         capture('op', unaryMathOp), 
@@ -78,18 +78,23 @@ const unaryMathExpr = choice([
 
 // --- 3. Operator Precedence Cascade ---
 
+// Level 5: Exponentiation (Highest binary precedence)
+const powerOp = opSurroundedByWs(str('^'));
+const powerExpr = chainLeft(unaryMathExpr, powerOp, astReducer);
+
 // Level 4: Multiplication, Division, Integer Division, Modulo
-const mulOp = opSurroundedByWs(choice([regex(/^\*/), regex(/^\//), regex(/^\\/), keyword('MOD')]));
-const mulExpr = chainLeft(unaryMathExpr, mulOp, astReducer); 
+const mulOp = opSurroundedByWs(choice([str('*'), str('/'), str('\\'), keyword('MOD')]));
+const mulExpr = chainLeft(powerExpr, mulOp, astReducer);
 
 // Level 3: Addition, Subtraction
-const addOp = opSurroundedByWs(choice([regex(/^\+/), regex(/^\-/)]));
+const addOp = opSurroundedByWs(choice([str('+'), str('-')]));
 const addExpr = chainLeft(mulExpr, addOp, astReducer);
 
 // Level 2: Comparisons
+// CRITICAL: Two-character operators must be matched before single-character ones
 const compOp = opSurroundedByWs(choice([
-    regex(/^<=/), regex(/^>=/), regex(/^<>/), 
-    regex(/^</), regex(/^>/), regex(/^=/)
+    str('<='), str('>='), str('<>'), 
+    str('<'), str('>'), str('=')
 ]));
 const compExpr = chainLeft(addExpr, compOp, astReducer);
 

@@ -42,6 +42,19 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         assertEqual(env.lookup('LIVES'), 10);
     });
 
+    test('Should evaluate exponentiation (^) correctly', () => {
+        const env = new Environment();
+        executeCode(env, `
+            square = 5 ^ 2
+            cube = 2 ^ 3
+            complex = 10 + 2 * 3 ^ 2 ' Should be 10 + 2 * 9 = 28
+        `);
+        
+        assertEqual(env.lookup('SQUARE'), 25);
+        assertEqual(env.lookup('CUBE'), 8);
+        assertEqual(env.lookup('COMPLEX'), 28);
+    });
+
     // --- AUDIT-DRIVEN CONTROL FLOW TESTS ---
 
     test('Should execute IF...THEN...ELSE blocks correctly', () => {
@@ -62,6 +75,51 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         `);
         assertEqual(env.lookup('BONUS'), 10);
         assertEqual(env.lookup('PENALTY'), 0);
+    });
+
+    test('Should execute IF...ELSEIF...ELSE cascading blocks correctly', () => {
+        const env = new Environment();
+        
+        // Test 1: Should hit the first ELSEIF
+        executeCode(env, `
+            score = 75
+            IF score >= 100 THEN
+                grade = 1
+            ELSEIF score >= 50 THEN
+                grade = 2
+            ELSEIF score >= 20 THEN
+                grade = 3
+            ELSE
+                grade = 4
+            END IF
+        `);
+        assertEqual(env.lookup('GRADE'), 2);
+
+        // Test 2: Should bypass all ELSEIFs and hit the ELSE
+        executeCode(env, `
+            power = 5
+            IF power > 50 THEN
+                status = 100
+            ELSEIF power > 20 THEN
+                status = 200
+            ELSE
+                status = 300
+            END IF
+        `);
+        assertEqual(env.lookup('STATUS'), 300);
+
+        // Test 3: Should hit the first valid condition and ignore the rest
+        executeCode(env, `
+            testVal = 15
+            IF testVal > 10 THEN
+                res = 1
+            ELSEIF testVal > 5 THEN
+                res = 2  ' This is technically true, but should NOT execute
+            ELSE
+                res = 3
+            END IF
+        `);
+        assertEqual(env.lookup('RES'), 1);
     });
 
     test('Should execute FOR...TO...STEP loops correctly', () => {
@@ -191,15 +249,15 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         assertEqual(env.lookup('C'), 30); 
     });
 
-    test('Should gracefully ignore hardware stubs (PLAY, VIEW, RANDOMIZE) to avoid crashes', () => {
+    test('Should gracefully ignore hardware stubs (PLAY, VIEW PRINT, RANDOMIZE) to avoid crashes', () => {
         const env = new Environment();
-        // We use standard implicit calls for VIEW and PLAY to avoid breaking the parser.
+        // We use standard implicit calls for VIEW PRINT and PLAY to avoid breaking the parser.
         // This tests that the Evaluator correctly handles and skips them.
         const code = `
             SCREEN 0
             WIDTH 80, 25
             RANDOMIZE TIMER
-            VIEW
+            VIEW PRINT
             PLAY "T160O1L32CF"
             finished = 1
         `;

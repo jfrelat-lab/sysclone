@@ -2,6 +2,7 @@
 import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, lazy } from './monad.js';
 import { identifier, keyword, ws, optWs, eos } from './lexers.js';
 import { block } from './controlFlow.js';
+import { expression } from './expressions.js';
 
 /**
  * Robust parameter parser.
@@ -81,3 +82,21 @@ export const functionDef = lazy(() => sequenceObj([
     params: obj.params,
     body: obj.body
 })));
+
+/**
+ * Parses single-line macro functions (DEF FN).
+ * A legacy QBasic feature heavily used in mathematical scripts like Gorillas.
+ * Example: DEF FnRan (x) = INT(RND(1) * x) + 1
+ */
+export const defFnStmt = sequenceObj([
+    keyword('DEF'), ws, capture('name', identifier),
+    capture('params', parameterList), // Reuse our DRY parameter parser!
+    optWs, regex(/^=/), optWs,
+    // Evaluate the right side as a standard mathematical/logical expression
+    capture('expression', lazy(() => expression))
+]).map(obj => ({
+    type: 'DEF_FN',
+    name: obj.name.value,
+    params: obj.params,
+    expression: obj.expression // We store it as 'expression' instead of 'body'
+}));

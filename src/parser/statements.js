@@ -1,6 +1,6 @@
 // src/parser/statements.js
 import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, sepBy, str } from './monad.js';
-import { identifier, keyword, ws, optWs, numberLiteral, stringLiteral } from './lexers.js';
+import { identifier, keyword, ws, optWs, signedNumberLiteral, stringLiteral } from './lexers.js';
 import { expression, variableAccess } from './expressions.js';
 
 /**
@@ -60,7 +60,17 @@ export const printStmt = sequenceObj([
     newline: obj.trailing === null
 }));
 
-export const clsStmt = keyword('CLS').map(() => ({ type: 'CLS' }));
+/**
+ * Parses the CLS statement.
+ * Syntax: CLS [method] (0 = all text, 1 = active graphics viewport, 2 = active text viewport)
+ */
+export const clsStmt = sequenceObj([
+    keyword('CLS'),
+    capture('methodOpt', optional(sequenceOf([ws, expression]).map(arr => arr[1])))
+]).map(obj => ({ 
+    type: 'CLS', 
+    method: obj.methodOpt || null 
+}));
 
 export const locateStmt = sequenceObj([
     keyword('LOCATE'), ws,
@@ -149,9 +159,12 @@ export const widthStmt = sequenceObj([
     capture('rowOpt', optional(sequenceOf([optWs, str(','), optWs, expression]).map(arr => arr[3])))
 ]).map(obj => ({ type: 'WIDTH', col: obj.col, row: obj.rowOpt || null }));
 
+/**
+ * Parses DATA statements containing comma-separated literal values.
+ */
 export const dataStmt = sequenceObj([
     keyword('DATA'), ws,
-    capture('values', sepBy(choice([numberLiteral, stringLiteral, identifier]), sequenceOf([optWs, str(','), optWs])))
+    capture('values', sepBy(choice([signedNumberLiteral, stringLiteral, identifier]), sequenceOf([optWs, str(','), optWs])))
 ]).map(obj => ({ type: 'DATA', values: obj.values }));
 
 export const readStmt = sequenceObj([
@@ -285,6 +298,167 @@ export const implicitCallStmt = sequenceObj([
     args: (obj.argsOpt && obj.argsOpt.length > 0) ? obj.argsOpt : []
 }));
 
+// --- LEGACY ERROR HANDLING & HARDWARE ---
+
+/**
+ * Parses the 'ON ERROR GOTO' statement.
+ * This is heavily used in legacy QBasic (like Gorillas) for hardware detection
+ * and runtime error trapping (e.g., trying to set an unsupported video mode).
+ * The target can be a label (Identifier) to jump to, or 0 (Number) to disable the handler.
+ * * Example: ON ERROR GOTO ScreenModeError
+ * Example: ON ERROR GOTO 0
+ */
+export const onErrorStmt = sequenceObj([
+    keyword('ON'), ws, keyword('ERROR'), ws, keyword('GOTO'), ws,
+    // Capture either a valid label name or a numeric 0
+    capture('target', choice([identifier, signedNumberLiteral]))
+]).map(obj => {
+    return {
+        type: 'ON_ERROR',
+        // Extract the raw value (string for labels, number for 0) regardless of the AST node type
+        target: obj.target.value
+    };
+});
+
+/**
+ * Parses the RESUME statement used in error handling routines.
+ * Syntax: RESUME [NEXT | label]
+ */
+export const resumeStmt = sequenceObj([
+    keyword('RESUME'),
+    // The target is optional. It can be the keyword NEXT, or a label identifier.
+    capture('targetOpt', optional(sequenceOf([
+        ws, choice([keyword('NEXT'), identifier])
+    ]).map(arr => arr[1])))
+]).map(obj => {
+    let target = null;
+    if (obj.targetOpt) {
+        // If it's an identifier (label), extract its value. Otherwise, it's the string 'NEXT'
+        target = obj.targetOpt.type === 'IDENTIFIER' ? obj.targetOpt.value : 'NEXT';
+    }
+    return {
+        type: 'RESUME',
+        target: target // Will be null, 'NEXT', or a string (label name)
+    };
+});
+
+/**
+ * Parses the 'PALETTE' statement.
+ * Used to modify hardware color mappings, which is essential for EGA/VGA modes.
+ * Note: Arguments are technically optional in QBasic (calling PALETTE alone resets default colors).
+ * * Syntax: PALETTE [attribute, color]
+ * Example: PALETTE 4, 0
+ */
+export const paletteStmt = sequenceObj([
+    keyword('PALETTE'),
+    // The entire argument block is optional
+    capture('args', optional(sequenceObj([
+        ws, capture('attribute', expression),
+        optWs, str(','), optWs, // Using str(',') for optimal performance
+        capture('color', expression)
+    ])))
+]).map(obj => ({
+    type: 'PALETTE',
+    // Safely map the parsed expressions or return null if PALETTE was called without arguments
+    attribute: obj.args ? obj.args.attribute : null,
+    color: obj.args ? obj.args.color : null
+}));
+
+/**
+ * Parses the graphics PUT statement used for sprite rendering.
+ * Syntax: PUT [STEP] (x, y), arrayName [, actionVerb]
+ * Action verbs: PSET, PRESET, XOR, OR, AND (Default is XOR)
+ */
+const putActionParser = choice([
+    keyword('PSET'), keyword('PRESET'), 
+    keyword('XOR'), keyword('OR'), keyword('AND')
+]);
+
+export const putGraphicsStmt = sequenceObj([
+    keyword('PUT'), ws,
+    capture('coord', stepCoordParser), optWs, regex(/^,/), optWs,
+    // The sprite data array (e.g., LBan& or bananaArray(0))
+    capture('target', expression),
+    // The blending mode is optional. If omitted, QBasic defaults to XOR
+    capture('actionOpt', optional(sequenceObj([
+        optWs, regex(/^,/), optWs,
+        capture('action', putActionParser)
+    ]).map(obj => obj.action)))
+]).map(obj => ({
+    type: 'PUT_GRAPHICS',
+    isStep: obj.coord.isStep,
+    x: obj.coord.x,
+    y: obj.coord.y,
+    target: obj.target,
+    action: obj.actionOpt || 'XOR' // Default behavior in QBasic
+}));
+
+/**
+ * Parses the graphics GET statement used to capture screen regions into an array.
+ * Syntax: GET [STEP] (x1, y1) - [STEP] (x2, y2), arrayName
+ */
+export const getGraphicsStmt = sequenceObj([
+    keyword('GET'), ws,
+    capture('start', stepCoordParser), optWs, regex(/^-/), optWs,
+    capture('end', stepCoordParser), optWs, str(','), optWs,
+    capture('target', expression)
+]).map(obj => ({
+    type: 'GET_GRAPHICS',
+    startX: obj.start.x, 
+    startY: obj.start.y, 
+    startIsStep: obj.start.isStep,
+    endX: obj.end.x, 
+    endY: obj.end.y, 
+    endIsStep: obj.end.isStep,
+    target: obj.target
+}));
+
+/**
+ * Parses the VIEW PRINT statement.
+ * Used to set the text viewport boundaries. Calling it without arguments resets the viewport.
+ * Syntax: VIEW PRINT [topLine TO bottomLine]
+ */
+export const viewPrintStmt = sequenceObj([
+    keyword('VIEW'), ws, keyword('PRINT'),
+    capture('rangeOpt', optional(sequenceObj([
+        ws, capture('top', expression), 
+        ws, keyword('TO'), ws, 
+        capture('bottom', expression)
+    ])))
+]).map(obj => ({
+    type: 'VIEW_PRINT',
+    top: obj.rangeOpt ? obj.rangeOpt.top : null,
+    bottom: obj.rangeOpt ? obj.rangeOpt.bottom : null
+}));
+
+/**
+ * Parses the PLAY statement used for playing musical macros.
+ * Syntax: PLAY stringExpression
+ */
+export const playStmt = sequenceObj([
+    keyword('PLAY'), ws, capture('music', expression)
+]).map(obj => ({
+    type: 'PLAY',
+    music: obj.music
+}));
+
+/**
+ * Parses the LINE INPUT statement.
+ * Used to read an entire line of text from the user, ignoring comma separators.
+ * Syntax: LINE INPUT ["prompt";] stringVariable$
+ */
+export const lineInputStmt = sequenceObj([
+    keyword('LINE'), ws, keyword('INPUT'), ws,
+    capture('promptOpt', optional(sequenceOf([
+        stringLiteral, optWs, regex(/^[;,]/), optWs
+    ]).map(arr => arr[0].value))),
+    capture('target', variableAccess) // LINE INPUT only writes to a single variable
+]).map(obj => ({
+    type: 'LINE_INPUT',
+    prompt: obj.promptOpt || "",
+    target: obj.target
+}));
+
 /**
  * INPUT statement for user interaction.
  * Example: INPUT "Enter speed: "; gamespeed$
@@ -310,18 +484,3 @@ export const endStmt = sequenceObj([
     keyword('END'),
     regex(/^(?![ \t]*(?:IF|SUB|FUNCTION|TYPE|SELECT)\b)/i)
 ]).map(() => ({ type: 'END' }));
-
-/**
- * Master statement choice.
- */
-export const statement = choice([
-    labelDef, 
-    clsStmt, printStmt, locateStmt, colorStmt, 
-    defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
-    gotoStmt, gosubStmt, returnStmt,
-    randomizeStmt, screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
-    windowStmt, psetStmt, lineStmt, circleStmt, paintStmt,
-    inputStmt,
-    endStmt,
-    implicitCallStmt
-]);
