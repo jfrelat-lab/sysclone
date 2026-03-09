@@ -1,5 +1,5 @@
 // src/parser/subroutines.test.js
-import { declareStmt, subDef, functionDef } from './subroutines.js';
+import { declareStmt, subDef, functionDef, defFnStmt } from './subroutines.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
 /**
@@ -101,6 +101,27 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         assertEqual(success.result.type, 'FUNCTION_DEF');
         assertEqual(success.result.name.toUpperCase(), 'GETTIME');
         assertEqual(success.result.params.length, 0);
+    });
+
+    // --- MACRO FUNCTIONS (DEF FN) ---
+
+    test('defFnStmt() should parse a single-line DEF FN macro', () => {
+        // This exact syntax is used in Gorillas.bas for random calculations
+        const code = `DEF FnRan (x) = INT(RND(1) * x) + 1`;
+        
+        const success = defFnStmt.run(code);
+        
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'DEF_FN');
+        assertEqual(success.result.name.toUpperCase(), 'FNRAN');
+        
+        // Verifying the parameter signature
+        assertEqual(success.result.params.length, 1);
+        assertEqual(success.result.params[0].toUpperCase(), 'X');
+        
+        // Verifying the right-side expression (Should be a BINARY_OP '+')
+        assertEqual(success.result.expression.type, 'BINARY_OP');
+        assertEqual(success.result.expression.operator, '+');
     });
 
 });

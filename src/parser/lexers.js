@@ -1,5 +1,5 @@
 // src/parser/lexers.js
-import { regex, sequenceObj, capture, Parser } from './monad.js';
+import { regex, sequenceObj, capture, Parser, optional, choice } from './monad.js';
 import { BuiltIns } from '../runtime/builtins.js';
 
 /**
@@ -11,30 +11,62 @@ export const optWs = regex(/^[ \t]*/);
 
 /**
  * End Of Statement (EOS)
- * Handles optional whitespace, comments ('), colons (:), and line breaks.
+ * Handles optional whitespace, comments (' or REM), colons (:), and line breaks.
  * Optimized for linear matching to prevent backtracking on large legacy files.
  * @type {Parser<string>}
  */
-export const eos = regex(/^[ \t]*(?:'[^\n]*)?(?:\r?\n|:)(?:[ \t\r\n]|(?:'[^\n]*))*/);
+export const eos = regex(/^[ \t]*(?:(?:'|REM\b)[^\n]*)?(?:\r?\n|:)(?:[ \t\r\n]|(?:(?:'|REM\b)[^\n]*))*/i);
 
 // --- ATOMIC LEXERS FOR UI TOKENIZATION ---
 
-export const commentLexer = regex(/^'[^\n]*/).map(val => ({ type: 'COMMENT', value: val }));
+/**
+ * Captures both apostrophe (') and REM comments.
+ */
+export const commentLexer = regex(/^(?:'|REM\b)[^\n]*/i).map(val => ({ type: 'COMMENT', value: val }));
 export const whitespaceLexer = regex(/^[ \t\r\n]+/).map(val => ({ type: 'WHITESPACE', value: val }));
 export const symbolLexer = regex(/^[^a-zA-Z0-9_ \t\r\n"']+/).map(val => ({ type: 'SYMBOL', value: val }));
 
 // --- LITERALS ---
 
 /**
- * Parses numeric literals including Hexadecimal (&H) and Decimals.
+ * Parses numeric literals including Hexadecimal (&H), Decimals, Scientific Notation (E/D),
+ * and QBasic type suffixes (%, &, !, #).
  */
-export const numberLiteral = regex(/^(?:&H[0-9A-Fa-f]+|\d+(?:\.\d*)?|\.\d+)/i).map(n => {
+export const numberLiteral = regex(/^(?:&H[0-9A-Fa-f]+|\d+(?:\.\d*)?|\.\d+)(?:[eEdD][-+]?\d+)?(?:[%&!#])?/i).map(n => {
+    let cleanNum = n.toUpperCase();
+
     // Hexadecimal conversion (Base 16 to Base 10)
-    if (n.toUpperCase().startsWith('&H')) {
-        return { type: 'NUMBER', value: parseInt(n.substring(2), 16), raw: n };
+    if (cleanNum.startsWith('&H')) {
+        // Strip trailing QBasic type suffix ONLY at the end of the string ($)
+        cleanNum = cleanNum.replace(/[%&!#]$/, '');
+        return { type: 'NUMBER', value: parseInt(cleanNum.substring(2), 16), raw: n };
     }
-    // Standard decimal parsing
-    return { type: 'NUMBER', value: parseFloat(n), raw: n };
+
+    // Standard decimal and scientific processing
+    cleanNum = cleanNum.replace(/[%&!#]$/, ''); // Strip type suffixes at the end only
+    cleanNum = cleanNum.replace('D', 'E');      // Convert QBasic 'D' (Double) exponent to JS 'E'
+    
+    return { type: 'NUMBER', value: parseFloat(cleanNum), raw: n };
+});
+
+/**
+ * Parses numeric literals with an optional leading sign (+ or -).
+ * Crucial for statements like DATA or CONST that expect static signed values 
+ * without invoking the complex unary/binary expression parser.
+ */
+export const signedNumberLiteral = sequenceObj([
+    capture('sign', optional(choice([regex(/^\-/), regex(/^\+/) ]))),
+    capture('num', numberLiteral)
+]).map(obj => {
+    if (obj.sign === '-') {
+        // Manually invert the value for the AST and preserve the raw string
+        return { type: 'NUMBER', value: -obj.num.value, raw: '-' + obj.num.raw };
+    }
+    if (obj.sign === '+') {
+        // Just preserve the explicit '+' in the raw string
+        return { type: 'NUMBER', value: obj.num.value, raw: '+' + obj.num.raw };
+    }
+    return obj.num; // Unsigned numbers remain unchanged
 });
 
 /**
@@ -61,13 +93,17 @@ const RESERVED_KEYWORDS = new Set([
     'IF', 'THEN', 'ELSE', 'ELSEIF', 'END', 'FOR', 'TO', 'STEP', 'NEXT',
     'DO', 'LOOP', 'UNTIL', 'WHILE', 'WEND', 'GOTO', 'GOSUB', 'RETURN', 'CALL',
     'SELECT', 'CASE',
+    // Legacy Error Handling & Jumps
+    'ON', 'ERROR', 'RESUME',
     // Declarations
     'SUB', 'FUNCTION', 'DECLARE', 'DIM', 'SHARED', 'AS', 'TYPE', 'CONST', 'DEFINT', 'DEF', 'SEG', 'ANY', 'STATIC',
     // System and Hardware Instructions
     'PRINT', 'USING', 'CLS', 'LOCATE', 'COLOR', 'POKE', 'OUT', 'RANDOMIZE', 'SCREEN', 'WIDTH', 'DATA', 'READ', 'RESTORE', 'INPUT',
-    'WINDOW', 'PSET', 'CIRCLE', 'LINE', 'PAINT',
+    'WINDOW', 'PSET', 'CIRCLE', 'LINE', 'PAINT', 'PALETTE', 'PRESET', 'PUT', 'GET', 'VIEW', 'PLAY',
     // Logical and Mathematical textual operators
-    'AND', 'OR', 'NOT', 'MOD'
+    'AND', 'OR', 'NOT', 'MOD', 'XOR',
+    // Comments
+    'REM'
 ]);
 
 /**
@@ -75,7 +111,7 @@ const RESERVED_KEYWORDS = new Set([
  * These interact with the HAL and are handled directly in the Evaluator loop.
  */
 const HARDWARE_BUILTINS = [
-    'PEEK', 'INP', 'OUT', 'INKEY$', 'TIMER', 'COMMAND$', 'ENVIRON$'
+    'PEEK', 'INP', 'OUT', 'INKEY$', 'TIMER', 'COMMAND$', 'ENVIRON$', 'POINT'
 ];
 
 /**

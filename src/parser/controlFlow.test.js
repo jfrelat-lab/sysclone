@@ -204,4 +204,40 @@ registerSuite('QBasic Control Flow (AST)', () => {
         assertEqual(caseList[2].value, 8);
     });
 
+    test('ifStmt() should parse multi-line IF with multiple ELSEIF branches', () => {
+        const code = `IF score > 100 THEN
+            rank = 1
+        ELSEIF score > 50 THEN
+            rank = 2
+        ELSEIF score > 10 THEN
+            rank = 3
+        ELSE
+            rank = 4
+        END IF`;
+
+        // Assuming ifStmt is imported and tested here
+        const ast = ifStmt.run(code);
+        
+        assertEqual(ast.isError, false);
+        assertEqual(ast.result.type, 'IF');
+        
+        // Check the main condition
+        assertEqual(ast.result.condition.operator, '>');
+        assertEqual(ast.result.condition.right.value, 100);
+        
+        // Check the ELSEIF cascade
+        assertEqual(ast.result.elseIfBlocks.length, 2);
+        
+        // First ELSEIF (score > 50)
+        assertEqual(ast.result.elseIfBlocks[0].condition.right.value, 50);
+        assertEqual(ast.result.elseIfBlocks[0].block[0].target.value, 'RANK');
+        assertEqual(ast.result.elseIfBlocks[0].block[0].value.value, 2);
+
+        // Second ELSEIF (score > 10)
+        assertEqual(ast.result.elseIfBlocks[1].condition.right.value, 10);
+        assertEqual(ast.result.elseIfBlocks[1].block[0].value.value, 3);
+        
+        // Check the fallback ELSE
+        assertEqual(ast.result.elseBlock[0].value.value, 4);
+    });
 });

@@ -2,11 +2,19 @@
 import { choice, many, regex, optional, capture, sequenceObj, lazy, sequenceOf } from './monad.js';
 import { identifier, keyword, optWs, ws, eos } from './lexers.js';
 import { expression } from './expressions.js';
-import { statement } from './statements.js';
+import { 
+    labelDef, clsStmt, viewPrintStmt, playStmt, printStmt, locateStmt, colorStmt, 
+    defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
+    gotoStmt, gosubStmt, returnStmt, randomizeStmt, 
+    screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
+    windowStmt, psetStmt, lineStmt, circleStmt, paintStmt,
+    onErrorStmt, resumeStmt, paletteStmt, putGraphicsStmt, getGraphicsStmt,
+    inputStmt, lineInputStmt, endStmt, implicitCallStmt 
+} from './statements.js';
 
 // Import declarations and subroutines from previous milestones
 import { dimDecl, typeDecl, defintDecl, constDecl } from './declarations.js';
-import { subDef, functionDef, declareStmt } from './subroutines.js';
+import { subDef, functionDef, declareStmt, defFnStmt } from './subroutines.js';
 
 /**
  * Consumes whitespace, line endings, and comments (the "noise" between statements).
@@ -14,11 +22,27 @@ import { subDef, functionDef, declareStmt } from './subroutines.js';
 const skipEmpty = many(choice([ws, eos]));
 
 /**
+ * Represents a single, atomic instruction (no blocks, no control flow).
+ * This aggregates all individual parsers from statements.js.
+ */
+const atomicStatement = lazy(() => choice([
+    labelDef, clsStmt, printStmt, locateStmt, colorStmt, 
+    defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
+    gotoStmt, gosubStmt, returnStmt, randomizeStmt, 
+    lineInputStmt, // Before lineStmt
+    viewPrintStmt, playStmt,
+    screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
+    windowStmt, psetStmt, lineStmt, circleStmt, paintStmt,
+    onErrorStmt, resumeStmt, paletteStmt, putGraphicsStmt, getGraphicsStmt,
+    inputStmt, endStmt, implicitCallStmt
+]));
+
+/**
  * Parses one or more statements separated by colons (:) on a single line.
  */
 const statementList = sequenceObj([
-    capture('first', lazy(() => statement)),
-    capture('rest', many(sequenceOf([optWs, regex(/^:/), optWs, lazy(() => statement)]).map(arr => arr[3])))
+    capture('first', lazy(() => atomicStatement)),
+    capture('rest', many(sequenceOf([optWs, regex(/^:/), optWs, lazy(() => atomicStatement)]).map(arr => arr[3])))
 ]).map(obj => [obj.first, ...obj.rest]);
 
 /**
@@ -76,20 +100,21 @@ export const selectCaseStmt = lazy(() => sequenceObj([
  * Master choice for any valid statement, declaration, or routine definition.
  */
 const anyStatement = lazy(() => choice([
+    defFnStmt,
     declareStmt,
     functionDef,
     subDef,
-    typeDecl,    
-    dimDecl,     
+    typeDecl,
+    dimDecl,
     defintDecl,
     constDecl,
-    ifStmt, 
-    forStmt, 
+    ifStmt,
+    forStmt,
     doPreCondStmt,
-    doPostCondStmt, 
+    doPostCondStmt,
     selectCaseStmt,
     whileWendStmt,
-    statement 
+    atomicStatement
 ]));
 
 /**
@@ -114,22 +139,33 @@ export const block = lazy(() => sequenceObj([
 // --- 1. IF STRUCTURES ---
 
 /**
- * Classic multi-line IF. Requires a newline after THEN and ELSE.
+ * Parses an ELSEIF block.
+ */
+const elseIfBlock = sequenceObj([
+    optWs, keyword('ELSEIF'), ws, capture('condition', expression), ws, keyword('THEN'), eos,
+    capture('block', lazy(() => block))
+]).map(obj => ({
+    condition: obj.condition,
+    block: obj.block
+}));
+
+/**
+ * Classic multi-line IF.
  */
 const multiLineIfStmt = sequenceObj([
-    keyword('IF'), ws, capture('condition', expression), ws, keyword('THEN'), 
-    eos, 
+    keyword('IF'), ws, capture('condition', expression), ws, keyword('THEN'), eos, 
     capture('thenBlock', block), 
+    capture('elseIfBlocks', many(elseIfBlock)),
     capture('elseBlockOpt', optional(sequenceObj([
-        keyword('ELSE'), 
-        eos, 
+        optWs, keyword('ELSE'), eos, 
         capture('elseBlock', block)
-    ]).map(obj => obj.elseBlock))),
-    keyword('END'), ws, keyword('IF')
+    ]).map(obj => obj.elseBlock))),    
+    optWs, keyword('END'), ws, keyword('IF')
 ]).map(obj => ({
     type: 'IF', 
     condition: obj.condition, 
     thenBlock: obj.thenBlock,
+    elseIfBlocks: obj.elseIfBlocks,
     elseBlock: obj.elseBlockOpt || []
 }));
 
