@@ -55,6 +55,33 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         assertEqual(env.lookup('COMPLEX'), 28);
     });
 
+    test('Should correctly allocate scalar variables without turning them into arrays', () => {
+        const env = new Environment();
+        
+        // This code declares a simple scalar (lives) and verifies its native behavior.
+        executeCode(env, `
+            DIM lives AS INTEGER
+            
+            ' In QBasic, an uninitialized scalar defaults to 0.
+            ' If "lives" was erroneously transformed into an array (QArray), 
+            ' the comparison "QArray = 0" will yield FALSE in JavaScript!
+            IF lives = 0 THEN
+                status = 1
+            ELSE
+                status = 2
+            END IF
+        `);
+        
+        const livesVar = env.lookup('LIVES');
+        
+        // 1. Structural proof: lives MUST be a primitive number, not a QArray object
+        assertEqual(typeof livesVar, 'number', "lives should be a primitive number");
+        assertEqual(livesVar, 0, "lives should default to 0");
+        
+        // 2. Behavioral proof: did the CPU take the correct IF branch?
+        assertEqual(env.lookup('STATUS'), 1, "The engine failed to evaluate lives = 0");
+    });
+
     // --- AUDIT-DRIVEN CONTROL FLOW TESTS ---
 
     test('Should execute IF...THEN...ELSE blocks correctly', () => {
@@ -148,6 +175,50 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         const arrayObj = env.lookup('ARENA');
         assertEqual(arrayObj.get([5]), 42);
         assertEqual(arrayObj.get([10]), 50);
+    });
+
+    test('Should correctly differentiate scalar variables and arrays in DIM', () => {
+        const env = new Environment();
+        
+        // Testing the "Truthy empty array" bug fix
+        executeCode(env, `
+            DIM scalarVar AS INTEGER
+            DIM arrayVar(5) AS INTEGER
+            scalarVar = 42
+            arrayVar(1) = 99
+        `);
+        
+        // scalarVar should be a primitive number, NOT a QArray object
+        const scalar = env.lookup('SCALARVAR');
+        assertEqual(typeof scalar, 'number');
+        assertEqual(scalar, 42);
+        
+        // arrayVar should properly be instantiated as a QArray
+        const arr = env.lookup('ARRAYVAR');
+        assertEqual(arr.constructor.name, 'QArray');
+        assertEqual(arr.get([1]), 99);
+    });
+
+    test('Should handle REDIM for dynamic array reallocation (Without PRESERVE)', () => {
+        const env = new Environment();
+        executeCode(env, `
+            DIM dynArray(5)
+            dynArray(2) = 50
+            
+            ' Reallocate the array with new bounds.
+            ' In QBasic, without the PRESERVE keyword, this clears the memory.
+            REDIM dynArray(10)
+            dynArray(10) = 100
+        `);
+        
+        const arr = env.lookup('DYNARRAY');
+        assertEqual(arr.constructor.name, 'QArray');
+        
+        // Verify the old data was wiped clean
+        assertEqual(arr.get([2]), 0);
+        
+        // Verify the new upper bound is accessible
+        assertEqual(arr.get([10]), 100);
     });
 
     test('Should create and use custom TYPE structures (UDT)', () => {
@@ -353,40 +424,133 @@ registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
         assertEqual(mockVga.printed[0], "SYSCLONE\r\n");
     });
 
-    test('Should interface correctly with IO and VGA for INPUT polling', () => {
+    // --- GRAPHICS BLITTING (GET / PUT) INTEGRATION TESTS ---
+
+    test('GET and PUT should pass array references to VGA without overwriting memory', () => {
         const env = new Environment();
         
-        // 1. Build the updated VGA Mock (Cursor aware)
+        // 1. Mock VGA to intercept GET and PUT hardware calls
         const mockVga = {
-            printed: [],
-            cursorVisible: false,
-            showCursor() { this.cursorVisible = true; },
-            hideCursor() { this.cursorVisible = false; },
-            print(data) { 
-                this.printed.push(bytesToString(data)); 
+            getCalled: null,
+            putCalled: null,
+            getGraphics(x1, y1, x2, y2, arr, idx, sIsStep, eIsStep) {
+                this.getCalled = { x1, y1, x2, y2, arr, idx };
+            },
+            putGraphics(x, y, arr, idx, action, isStep) {
+                this.putCalled = { x, y, arr, idx, action };
             }
         };
+
+        // 2. Execute QBasic code that creates an array and blits it
+        const code = `
+            DIM spriteData(50)
+            GET (10, 10)-(20, 20), spriteData
+            PUT (50, 50), spriteData, XOR
+        `;
         
-        // 2. Build the IO Mock (Simulate a user typing keys)
+        executeWithHardware(env, { vga: mockVga }, code);
+        
+        // 3. Assertions on the GET command
+        assertEqual(mockVga.getCalled.x1, 10, "GET X1 should be 10");
+        assertEqual(mockVga.getCalled.y2, 20, "GET Y2 should be 20");
+        assertEqual(mockVga.getCalled.arr.constructor.name, 'QArray', "GET must receive the QArray object, not a primitive");
+
+        // 4. Assertions on the PUT command
+        assertEqual(mockVga.putCalled.x, 50, "PUT X should be 50");
+        assertEqual(mockVga.putCalled.action, 'XOR', "PUT action should be parsed as XOR");
+        
+        // CRITICAL: Ensure the exact same memory reference was passed to both
+        assertEqual(mockVga.putCalled.arr === mockVga.getCalled.arr, true, "PUT must use the exact same QArray reference");
+    });
+
+    test('POINT should correctly read pixel colors from the VGA hardware', () => {
+        const env = new Environment();
+        
+        // 1. Mock the VGA with a deterministic 'point' response
+        const mockVga = {
+            point(x, y) {
+                if (x === 150 && y === 100) return 42; // The magic banana pixel
+                return 0; // Empty space
+            }
+        };
+
+        // 2. Execute QBasic code querying the screen
+        executeWithHardware(env, { vga: mockVga }, `
+            colorHit = POINT(150, 100)
+            colorMiss = POINT(10, 10)
+        `);
+        
+        // 3. Assertions
+        assertEqual(env.lookup('COLORHIT'), 42, "POINT must return the hardware color at specific coordinates");
+        assertEqual(env.lookup('COLORMISS'), 0, "POINT must return 0 for empty space");
+    });
+
+    // --- USER I/O INTEGRATION TESTS ---
+
+    test('INPUT should handle multiple variables, split by commas, and append "? " to prompt', () => {
+        const env = new Environment();
+        
+        // 1. Mock VGA to track what is printed to the screen
+        const mockVga = {
+            printed: [], cursorVisible: false,
+            showCursor() { this.cursorVisible = true; },
+            hideCursor() { this.cursorVisible = false; },
+            print(data) { this.printed.push(bytesToString(data)); }
+        };
+        
+        // 2. Mock IO to simulate a user typing a sequence of keys
+        // The user types: "42, 10" then presses ENTER (Char 13)
         const mockIo = {
-            // Simulate typing '4', then '2', then hitting 'ENTER' (Char 13)
-            keyQueue: ['4', '2', String.fromCharCode(13)],
+            keyQueue: ['4', '2', ',', ' ', '1', '0', String.fromCharCode(13)],
             inkey() {
-                // The CPU will poll this in a while(true) loop
                 return this.keyQueue.length > 0 ? this.keyQueue.shift() : "";
             }
         };
         
-        executeWithHardware(env, { vga: mockVga, io: mockIo }, 'INPUT "Age"; userAge');
+        // Execute a multi-variable INPUT statement
+        executeWithHardware(env, { vga: mockVga, io: mockIo }, 'INPUT "Coordinates"; x, y');
         
-        // 3. Assert the prompt was printed correctly
-        assertEqual(mockVga.printed[0], "Age? ");
-        
-        // 4. Assert that the hardware cursor was cleanly disabled after the input
-        assertEqual(mockVga.cursorVisible, false);
+        // 3. Assertions on Hardware Behavior
+        // Standard INPUT always appends "? " automatically in QBasic
+        assertEqual(mockVga.printed[0], "Coordinates? ", "INPUT should append '? ' to the prompt");
+        assertEqual(mockVga.cursorVisible, false, "Cursor must be hidden after execution");
 
-        // 5. Assert the environment caught the parsed number
-        assertEqual(env.lookup('USERAGE'), 42);
+        // 4. Assertions on Memory & Parsing
+        // The CPU should split the input at the comma and assign respective values
+        assertEqual(env.lookup('X'), 42, "First target should be parsed as 42");
+        assertEqual(env.lookup('Y'), 10, "Second target should be parsed as 10 (ignoring spaces)");
+    });
+
+    test('LINE INPUT should read full strings including commas and suppress the "? "', () => {
+        const env = new Environment();
+        
+        // 1. Mock VGA setup
+        const mockVga = {
+            printed: [], cursorVisible: false,
+            showCursor() { this.cursorVisible = true; },
+            hideCursor() { this.cursorVisible = false; },
+            print(data) { this.printed.push(bytesToString(data)); }
+        };
+        
+        // 2. Mock IO simulating a user typing a name with a comma
+        // The user types: "Smith, John" then presses ENTER
+        const mockIo = {
+            keyQueue: ['S', 'm', 'i', 't', 'h', ',', ' ', 'J', 'o', 'h', 'n', String.fromCharCode(13)],
+            inkey() {
+                return this.keyQueue.length > 0 ? this.keyQueue.shift() : "";
+            }
+        };
+        
+        // Execute a LINE INPUT statement
+        executeWithHardware(env, { vga: mockVga, io: mockIo }, 'LINE INPUT "Full Name: "; pName$');
+        
+        // 3. Assertions on Hardware Behavior
+        // LINE INPUT natively suppresses the "? " formatting
+        assertEqual(mockVga.printed[0], "Full Name: ", "LINE INPUT should NOT append '? '");
+        
+        // 4. Assertions on Memory
+        // The comma should NOT trigger a split, the entire string goes to the single variable
+        assertEqual(env.lookup('PNAME$'), "Smith, John", "Entire string including commas must be captured");
     });
 
     test('Should interface correctly with Memory for POKE', () => {

@@ -1,6 +1,6 @@
 // src/parser/declarations.js
 
-import { choice, sequenceObj, sequenceOf, capture, optional, many, regex } from './monad.js';
+import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, str } from './monad.js';
 import { identifier, keyword, ws, optWs, eos } from './lexers.js';
 import { expression } from './expressions.js';
 
@@ -66,12 +66,12 @@ const arrayBound = choice([
  * Parses the list of dimensions for an array within parentheses.
  */
 const boundsList = sequenceObj([
-    regex(/^\(/), optWs,
+    str('('), optWs,
     capture('bounds', sequenceOf([
         arrayBound, 
-        many(sequenceOf([optWs, regex(/^,/), optWs, arrayBound]).map(arr => arr[3])) 
+        many(sequenceOf([optWs, str(','), optWs, arrayBound]).map(arr => arr[3])) 
     ]).map(arr => [arr[0], ...arr[1]])),
-    optWs, regex(/^\)/)
+    optWs, str(')')
 ]).map(obj => obj.bounds);
 
 /**
@@ -100,10 +100,29 @@ export const dimDecl = sequenceObj([
     ws,
     capture('declarations', sequenceOf([
         singleDim,
-        many(sequenceOf([optWs, regex(/^,/), optWs, singleDim]).map(arr => arr[3]))
+        many(sequenceOf([optWs, str(','), optWs, singleDim]).map(arr => arr[3]))
     ]).map(arr => [arr[0], ...arr[1]]))
 ]).map(obj => ({
     type: 'DIM',
+    shared: obj.sharedOpt !== null,
+    declarations: obj.declarations 
+}));
+
+/**
+ * Main REDIM parser. 
+ * Dynamically reallocates array bounds. In QBasic, without PRESERVE, this clears the array.
+ * Example: REDIM LBan&(8), RBan&(8)
+ */
+export const redimDecl = sequenceObj([
+    keyword('REDIM'),
+    capture('sharedOpt', optional(sequenceOf([ws, keyword('SHARED')]))),
+    ws,
+    capture('declarations', sequenceOf([
+        singleDim,
+        many(sequenceOf([optWs, str(','), optWs, singleDim]).map(arr => arr[3]))
+    ]).map(arr => [arr[0], ...arr[1]]))
+]).map(obj => ({
+    type: 'REDIM',
     shared: obj.sharedOpt !== null,
     declarations: obj.declarations 
 }));

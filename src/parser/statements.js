@@ -443,6 +443,25 @@ export const playStmt = sequenceObj([
 }));
 
 /**
+ * Parses the BEEP statement used for simple PC Speaker sounds.
+ * Syntax: BEEP
+ */
+export const beepStmt = keyword('BEEP').map(() => ({ type: 'BEEP' }));
+
+/**
+ * Parses the SLEEP statement.
+ * Syntax: SLEEP [seconds]
+ * If seconds is omitted, it halts until a key is pressed.
+ */
+export const sleepStmt = sequenceObj([
+    keyword('SLEEP'),
+    capture('duration', optional(sequenceOf([ws, expression]).map(arr => arr[1])))
+]).map(obj => ({
+    type: 'SLEEP',
+    duration: obj.duration || null
+}));
+
+/**
  * Parses the LINE INPUT statement.
  * Used to read an entire line of text from the user, ignoring comma separators.
  * Syntax: LINE INPUT ["prompt";] stringVariable$

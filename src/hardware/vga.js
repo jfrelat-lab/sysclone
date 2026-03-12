@@ -41,7 +41,7 @@ export class VGA {
         this.setMode(0); // Boot in Text Mode
     }
 
-initDisplay(width, height) {
+    initDisplay(width, height) {
         if (this.options.displayAdapter) {
             this.display = this.options.displayAdapter;
             this.display.width = width;
@@ -134,6 +134,32 @@ initDisplay(width, height) {
     print(bytes) { this.activeDriver.print(bytes); }
 
     /**
+     * Maps a hardware color attribute to a specific display color index.
+     * Equivalent to QBasic: PALETTE attribute, color
+     */
+    setPalette(attribute, color) {
+        if (this.activeDriver && typeof this.activeDriver.setPalette === 'function') {
+            this.activeDriver.setPalette(attribute, color);
+        }
+    }
+
+    /**
+     * Evaluates the color of a specific pixel on the screen.
+     * Crucial for collision detection in QBasic (POINT function).
+     * Automatically applies the WINDOW coordinate projection.
+     */
+    point(x, y) {
+        if (!this.activeDriver || typeof this.activeDriver.getPixel !== 'function') return 0;
+        
+        // Resolve logical coords (WINDOW) to physical screen coords
+        const { px, py } = this.resolveCoords(x, y, false);
+        const color = this.activeDriver.getPixel(px, py);
+        
+        // If pixel is out of bounds, return 0 (Black) to avoid breaking physics
+        return color !== -1 ? color : 0; 
+    }
+
+    /**
      * Resolves logical coordinates into physical driver coordinates, applying STEP and WINDOW.
      */
     resolveCoords(x, y, isStep) {
@@ -201,6 +227,22 @@ initDisplay(width, height) {
         if (!this.activeDriver || typeof this.activeDriver.paint !== 'function') return;
         const { px, py } = this.resolveCoords(x, y, isStep);
         this.activeDriver.paint(px, py, paintColor, borderColor);
+    }
+
+    getGraphics(x1, y1, x2, y2, qArray, startIndex, startIsStep, endIsStep) {
+        if (!this.activeDriver || typeof this.activeDriver.getGraphics !== 'function') return;
+        const p1 = this.resolveCoords(x1, y1, startIsStep);
+        // Second coordinate STEP in QBasic is relative to the first coordinate!
+        if (endIsStep) { this.lastX = x1; this.lastY = y1; }
+        const p2 = this.resolveCoords(x2, y2, endIsStep);
+        
+        this.activeDriver.getGraphics(p1.px, p1.py, p2.px, p2.py, qArray, startIndex);
+    }
+
+    putGraphics(x, y, qArray, startIndex, action, isStep) {
+        if (!this.activeDriver || typeof this.activeDriver.putGraphics !== 'function') return;
+        const p = this.resolveCoords(x, y, isStep);
+        this.activeDriver.putGraphics(p.px, p.py, qArray, startIndex, action);
     }
 
     color(fg, bg) { this.activeDriver.color(fg, bg); }

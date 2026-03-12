@@ -1,5 +1,5 @@
 // src/parser/declarations.test.js
-import { defintDecl, constDecl, typeDecl, dimDecl } from './declarations.js';
+import { defintDecl, constDecl, typeDecl, dimDecl, redimDecl } from './declarations.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
 /**
@@ -54,4 +54,21 @@ registerSuite('QBasic Declarations (AST)', () => {
         assertEqual(decl.varType, 'STRING');
     });
 
+    test('redimDecl() should parse dynamic array reallocation', () => {
+        // Syntax from Gorillas.bas
+        const ast = redimDecl.run('REDIM LBan&(8), RBan&(8)').result;
+        
+        assertEqual(ast.type, 'REDIM');
+        assertEqual(ast.shared, false);
+        assertEqual(ast.declarations.length, 2);
+        
+        // Verify first declaration
+        assertEqual(ast.declarations[0].name, 'LBAN&');
+        assertEqual(ast.declarations[0].isArray, true);
+        assertEqual(ast.declarations[0].bounds[0].max.value, 8);
+        
+        // Verify second declaration
+        assertEqual(ast.declarations[1].name, 'RBAN&');
+        assertEqual(ast.declarations[1].isArray, true);
+    });
 });

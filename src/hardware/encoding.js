@@ -40,6 +40,11 @@ for (let i = 0; i < 256; i++) {
     UNICODE_TO_CP437.set(CP437_TO_UNICODE[i], i);
 }
 
+// Architectural definition of strict control characters
+// These bypass the visual CP437 mapping to maintain logical integrity in the VM.
+// 8=Backspace, 9=Tab, 10=LineFeed, 13=CarriageReturn, 27=Escape
+const CONTROL_BYTES = new Set([8, 9, 10, 13, 27]);
+
 /**
  * Converts a raw Uint8Array (typically a legacy DOS file) into a standard JS Unicode string.
  * Explicitly preserves ASCII control characters used in text files (Tabs, Newlines).
@@ -51,12 +56,11 @@ export function fromCP437Array(bytes) {
     for (let i = 0; i < bytes.length; i++) {
         const b = bytes[i];
         
-        // Preserve strictly necessary ASCII control formatting
-        if (b === 9) { result += '\t'; }
-        else if (b === 10) { result += '\n'; }
-        else if (b === 13) { result += '\r'; }
-        else if (b === 26) { continue; } // DOS EOF (^Z) - ignore it to avoid parser garbage
-        else {
+        if (CONTROL_BYTES.has(b)) { 
+            result += String.fromCharCode(b); 
+        } else if (b === 26) { 
+            continue; // DOS EOF (^Z) - ignore it to avoid parser garbage
+        } else {
             result += CP437_TO_UNICODE[b];
         }
     }
@@ -75,11 +79,9 @@ export function toCP437Array(unicodeString) {
         const char = unicodeString[i];
         const charCode = unicodeString.charCodeAt(i);
         
-        // Handle control chars explicitly
-        if (charCode === 9 || charCode === 10 || charCode === 13) {
+        if (CONTROL_BYTES.has(charCode)) {
             bytes[i] = charCode;
-        }
-        else if (UNICODE_TO_CP437.has(char)) {
+        } else if (UNICODE_TO_CP437.has(char)) {
             bytes[i] = UNICODE_TO_CP437.get(char);
         } else {
             // Standard ASCII fallback (0-127) if exact map misses, or 0x3F ('?')
@@ -95,7 +97,9 @@ export function toCP437Array(unicodeString) {
  * @returns {string}
  */
 export function getCharFromCP437(byte) {
-    return CP437_TO_UNICODE[byte & 255];
+    const b = byte & 255;
+    if (CONTROL_BYTES.has(b)) return String.fromCharCode(b);
+    return CP437_TO_UNICODE[b];
 }
 
 /**
@@ -104,7 +108,10 @@ export function getCharFromCP437(byte) {
  * @returns {number}
  */
 export function getCP437FromChar(char) {
-    return toCP437Array(char)[0];
+    if (!char) return 0;
+    const code = char.charCodeAt(0);
+    if (CONTROL_BYTES.has(code)) return code;
+    return UNICODE_TO_CP437.has(char) ? UNICODE_TO_CP437.get(char) : (code <= 127 ? code : 0x3F);
 }
 
 /**
