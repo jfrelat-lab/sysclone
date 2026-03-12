@@ -12,12 +12,6 @@ export class TextModeDriver extends VideoDriver {
         if (new.target === TextModeDriver) {
             throw new TypeError("Cannot construct Abstract instances of TextModeDriver directly.");
         }
-        this.cols = 80;
-        this.rows = 25;
-        this.cursorX = 0;
-        this.cursorY = 0;
-        this.currentFg = 15;
-        this.currentBg = 0;
         this.cursorEnabled = false;
         this.TEXT_VRAM_BASE = 0xB8000;
     }

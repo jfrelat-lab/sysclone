@@ -3,7 +3,7 @@ import { choice, many, regex, optional, capture, sequenceObj, lazy, sequenceOf }
 import { identifier, keyword, optWs, ws, eos } from './lexers.js';
 import { expression } from './expressions.js';
 import { 
-    labelDef, clsStmt, viewPrintStmt, playStmt, printStmt, locateStmt, colorStmt, 
+    labelDef, clsStmt, viewPrintStmt, playStmt, beepStmt, sleepStmt, printStmt, locateStmt, colorStmt, 
     defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
     gotoStmt, gosubStmt, returnStmt, randomizeStmt, 
     screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
@@ -13,7 +13,7 @@ import {
 } from './statements.js';
 
 // Import declarations and subroutines from previous milestones
-import { dimDecl, typeDecl, defintDecl, constDecl } from './declarations.js';
+import { dimDecl, redimDecl, typeDecl, defintDecl, constDecl } from './declarations.js';
 import { subDef, functionDef, declareStmt, defFnStmt } from './subroutines.js';
 
 /**
@@ -30,7 +30,7 @@ const atomicStatement = lazy(() => choice([
     defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
     gotoStmt, gosubStmt, returnStmt, randomizeStmt, 
     lineInputStmt, // Before lineStmt
-    viewPrintStmt, playStmt,
+    viewPrintStmt, playStmt, beepStmt, sleepStmt,
     screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
     windowStmt, psetStmt, lineStmt, circleStmt, paintStmt,
     onErrorStmt, resumeStmt, paletteStmt, putGraphicsStmt, getGraphicsStmt,
@@ -105,7 +105,7 @@ const anyStatement = lazy(() => choice([
     functionDef,
     subDef,
     typeDecl,
-    dimDecl,
+    dimDecl, redimDecl,
     defintDecl,
     constDecl,
     ifStmt,

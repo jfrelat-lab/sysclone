@@ -9,10 +9,11 @@ import { TextModeDriver } from './text_mode_driver.js';
 export class Mode0Text extends TextModeDriver {
     constructor(memory) {
         super(memory);
-        this.cols = 80;
-        this.rows = 25;
+        this.font = fontVGA8x16;
         this.charWidth = 8;
         this.charHeight = 16;
+        this.cols = 80;
+        this.rows = 25;
         
         this.width = this.cols * this.charWidth;
         this.height = this.rows * this.charHeight;
@@ -56,14 +57,14 @@ export class Mode0Text extends TextModeDriver {
                 let fg32 = this.palette32[attr & 0x0F];
                 const bg32 = this.palette32[attr >> 4];
                 
-                const fontOffset = charCode * 16;
+                const fontOffset = charCode * this.charHeight;
                 const baseX = tx * this.charWidth;
                 let baseY = ty * this.charHeight;
 
                 const isCursorCell = showBlink && (tx === this.cursorX) && (ty === this.cursorY);
 
                 for (let py = 0; py < this.charHeight; py++) {
-                    let glyphRow = fontVGA8x16[fontOffset + py];
+                    let glyphRow = this.font[fontOffset + py];
                     if (isCursorCell && py >= 14) {
                         glyphRow = 0xFF;
                         fg32 = this.palette32[this.currentFg]; 

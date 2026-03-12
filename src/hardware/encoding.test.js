@@ -1,5 +1,5 @@
 // src/hardware/encoding.test.js
-import { fromCP437Array, toCP437Array, recoverCP437Mojibake, autoDecodeSource } from './encoding.js';
+import { getCharFromCP437, getCP437FromChar, fromCP437Array, toCP437Array, recoverCP437Mojibake, autoDecodeSource } from './encoding.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
 /**
@@ -28,11 +28,25 @@ registerSuite('CP437 Encoding Layer', () => {
         assertEqual(fromCP437Array(bytes), "\u2588\u2584\u2584\u2588");
     });
 
-    test('fromCP437Array() should strictly preserve ASCII control characters (LF, CR, TAB)', () => {
-        // 9 = Tab, 10 = LF, 13 = CR.
-        // If mapped to CP437 graphics (e.g. 10 -> ◙), the parser will break!
-        const bytes = new Uint8Array([65, 9, 66, 13, 10, 67]); // "A\tB\r\nC"
-        assertEqual(fromCP437Array(bytes), "A\tB\r\nC");
+    test('fromCP437Array() should strictly preserve ASCII control characters (BS, TAB, LF, CR, ESC)', () => {
+        // 8 = Backspace, 9 = Tab, 10 = LF, 13 = CR, 27 = Escape
+        // If mapped to CP437 graphics (e.g. 13 -> ♪), the parser and logic will break!
+        const bytes = new Uint8Array([65, 8, 66, 9, 67, 13, 10, 68, 27]); // "A\bB\tC\r\nD\x1B"
+        assertEqual(fromCP437Array(bytes), "A\bB\tC\r\nD\x1B");
+    });
+
+    test('getCharFromCP437() and getCP437FromChar() should respect CONTROL_BYTES bypass', () => {
+        // Control bytes should return actual JS control characters, NOT graphical symbols
+        assertEqual(getCharFromCP437(13), "\r", "CR should remain \\r, not a music note");
+        assertEqual(getCharFromCP437(8), "\b", "BS should remain \\b, not a hole punch");
+        
+        // Reverse operation should also bypass the map
+        assertEqual(getCP437FromChar("\r"), 13, "\\r should map back to 13");
+        assertEqual(getCP437FromChar("\x1B"), 27, "Escape should map back to 27");
+
+        // Standard graphical characters should still use the CP437 map
+        assertEqual(getCharFromCP437(1), "\u263A", "Code 1 should be a smiley face");
+        assertEqual(getCP437FromChar("\u263A"), 1, "Smiley face should map to Code 1");
     });
 
     test('fromCP437Array() should gracefully ignore DOS EOF character (^Z / 26)', () => {

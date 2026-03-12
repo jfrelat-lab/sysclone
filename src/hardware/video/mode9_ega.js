@@ -1,4 +1,5 @@
 // src/hardware/video/mode9_ega.js
+import { fontVGA8x14 } from '../font.js';
 import { GraphicsModeDriver } from './graphics_mode_driver.js';
 
 /**
@@ -13,9 +14,13 @@ export class Mode9EGA extends GraphicsModeDriver {
         this.height = 350;
         this.GRAPHICS_VRAM_BASE = 0xA0000;
         
-        // Using an 8x8 font on a 640x350 screen gives an 80x43 text grid
-        this.cols = 80;
-        this.rows = 43;
+        this.font = fontVGA8x14;
+        this.charWidth = 8;
+        this.charHeight = 14;
+        this.cols = this.width / this.charWidth;
+        this.rows = this.height / this.charHeight;
+        this.isPlanar = true; // EGA uses 4-bit Planar formatting for GET/PUT
+        this.bpp = 4;         // 4 bits per pixel
 
         this.initPalette32();
     }
@@ -41,6 +46,24 @@ export class Mode9EGA extends GraphicsModeDriver {
         const g8 = Math.round((g6 / 63) * 255);
         const b8 = Math.round((b6 / 63) * 255);
         this.palette32[index] = (0xFF << 24) | (b8 << 16) | (g8 << 8) | r8;
+    }
+
+    /**
+     * Translates a QBasic PALETTE call into real hardware EGA 32-bit colors.
+     * The EGA color palette uses a 6-bit format (0-63): rgbRGB.
+     * @param {number} attribute - The color index to override (0-15)
+     * @param {number} egaColor - The physical EGA color value (0-63)
+     */
+    setPalette(attribute, egaColor) {
+        if (attribute > 15 || egaColor < 0 || egaColor > 63) return;
+        
+        // Decode 6-bit EGA hardware color format (bits: 5=r, 4=g, 3=b, 2=R, 1=G, 0=B)
+        const r = ((egaColor & 32) ? 0x55 : 0) + ((egaColor & 4) ? 0xAA : 0);
+        const g = ((egaColor & 16) ? 0x55 : 0) + ((egaColor & 2) ? 0xAA : 0);
+        const b = ((egaColor & 8)  ? 0x55 : 0) + ((egaColor & 1) ? 0xAA : 0);
+
+        // Update the 32-bit rendering palette (AABBGGRR)
+        this.palette32[attribute] = (0xFF << 24) | (b << 16) | (g << 8) | r;
     }
 
     // --- LINEAR HARDWARE PRIMITIVES (Simplified EGA) ---

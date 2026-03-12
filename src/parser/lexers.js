@@ -22,7 +22,7 @@ export const eos = regex(/^[ \t]*(?:(?:'|REM\b)[^\n]*)?(?:\r?\n|:)(?:[ \t\r\n]|(
 /**
  * Captures both apostrophe (') and REM comments.
  */
-export const commentLexer = regex(/^(?:'|REM\b)[^\n]*/i).map(val => ({ type: 'COMMENT', value: val }));
+export const commentLexer = regex(/^(?:'|REM\b)[^\r\n]*/i).map(val => ({ type: 'COMMENT', value: val }));
 export const whitespaceLexer = regex(/^[ \t\r\n]+/).map(val => ({ type: 'WHITESPACE', value: val }));
 export const symbolLexer = regex(/^[^a-zA-Z0-9_ \t\r\n"']+/).map(val => ({ type: 'SYMBOL', value: val }));
 
@@ -96,10 +96,10 @@ const RESERVED_KEYWORDS = new Set([
     // Legacy Error Handling & Jumps
     'ON', 'ERROR', 'RESUME',
     // Declarations
-    'SUB', 'FUNCTION', 'DECLARE', 'DIM', 'SHARED', 'AS', 'TYPE', 'CONST', 'DEFINT', 'DEF', 'SEG', 'ANY', 'STATIC',
+    'SUB', 'FUNCTION', 'DECLARE', 'DIM', 'REDIM', 'SHARED', 'AS', 'TYPE', 'CONST', 'DEFINT', 'DEF', 'SEG', 'ANY', 'STATIC',
     // System and Hardware Instructions
     'PRINT', 'USING', 'CLS', 'LOCATE', 'COLOR', 'POKE', 'OUT', 'RANDOMIZE', 'SCREEN', 'WIDTH', 'DATA', 'READ', 'RESTORE', 'INPUT',
-    'WINDOW', 'PSET', 'CIRCLE', 'LINE', 'PAINT', 'PALETTE', 'PRESET', 'PUT', 'GET', 'VIEW', 'PLAY',
+    'WINDOW', 'PSET', 'CIRCLE', 'LINE', 'PAINT', 'PALETTE', 'PRESET', 'PUT', 'GET', 'VIEW', 'PLAY', 'BEEP', 'SLEEP',
     // Logical and Mathematical textual operators
     'AND', 'OR', 'NOT', 'MOD', 'XOR',
     // Comments

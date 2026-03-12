@@ -11,12 +11,22 @@ export class VideoDriver {
         if (new.target === VideoDriver) {
             throw new TypeError("Cannot construct Abstract instances of VideoDriver directly.");
         }
-        /** @type {Object} System memory instance */
         this.memory = memory;
-        /** @type {number} Pixel width of the display */
+
+        // --- Hardware Resolution ---
         this.width = 0;
-        /** @type {number} Pixel height of the display */
         this.height = 0;
+
+        // --- Unified Terminal & Typographic State ---
+        this.cols = 0;
+        this.rows = 0;
+        this.cursorX = 0;
+        this.cursorY = 0;
+        this.currentFg = 15;
+        this.currentBg = 0;
+        this.charWidth = 0;
+        this.charHeight = 0;
+        this.font = null;
     }
 
     // --- MANDATORY HARDWARE CONTRACT ---
@@ -97,11 +107,19 @@ export class VideoDriver {
     hideCursor() {}
 
     /**
-     * Updates a single color entry in the hardware DAC palette.
+     * Updates a single color entry in the hardware DAC palette (via OUT).
      * @param {number} index - Palette index (0-255)
      * @param {number} r6 - 6-bit Red value (0-63)
      * @param {number} g6 - 6-bit Green value (0-63)
      * @param {number} b6 - 6-bit Blue value (0-63)
      */
     updatePalette(index, r6, g6, b6) {}
+
+    /**
+     * Maps a logical color attribute to a physical hardware color (via PALETTE).
+     * Behavior depends on the active graphics mode (EGA vs VGA).
+     * @param {number} attribute - The logical color index
+     * @param {number} color - The physical color value to map to
+     */
+    setPalette(attribute, color) {}
 }

@@ -1,4 +1,5 @@
 // src/hardware/video/mode13_linear.js
+import { fontVGA8x8 } from '../font.js';
 import { GraphicsModeDriver } from './graphics_mode_driver.js';
 
 /**
@@ -12,8 +13,11 @@ export class Mode13Linear extends GraphicsModeDriver {
         this.height = 200;
         this.GRAPHICS_VRAM_BASE = 0xA0000;
         
-        this.cols = 40;
-        this.rows = 25;
+        this.font = fontVGA8x8;
+        this.charWidth = 8;
+        this.charHeight = 8;
+        this.cols = this.width / this.charWidth;
+        this.rows = this.height / this.charHeight;
 
         this.initPalette32();
     }

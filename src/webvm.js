@@ -35,21 +35,47 @@ function resetHardware() {
     ui.forcePlayState(); // Ensure UI reflects the running state
 }
 
+/**
+ * Main execution loop for the Virtual CPU.
+ * Manages instruction budget (Turbo vs. Normal) and intercepts hardware delays.
+ */
 function cpuLoop() {
     if (isPaused || !currentProcess) return;
 
     try {
         if (ui.isTurboMode) {
             const frameStart = performance.now();
+            // Execute instructions for up to 12ms per frame
             while (performance.now() - frameStart < 12) {
                 const state = currentProcess.next();
-                if (state.done) { finalizeExecution(); return; }
+                
+                if (state.done) { 
+                    finalizeExecution(); 
+                    return; 
+                }
+                
+                // --- HARDWARE INTERRUPT AWAIT ---
+                if (state.value && state.value.type === 'SYS_DELAY') {
+                    handleSysDelay(state.value.ms);
+                    return; // Freeze the CPU loop entirely
+                }
             }
         } else {
             let cycles = ui.cyclesPerFrame;
+            // Execute a fixed number of instructions per frame
             while (cycles > 0) {
                 const state = currentProcess.next(); 
-                if (state.done) { finalizeExecution(); return; }
+                
+                if (state.done) { 
+                    finalizeExecution(); 
+                    return; 
+                }
+                
+                // --- HARDWARE INTERRUPT AWAIT ---
+                if (state.value && state.value.type === 'SYS_DELAY') {
+                    handleSysDelay(state.value.ms);
+                    return; // Freeze the CPU loop entirely
+                }
                 cycles--;
             }
         }
@@ -58,8 +84,42 @@ function cpuLoop() {
         return;
     }
     
-    screen.render();
+    // Render graphics at the end of the time slice
+    if (screen) screen.render();
     currentAnimationFrame = requestAnimationFrame(cpuLoop);
+}
+
+/**
+ * Handles asynchronous hardware pauses (SLEEP, PLAY, SOUND).
+ * Yields control back to the browser and resumes execution later.
+ * @param {number} ms - Delay in milliseconds (-1 for indefinite key wait)
+ */
+function handleSysDelay(ms) {
+    // Force an immediate render before sleeping to display pending graphics/text.
+    // Without this, the screen would remain blank during the sleep duration.
+    if (screen) screen.render();
+
+    if (ms > 0) {
+        // Timed delay (e.g., SLEEP n, PLAY, SOUND)
+        setTimeout(() => {
+            // Only resume if the VM wasn't paused or reset by the user during the sleep
+            if (!isPaused && currentProcess) {
+                currentAnimationFrame = requestAnimationFrame(cpuLoop);
+            }
+        }, ms);
+    } else if (ms === -1) {
+        // Indefinite delay (SLEEP without arguments) -> Wait for any keypress
+        const onKey = (e) => {
+            window.removeEventListener('keydown', onKey);
+            if (!isPaused && currentProcess) {
+                currentAnimationFrame = requestAnimationFrame(cpuLoop);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+    } else {
+        // Edge case: 0ms delay, yield to browser and resume immediately
+        currentAnimationFrame = requestAnimationFrame(cpuLoop);
+    }
 }
 
 function finalizeExecution() {

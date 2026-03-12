@@ -7,6 +7,7 @@
   - [x] Create the base structure (`Parser(state) -> { result, rest, error }`).
   - [x] Implement fundamental combinators: `sequence`, `sequenceObj`, `choice`, `many`, `optional`, `lazy`.
   - [x] Implement transformation combinators: `map` (for AST generation).
+  - [x] Optimize token parsers (using strict `str` matching over `regex` for static symbols/keywords to boost performance).
 - [x] **1.2. Create base Lexers (Primitives):**
   - [x] **Line-Based Architecture:** Create the strict `eos` (End Of Statement) token to rigorously handle line breaks `\n`, colons `:`, and empty lines.
   - [x] Horizontal spaces (`ws`, `optWs`) and comments (ignored until line break).
@@ -52,6 +53,7 @@
 - [x] **4.2. I/O Engine (Keyboard & Time):**
   - [x] Wire `INKEY$` to JavaScript `keydown`/`keyup` events with a FIFO keystroke buffer.
   - [x] Wire `TIMER` to local time (seconds since midnight).
+  - [x] Add interactive console commands like `LINE INPUT`.
 - [ ] **4.3. Basic Audio Engine (PC Speaker):**
   - [ ] Wire the `PLAY` command (e.g., `"MBT160O1L8CDEDCDL4ECC"`) using the Web Audio API (Macro Music Language).
 - [x] **4.4. Motherboard and BIOS (Segmented Memory):**
@@ -73,7 +75,7 @@
 
 - [x] **6.1. Arrays and Types (UDT) at Runtime:**
   - [x] Teach the Evaluator to handle `TYPE_DECL` nodes (register the structure's "blueprint").
-  - [x] Teach the Evaluator to instantiate `DIM` by creating `QArray` and composite objects in memory.
+  - [x] Teach the Evaluator to instantiate `DIM` (and dynamically resize via `REDIM`), handling both array structures and single scalar variable declarations (`DIM x AS type`).
 - [x] **6.2. Subroutines (`SUB` and `FUNCTION`):**
   - [x] Handle `SUB` definition registration.
   - [x] Implement the `CALL` mechanism: creating a sub-scope (new memory "bubble") and passing arguments.
@@ -135,7 +137,7 @@
   - [x] Add a "Screenshot" button using native `canvas.toBlob`.
   - [x] Ensure the output is a clean, lossless PNG preserving the DOS pixel ratio.
 - [X] **7.6.6. Native Syntax Highlighting (Dog Fooding):**
-  - [X] Refactor `lexers.js` to explicitly yield `COMMENT` and `WHITESPACE` tokens instead of silently swallowing them in `eos`.
+  - [X] Refactor `lexers.js` to explicitly yield `COMMENT` and `WHITESPACE` tokens instead of silently swallowing them in `eos`. (Included strict regex exclusion of `\r\n` in comments to fix UI line break rendering).
   - [X] Build a lightweight `Tokenizer` that processes the loaded source code through our Monadic Lexers.
   - [X] Render the token stream as colored HTML in the UI without external dependencies.
 
@@ -148,7 +150,7 @@
 
 - [x] **8.1. CP437 / Unicode Translation Layer:**
   - [x] Create a bidirectional mapping table (`toCP437` / `fromCP437`).
-  - [x] Update `main.js` to load standard UTF-8 raw files from GitHub and transpile them into CP437 bytes for virtual RAM.
+  - [x] Update `main.js` to load standard UTF-8 raw files and transpile them into CP437 bytes, ensuring rigorous preservation of legacy control bytes.
   - [x] Implement debugging and CLI helpers (`convert_bas.js`) for legacy file restoration.
 
 ## Phase 9: Advanced QBasic Semantics (Gorillas Prep)
@@ -163,8 +165,8 @@
   - [x] Parse and evaluate single-line macros: `DEF FNname(args) = expr`.
 - [x] **9.4. Math, Strings & Built-ins:**
   - [x] Abstract all pure native functions into a `builtins.js` standard library.
-  - [x] Implement math: `INT`, `FIX`, `ABS`, `SQR`, `RND`, `SIN`, `COS`, `TAN`, `ATN`, `EXP`, `LOG`.
-  - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `VAL`, `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`.
+  - [x] Implement math: `INT`, `FIX`, `ABS`, `SQR`, `RND`, `SIN`, `COS`, `TAN`, `ATN`, `EXP`, `LOG`, `CINT`.
+  - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `VAL`, `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `INSTR`.
 
 ## Phase 10: Advanced Graphics Engine (Gorillas & Mandelbrot)
 *Expand the engine capabilities to support computationally and graphically intensive classics.*
@@ -174,26 +176,28 @@
   - [x] Support `STEP` relative coordinate tracking (Graphic Cursor) across all geometry primitives.
   - [ ] Support `VIEW PRINT` to restrict text rendering and scrolling to specific screen rows.
 - [ ] **10.2. Palettes & Screen Modes:**
-  - [x] Implement default hardware palettes (CGA 4-color, EGA 16-color, MCGA/VGA 256-color).
+  - [x] Implement generic `setPalette` and default hardware palettes (CGA, EGA, MCGA/VGA).
   - [x] Implement high-resolution simplified `SCREEN 9` (EGA 640x350) alongside `SCREEN 13` (VGA 320x200).
-  - [ ] Add `PALETTE` and `PALETTE USING` mapping support.
+  - [x] Load mode-specific, dynamic hardware typography (DOSBox 8x8 font for VGA, authentic 8x14 font for EGA block alignment).
+  - [ ] Add `PALETTE` and `PALETTE USING` dynamic mapping support.
 - [ ] **10.3. Geometry Primitives (SCREEN 7, 8, 9, 13):**
-  - [x] Implement `PSET` (Pixel Set).
-  - [x] Support native Text overlay in linear graphics modes using the 8x8 BIOS font via template rendering.
-  - [x] Add geometry rendering: `LINE` (Bresenham, Box, Box Fill), `CIRCLE` (Midpoint Circle with Arc support).
-  - [x] Add algorithmic drawing: `PAINT` (Iterative Stack-based Flood Fill algorithm to prevent Call Stack Overflow).
-  - [ ] Implement `POINT` (Pixel Read - critical for collision detection in QBasic).
+  - [x] Implement `PSET` and `POINT` (Pixel Write/Read).
+  - [x] Add geometry rendering: `LINE` (Bresenham, Box, Box Fill).
+  - [x] Implement advanced `CIRCLE` logic: accurately emulating QBasic's default screen aspect ratios, undocumented negative aspect inversions, arc drawing, and 4-connected Midpoint anti-aliasing to prevent Moire holes in concentric loops.
+  - [x] Add algorithmic drawing: `PAINT` (Iterative Stack-based Flood Fill algorithm).
 - [ ] **10.4. Hardware Blitting (`GET` / `PUT`):**
-  - [ ] Reverse-engineer QBasic sprite array formats (Header + Pixel data).
-  - [ ] Implement `GET` to capture screen regions into arrays.
-  - [ ] Implement `PUT` with bitwise operations (`PSET`, `XOR`, `AND`, `OR`).
+  - [x] Emulate legacy QBasic sprite array formats (Little-Endian Header + Pixel data).
+  - [x] Implement generic `GET` and `PUT` with bitwise operations (`PSET`, `XOR`, `AND`, `OR`, `PRESET`).
+  - [x] Implement intelligent formatting logic: processing EGA Planar bit-packing (Bitplanes) vs VGA Linear chunk packing seamlessly based on the active hardware driver.
 
 ## Phase 11: Hardware Interrupts & Advanced Input
-- [ ] **11.1. Advanced Keyboard Controller:**
-  - [ ] Upgrade state tracking to support multiple simultaneous keys (crucial for Gorillas/Nibbles gameplay).
-- [ ] **11.2. The PC Speaker (Macro Music Language):**
-  - [ ] Wire `BEEP` and `SOUND` to the Web Audio API (`AudioContext`).
-  - [ ] Build a micro-parser for the `PLAY` command syntax.
+- [x] **11.1. Advanced Keyboard Controller:**
+  - [x] Upgrade state tracking with a strict 16-byte FIFO buffer.
+  - [x] Implement deep anti-ghosting safeties (filtering `e.repeat` held-down keys) to prevent input flooding and game logic corruption (e.g., Gorillas 0-velocity bugs).
+- [ ] **11.2. Time & Audio Engine:**
+  - [x] Wire `SLEEP` to trigger a `SYS_DELAY` hardware interrupt, yielding execution control asynchronously to the Orchestrator without freezing the browser UI.
+  - [x] Implement preliminary `BEEP` instruction.
+  - [ ] Wire the full `PLAY` and `SOUND` commands to the Web Audio API (`AudioContext`).
 
 ## Phase 12: The Grand Playtest
 - [x] **12.1. Rosetta Code Mandelbrot:**

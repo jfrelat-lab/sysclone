@@ -20,17 +20,16 @@ Rather than using heavy parser generators (ANTLR, PEG.js) or unreadable regular 
 * **Why?** This allows us to build a modular, composable, and unit-testable grammar (brick by brick).
 * **Line-Based Architecture:** QBasic does not use semicolons. Line breaks `\n` are semantic separators. The parser uses an optimized `eos` (End Of Statement) token to cleanly consume line breaks, comments (`'`), and colons (`:`), actively preventing Catastrophic Backtracking (ReDoS) on large legacy files.
 
-### 2.2. The Execution Engine: Generators (`function*`) vs Async/Await
-The challenge on the Web is avoiding main thread blocking during infinite loops (`DO...LOOP`).
+### 2.2. The Execution Engine: Generators (`function*`) & Hardware Interrupts
+The challenge on the Web is avoiding main thread blocking during infinite loops (`DO...LOOP`) or hardware pauses (`SLEEP`).
 * **Architectural Choice:** We use JavaScript Generators (`function*` and `yield*`) instead of Promises (`async/await`).
-* **Why?** `async/await` floods the browser's Microtask Queue, destroying the framerate and overloading the Garbage Collector. Generators create an ultra-fast synchronous iterator where each `yield` acts as a clock "Tick". The browser controls the cycles allocated per frame (e.g., 5000 cycles / 60 FPS), creating a true **Virtual Processor (CPU Runner)** with adjustable speed.
+* **Why?** `async/await` floods the browser's Microtask Queue, destroying the framerate and overloading the Garbage Collector. Generators create an ultra-fast synchronous iterator where each `yield` acts as a clock "Tick". The browser controls the cycles allocated per frame.
+* **SYS_DELAY Interrupts:** When the CPU hits a blocking instruction like `SLEEP`, the generator yields a `SYS_DELAY` token to the Orchestrator (`webvm.js`). The Orchestrator safely exits the execution loop, allows the browser to render the frame, and schedules a `setTimeout` to resume the Virtual CPU seamlessly.
 
-### 2.3. The Video Engine: VRAM Access and DOSBox ROM
+### 2.3. The Video Engine & Dynamic Typography
 To emulate the VGA text mode screen (80x25), standard HTML canvas `ctx.fillText()` was rejected.
-* **Why?** Anti-aliased vector fonts create artifacts between block characters (CHR$ 219, 220, 223) used for "text-graphics" like the Nibbles snake.
-* **Architectural Choice:** 1. We use the authentic **DOSBox binary ROM** (Code Page 437) containing the 8x16 bitmapped definition of each character.
-    2. Rendering uses bitwise operators (`&`, `>>`) to check each pixel of the character.
-    3. The output is pushed to a raw `ImageData` buffer for pixel-perfect rendering.
+* **Why?** Anti-aliased vector fonts create artifacts between block characters (CHR$ 219, 220, 223) used for "text-graphics".
+* **Architectural Choice:** We implemented an authentic **Hardware Typography Engine**. Depending on the active `SCREEN` mode, the Virtual Card mounts specific binary ROM fonts extracted from DOSBox (e.g., `8x8` for VGA, `8x14` for EGA block alignment). Rendering uses bitwise operators (`&`, `>>`) to check each pixel of the character grid, pushing directly to a raw `ImageData` buffer.
 
 ### 2.4. Memory and BIOS Data Area (Mocking vs Purism)
 Old DOS games use `POKE` to write directly into system RAM (e.g., address `&H41A` to clear the keyboard buffer).
@@ -43,17 +42,17 @@ Old DOS games use `POKE` to write directly into system RAM (e.g., address `&H41A
 * **Data Bank:** The Evaluator features a pre-execution scanning phase to hoist `LABEL`, `SUB`, and `DATA` statements, creating a sequential data bank accessed by `READ` and `RESTORE`.
 
 ### 2.6. I/O Encoding & The CP437 Bridge
-Modern web browsers fetch text files as UTF-8, which breaks legacy DOS games relying on extended ASCII characters for graphics (e.g., block characters in Nibbles).
-* **Smart Heuristic Decoder:** Sysclone implements a content-sniffing layer (`autoDecodeSource`) that automatically detects whether a loaded file is Raw DOS binary (CP437), modern True Unicode, or corrupted GitHub Mojibake (Windows-1252 read as UTF-8), repairing the latter on the fly while preserving essential ASCII control characters (LF, CR, TAB).
-* **Architectural Boundary:** The AST and Virtual CPU operate entirely in standard JS Unicode. The strict bidirectional translation to 8-bit Code Page 437 bytes occurs *only* at the Hardware Abstraction Layer boundary (e.g., when the `PRINT` statement sends data to the VGA VRAM or when `CHR$` is called), ensuring absolute block fidelity without polluting the high-level execution logic.
+Modern web browsers fetch text files as UTF-8, which breaks legacy DOS games relying on extended ASCII characters for graphics.
+* **Smart Heuristic Decoder:** Sysclone implements a content-sniffing layer (`autoDecodeSource`) that automatically detects whether a loaded file is Raw DOS binary (CP437), modern True Unicode, or corrupted GitHub Mojibake (Windows-1252 read as UTF-8), repairing the latter on the fly while meticulously preserving legacy control bytes (LF, CR, TAB).
+* **Architectural Boundary:** The AST and Virtual CPU operate entirely in standard JS Unicode. The strict bidirectional translation to 8-bit Code Page 437 bytes occurs *only* at the Hardware Abstraction Layer boundary (e.g., when the `PRINT` statement sends data to the VGA VRAM), ensuring absolute block fidelity.
 
 ### 2.7. Advanced Graphics Engine (VGA/EGA/CGA)
 Emulating legacy graphics modes (`SCREEN 7`, `9`, `13`) requires intensive memory manipulation and geometric calculations.
-* **Multi-Mode Architecture (Template Method):** To maintain the DRY (Don't Repeat Yourself) principle across wildly different hardware modes, the video routing uses a Strategy pattern (`VGA` router) delegating to a Template Method hierarchy (`TextModeDriver` and `GraphicsModeDriver`). Complex algorithms (Bresenham, Flood Fill) are shared in the base classes, while concrete drivers (like `Mode13Linear` or `Mode9EGA`) only implement raw memory access primitives (`pset`, `getPixel`).
-* **Algorithmic Purity & Safety:** The `PAINT` command utilizes a flat, iterative stack-based Flood Fill algorithm rather than native recursion. This allows filling entire 640x400 screens without triggering the JavaScript engine's maximum call stack size limits.
+* **Multi-Mode Architecture (Template Method):** To maintain the DRY principle across wildly different hardware, the video routing uses a Strategy pattern delegating to a Template Method hierarchy (`TextModeDriver` and `GraphicsModeDriver`). Complex algorithms (Bresenham, Flood Fill) are shared, while concrete drivers only implement raw memory access primitives.
+* **Planar vs Linear Blitting (`GET` / `PUT`):** The engine natively supports dual memory decoding for sprites. It dynamically extracts QBasic's Little-Endian array headers and processes bit-packing either as chunky bytes (Linear VGA Mode 13) or complex separated Bitplanes (EGA Mode 9) seamlessly.
+* **Algorithmic Purity (Circles & Paint):** The `PAINT` command utilizes a flat, iterative stack-based Flood Fill algorithm rather than native recursion to prevent Call Stack Overflow. The `CIRCLE` command employs a mathematically purist **4-Connected Midpoint Algorithm**, eradicating Moire pattern gaps (bleeding backgrounds) in concentric animations, while natively supporting MS-DOS's default aspect ratios and undocumented negative inversions.
 * **Pixel Aspect Ratio (PAR) Correction:** Legacy DOS resolutions rarely used square pixels (e.g., Mode 9 is 640x350). The `VGA` hardware router dynamically calculates the CSS canvas scaling against a fixed UI baseline (640px). This guarantees perfectly round circles and undistorted native rendering regardless of the active QBasic `SCREEN` mode.
-* **Rendering Optimization:** The VRAM buffer migrates physical pixel mapping directly into a `Uint32Array` for ultra-fast byte manipulation and direct canvas `ImageData` commits.
 
-### 2.8. PC Speaker and Audio
-* **Architectural Choice:** Mapping `SOUND` and `PLAY` commands to the native browser **Web Audio API** (`AudioContext`).
-* **Macro Language:** Sysclone includes a micro-parser specifically to decode the `PLAY` string syntax (e.g., `MFO0L32EFGEFDC`) into scheduled audio oscillators.
+### 2.8. Keyboard and Audio Engine
+* **Anti-Ghosting Keyboard:** The `IO` class implements an authentic 16-byte FIFO BIOS buffer that strictly filters browser `e.repeat` events. This provides input safety against "held-down" keys, preventing fast-paced games from instantly consuming trailing inputs in tight event loops.
+* **PC Speaker:** Mapping `SOUND` and `PLAY` commands to the native browser **Web Audio API** (`AudioContext`), powered by a scheduled macro-language parser.

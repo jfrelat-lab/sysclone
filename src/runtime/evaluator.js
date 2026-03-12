@@ -201,11 +201,12 @@ export class Evaluator {
                 this.env.defineType(node.name, node.fields);
                 return null;
 
+            case 'REDIM': // REDIM is treated exactly like DIM for now (reallocation)
             case 'DIM':
                 for (let decl of node.declarations) {
                     const typeName = decl.varType || decl.type || 'SINGLE'; 
                     const creator = () => this.env.createDefaultValue(typeName);
-                    if (decl.isArray || decl.bounds) {
+                    if (decl.isArray) {
                         const bounds = [];
                         for (let b of decl.bounds) {
                             bounds.push({ 
@@ -442,6 +443,55 @@ export class Evaluator {
                 }
                 return null;
 
+            case 'LINE_INPUT': {
+                // LINE INPUT does not automatically append "? " like standard INPUT does.
+                if (node.prompt && this.hw.vga) {
+                    this.hw.vga.print(toCP437Array(node.prompt));
+                }
+
+                let lineBuffer = "";
+                
+                // Hardware Signal: Turn on the blinking cursor!
+                if (this.hw.vga) this.hw.vga.showCursor();
+                
+                while (true) {
+                    yield; // Non-blocking wait for user input
+
+                    if (!this.hw.io) break; 
+                    const key = this.hw.io.inkey();
+                    if (!key) continue; 
+
+                    if (key === String.fromCharCode(13)) { // Enter
+                        if (this.hw.vga) this.hw.vga.print([13, 10]); // CR LF
+                        break; 
+                    }
+                    
+                    if (key === String.fromCharCode(8)) { // Backspace
+                        if (lineBuffer.length > 0) {
+                            lineBuffer = lineBuffer.slice(0, -1);
+                            if (this.hw.vga) this.hw.vga.print([8, 32, 8]); 
+                        }
+                        continue;
+                    }
+                    
+                    if (key.length === 1) {
+                        lineBuffer += key;
+                        if (this.hw.vga) this.hw.vga.print(toCP437Array(key));
+                    }
+                }
+
+                // Hardware Signal: Turn off the cursor
+                if (this.hw.vga) this.hw.vga.hideCursor();
+
+                // LINE INPUT assigns the entire raw string to a single target
+                const targetRef = yield* this.evaluateLValue(node.target);
+                if (targetRef.type === 'ENV') this.env.assign(targetRef.name, lineBuffer);
+                else if (targetRef.type === 'ARRAY') targetRef.array.set(targetRef.indices, lineBuffer);
+                else if (targetRef.type === 'OBJECT') targetRef.object[targetRef.property] = lineBuffer;
+                
+                return null;
+            }
+            
             case 'CLS': if (this.hw.vga) this.hw.vga.cls(); return null;
             case 'LOCATE':
                 const row = yield* this.evaluate(node.row);
@@ -513,6 +563,20 @@ export class Evaluator {
                 if (this.hw.vga) this.hw.vga.setMode(mode);
                 return null;
 
+            case 'PALETTE':
+                // QBasic allows PALETTE without args to reset colors.
+                // If args are present, we map the specific attribute.
+                if (node.attribute !== null && node.color !== null) {
+                    const attr = yield* this.evaluate(node.attribute);
+                    const color = yield* this.evaluate(node.color);
+                    if (this.hw.vga && typeof this.hw.vga.setPalette === 'function') {
+                        this.hw.vga.setPalette(attr, color);
+                    }
+                } else {
+                    // TODO: Handle parameterless PALETTE (hardware reset)
+                }
+                return null;
+
             case 'WINDOW':
                 const wX1 = yield* this.evaluate(node.x1);
                 const wY1 = yield* this.evaluate(node.y1);
@@ -556,6 +620,74 @@ export class Evaluator {
                 if (this.hw.vga) this.hw.vga.paint(ptX, ptY, ptC, pbC, node.isStep);
                 return null;
 
+            case 'GET_GRAPHICS': {
+                const gx1 = yield* this.evaluate(node.startX);
+                const gy1 = yield* this.evaluate(node.startY);
+                const gx2 = yield* this.evaluate(node.endX);
+                const gy2 = yield* this.evaluate(node.endY);
+                
+                let getArr = null;
+                let getIdx = 0;
+                
+                // Safely extract the target array reference without overwriting it
+                if (node.target.type === 'IDENTIFIER') {
+                    getArr = this.env.lookup(node.target.value);
+                } else if (node.target.type === 'CALL') {
+                    const ref = yield* this.evaluateLValue(node.target);
+                    getArr = ref.array;
+                    getIdx = ref.indices[0] !== undefined ? ref.indices[0] : 0;
+                }
+                
+                if (this.hw.vga) {
+                    this.hw.vga.getGraphics(gx1, gy1, gx2, gy2, getArr, getIdx, node.startIsStep, node.endIsStep);
+                }
+                return null;
+            }
+
+            case 'PUT_GRAPHICS': {
+                const px = yield* this.evaluate(node.x);
+                const py = yield* this.evaluate(node.y);
+                
+                let putArr = null;
+                let putIdx = 0;
+                
+                if (node.target.type === 'IDENTIFIER') {
+                    putArr = this.env.lookup(node.target.value);
+                } else if (node.target.type === 'CALL') {
+                    const ref = yield* this.evaluateLValue(node.target);
+                    putArr = ref.array;
+                    putIdx = ref.indices[0] !== undefined ? ref.indices[0] : 0;
+                }
+
+                if (this.hw.vga) {
+                    this.hw.vga.putGraphics(px, py, putArr, putIdx, node.action, node.isStep);
+                }
+                return null;
+            }
+
+            // --- System & Hardware Delays ---
+
+            case 'SLEEP': {
+                let ms = 0;
+                
+                if (node.duration) {
+                    // SLEEP n: Pause execution for n seconds
+                    // Evaluate the argument dynamically (e.g., SLEEP delay / 2)
+                    const seconds = yield* this.evaluate(node.duration);
+                    ms = seconds * 1000;
+                } else {
+                    // SLEEP without arguments: Wait indefinitely for a keystroke.
+                    // We send -1 as a special signal to the orchestrator (webvm.js)
+                    // to attach a keyboard event listener instead of a setTimeout.
+                    ms = -1;
+                }
+
+                // Yield control back to the orchestrator with the delay token.
+                // The CPU loop will freeze until the orchestrator resumes it.
+                yield { type: 'SYS_DELAY', ms: ms };
+                return null;
+            }
+
             // --- DOS / HARDWARE STUBS ---
             case 'DATA': case 'DECLARE': case 'DEFINT':
             case 'RANDOMIZE': case 'WIDTH':
@@ -567,10 +699,11 @@ export class Evaluator {
                 // We ignore the error registration and the return jump.
                 return null;
 
+            case 'BEEP':
             case 'VIEW':
             case 'VIEW_PRINT':
             case 'PLAY':
-                // VIEW and PLAY are natively ignored to avoid crashing
+                // VIEW, PLAY, and BEEP are natively ignored to avoid crashing
                 return null;
 
             default: throw new Error(`Unknown node type: ${node.type}`);
@@ -669,6 +802,13 @@ export class Evaluator {
         // --- 3. HARDWARE-DEPENDENT BUILT-INS ---
         if (callee === 'PEEK') {
             return this.hw.memory ? this.hw.memory.peek(args[0]) : 0;
+        }
+        if (callee === 'POINT') {
+            // QBasic POINT(x, y) needs to read directly from the VRAM
+            if (this.hw.vga && typeof this.hw.vga.point === 'function') {
+                return this.hw.vga.point(args[0], args[1]);
+            }
+            return 0; // Fallback to background color (0) if no VGA hardware is attached
         }
 
         // --- 4. RESOLVE ARRAYS IN ENVIRONMENT ---
