@@ -1,6 +1,6 @@
 // src/parser/declarations.js
 
-import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, str } from './monad.js';
+import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, str, sepBy } from './monad.js';
 import { identifier, keyword, ws, optWs, eos } from './lexers.js';
 import { expression } from './expressions.js';
 
@@ -16,18 +16,21 @@ export const defintDecl = sequenceObj([
     range: obj.range.toUpperCase()
 }));
 
+const singleConst = sequenceObj([
+    capture('name', identifier), optWs, regex(/^=/), optWs,
+    capture('value', expression)
+]).map(obj => ({ name: obj.name.value, value: obj.value }));
+
 /**
- * Parses constant definitions.
- * Example: CONST MAX_LIVES = 3
+ * Parses constant definitions (supports multiple separated by commas).
+ * Example: CONST MAX_LIVES = 3, SPEED = 10
  */
 export const constDecl = sequenceObj([
     keyword('CONST'), ws,
-    capture('name', identifier), optWs, regex(/^=/), optWs,
-    capture('value', expression)
+    capture('declarations', sepBy(singleConst, sequenceOf([optWs, str(','), optWs])))
 ]).map(obj => ({
     type: 'CONST',
-    name: obj.name.value,
-    value: obj.value
+    declarations: obj.declarations
 }));
 
 /**
@@ -35,14 +38,22 @@ export const constDecl = sequenceObj([
  * Example: 
  * TYPE SnakeBody
  * x AS INTEGER
- * y AS INTEGER
+ * Bord AS STRING * 3
  * END TYPE
  */
 export const typeDecl = sequenceObj([
     keyword('TYPE'), ws, capture('name', identifier), eos,
     capture('fields', many(sequenceObj([
-        optWs, capture('field', identifier), ws, keyword('AS'), ws, capture('fieldType', identifier), eos
-    ]).map(obj => ({ name: obj.field.value, type: obj.fieldType.value })))),
+        optWs, capture('field', identifier), ws, keyword('AS'), ws, capture('fieldType', identifier),
+        capture('lengthOpt', optional(sequenceObj([
+            optWs, str('*'), optWs, capture('len', expression)
+        ]).map(obj => obj.len))),
+        eos
+    ]).map(obj => ({ 
+        name: obj.field.value, 
+        type: obj.fieldType.value,
+        length: obj.lengthOpt || null
+    })))),
     optWs, keyword('END'), ws, keyword('TYPE')
 ]).map(obj => ({
     type: 'TYPE_DECL',
@@ -81,13 +92,20 @@ const singleDim = sequenceObj([
     capture('nameId', identifier),
     capture('boundsOpt', optional(boundsList)),
     capture('typeOpt', optional(sequenceObj([
-        ws, keyword('AS'), ws, capture('typeId', identifier)
-    ]).map(obj => obj.typeId.value))) 
+        ws, keyword('AS'), ws, capture('typeId', identifier),
+        capture('lengthOpt', optional(sequenceObj([
+            optWs, str('*'), optWs, capture('len', expression)
+        ]).map(obj => obj.len)))
+    ]).map(obj => ({
+        type: obj.typeId.value,
+        length: obj.lengthOpt || null
+    })))) 
 ]).map(obj => ({
     name: obj.nameId.value,
     isArray: obj.boundsOpt !== null,
     bounds: obj.boundsOpt || [],
-    varType: obj.typeOpt || 'VARIANT'
+    varType: obj.typeOpt ? obj.typeOpt.type : 'VARIANT',
+    length: obj.typeOpt ? obj.typeOpt.length : null
 }));
 
 /**

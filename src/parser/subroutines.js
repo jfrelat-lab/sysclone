@@ -53,7 +53,7 @@ export const declareStmt = sequenceObj([
  */
 export const subDef = lazy(() => sequenceObj([
     keyword('SUB'), ws, capture('name', identifier),
-    capture('params', parameterList), // Replaced with DRY parser
+    capture('params', parameterList), 
     capture('isStatic', optional(sequenceOf([optWs, keyword('STATIC')]))),
     eos,
     capture('body', block),
@@ -62,6 +62,7 @@ export const subDef = lazy(() => sequenceObj([
     type: 'SUB_DEF',
     name: obj.name.value,
     params: obj.params,
+    isStatic: obj.isStatic !== null,
     body: obj.body
 })));
 
@@ -71,7 +72,7 @@ export const subDef = lazy(() => sequenceObj([
  */
 export const functionDef = lazy(() => sequenceObj([
     keyword('FUNCTION'), ws, capture('name', identifier),
-    capture('params', parameterList), // Replaced with DRY parser
+    capture('params', parameterList), 
     capture('isStatic', optional(sequenceOf([optWs, keyword('STATIC')]))),
     eos,
     capture('body', block),
@@ -80,6 +81,7 @@ export const functionDef = lazy(() => sequenceObj([
     type: 'FUNCTION_DEF',
     name: obj.name.value,
     params: obj.params,
+    isStatic: obj.isStatic !== null,
     body: obj.body
 })));
 

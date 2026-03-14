@@ -92,14 +92,14 @@ const RESERVED_KEYWORDS = new Set([
     // Control Flow
     'IF', 'THEN', 'ELSE', 'ELSEIF', 'END', 'FOR', 'TO', 'STEP', 'NEXT',
     'DO', 'LOOP', 'UNTIL', 'WHILE', 'WEND', 'GOTO', 'GOSUB', 'RETURN', 'CALL',
-    'SELECT', 'CASE',
+    'SELECT', 'CASE', 'EXIT', 'SWAP',
     // Legacy Error Handling & Jumps
     'ON', 'ERROR', 'RESUME',
     // Declarations
-    'SUB', 'FUNCTION', 'DECLARE', 'DIM', 'REDIM', 'SHARED', 'AS', 'TYPE', 'CONST', 'DEFINT', 'DEF', 'SEG', 'ANY', 'STATIC',
+    'SUB', 'FUNCTION', 'DECLARE', 'DIM', 'REDIM', 'SHARED', 'AS', 'TYPE', 'CONST', 'DEFINT', 'DEF', 'SEG', 'ANY', 'STATIC', 'ERASE',
     // System and Hardware Instructions
     'PRINT', 'USING', 'CLS', 'LOCATE', 'COLOR', 'POKE', 'OUT', 'RANDOMIZE', 'SCREEN', 'WIDTH', 'DATA', 'READ', 'RESTORE', 'INPUT',
-    'WINDOW', 'PSET', 'CIRCLE', 'LINE', 'PAINT', 'PALETTE', 'PRESET', 'PUT', 'GET', 'VIEW', 'PLAY', 'BEEP', 'SLEEP',
+    'WINDOW', 'PSET', 'CIRCLE', 'LINE', 'PAINT', 'PALETTE', 'PRESET', 'PUT', 'GET', 'VIEW', 'PLAY', 'BEEP', 'SLEEP', 'SOUND',
     // Logical and Mathematical textual operators
     'AND', 'OR', 'NOT', 'MOD', 'XOR',
     // Comments
@@ -111,7 +111,7 @@ const RESERVED_KEYWORDS = new Set([
  * These interact with the HAL and are handled directly in the Evaluator loop.
  */
 const HARDWARE_BUILTINS = [
-    'PEEK', 'INP', 'OUT', 'INKEY$', 'TIMER', 'COMMAND$', 'ENVIRON$', 'POINT'
+    'PEEK', 'INP', 'OUT', 'INKEY$', 'TIMER', 'COMMAND$', 'ENVIRON$', 'POINT', 'TAB', 'INPUT$'
 ];
 
 /**
@@ -166,8 +166,11 @@ export const identifier = new Parser(state => {
         // Remove suffix to check against base reserved keywords
         const wordWithoutSuffix = word.replace(/[%&!#$]$/, '');
         
-        if (RESERVED_KEYWORDS.has(wordWithoutSuffix) || RESERVED_KEYWORDS.has(word)) {
-            return { ...state, isError: true, error: `'${word}' is a reserved keyword.` };
+        // Exception: INPUT$ is a valid hardware function, not the INPUT statement.
+        if (word !== 'INPUT$') {
+            if (RESERVED_KEYWORDS.has(wordWithoutSuffix) || RESERVED_KEYWORDS.has(word)) {
+                return { ...state, isError: true, error: `'${word}' is a reserved keyword.` };
+            }
         }
         
         return {

@@ -7,10 +7,10 @@ import { expression, variableAccess } from './expressions.js';
  * Reusable parser for graphical coordinates: (x, y)
  */
 const coordParser = sequenceObj([
-    regex(/^\(/), optWs,
-    capture('x', expression), optWs, regex(/^,/), optWs,
+    str('('), optWs,
+    capture('x', expression), optWs, str(','), optWs,
     capture('y', expression), optWs,
-    regex(/^\)/)
+    str(')')
 ]).map(obj => ({ x: obj.x, y: obj.y }));
 
 /**
@@ -73,17 +73,26 @@ export const clsStmt = sequenceObj([
 }));
 
 export const locateStmt = sequenceObj([
-    keyword('LOCATE'), ws,
-    capture('row', expression),
-    capture('colOpt', optional(sequenceOf([optWs, regex(/^,/), optWs, expression]).map(arr => arr[3])))
-]).map(obj => ({ type: 'LOCATE', row: obj.row, col: obj.colOpt || null }));
+    keyword('LOCATE'),
+    // Row is optional and preceded by spaces (e.g. LOCATE 5)
+    capture('rowOpt', optional(sequenceOf([ws, expression]).map(arr => arr[1]))),
+    // Column is optional and preceded by a comma. The expression ITSELF is optional to allow empty commas!
+    capture('colOpt', optional(sequenceOf([optWs, str(','), optWs, optional(expression)]).map(arr => arr[3]))),
+    // Cursor visibility is optional, same logic
+    capture('cursorOpt', optional(sequenceOf([optWs, str(','), optWs, optional(expression)]).map(arr => arr[3])))
+]).map(obj => ({ 
+    type: 'LOCATE', 
+    row: obj.rowOpt || null, 
+    col: obj.colOpt || null,
+    cursor: obj.cursorOpt || null
+}));
 
 export const colorStmt = sequenceObj([
     keyword('COLOR'), ws,
     // The first argument (foreground) is optional in some contexts
     capture('fgOpt', optional(expression)),
     // The second argument (background) is also optional
-    capture('bgOpt', optional(sequenceOf([optWs, regex(/^,/), optWs, expression]).map(arr => arr[3])))
+    capture('bgOpt', optional(sequenceOf([optWs, str(','), optWs, expression]).map(arr => arr[3])))
 ]).map(obj => ({ 
     type: 'COLOR', 
     fg: obj.fgOpt || null, 
@@ -96,7 +105,7 @@ export const colorStmt = sequenceObj([
 export const defSegStmt = sequenceObj([
     keyword('DEF'), ws, keyword('SEG'),
     capture('addressOpt', optional(sequenceObj([
-        optWs, regex(/^=/), optWs, capture('addr', expression)
+        optWs, str('='), optWs, capture('addr', expression)
     ]).map(obj => obj.addr)))
 ]).map(obj => ({ 
     type: 'DEF_SEG', 
@@ -104,15 +113,33 @@ export const defSegStmt = sequenceObj([
 }));
 
 export const pokeStmt = sequenceObj([
-    keyword('POKE'), ws, capture('address', expression), optWs, regex(/^,/), optWs, capture('value', expression)
+    keyword('POKE'), ws, capture('address', expression), optWs, str(','), optWs, capture('value', expression)
 ]).map(obj => ({ type: 'POKE', address: obj.address, value: obj.value }));
 
 export const assignStmt = sequenceObj([
-    capture('target', variableAccess), optWs, regex(/^=/), optWs, capture('value', expression)
+    capture('target', variableAccess), optWs, str('='), optWs, capture('value', expression)
 ]).map(obj => ({ type: 'ASSIGN', target: obj.target, value: obj.value }));
 
+export const swapStmt = sequenceObj([
+    keyword('SWAP'), ws,
+    capture('target1', variableAccess), optWs, str(','), optWs,
+    capture('target2', variableAccess)
+]).map(obj => ({ type: 'SWAP', target1: obj.target1, target2: obj.target2 }));
+
+/**
+ * Parses the ERASE statement used to clear arrays.
+ * Syntax: ERASE arrayname [, arrayname]...
+ */
+export const eraseStmt = sequenceObj([
+    keyword('ERASE'), ws,
+    capture('targets', sepBy(identifier, sequenceOf([optWs, str(','), optWs])))
+]).map(obj => ({ 
+    type: 'ERASE', 
+    targets: obj.targets.map(id => id.value) 
+}));
+
 export const outStmt = sequenceObj([
-    keyword('OUT'), ws, capture('port', expression), optWs, regex(/^,/), optWs, capture('value', expression)
+    keyword('OUT'), ws, capture('port', expression), optWs, str(','), optWs, capture('value', expression)
 ]).map(obj => ({ type: 'OUT', port: obj.port, value: obj.value }));
 
 /**
@@ -121,16 +148,16 @@ export const outStmt = sequenceObj([
 export const callStmt = sequenceObj([
     keyword('CALL'), ws, capture('callee', identifier),
     capture('argsOpt', optional(sequenceObj([
-        optWs, regex(/^\(/), optWs,
+        optWs, str('('), optWs,
         capture('args', optional(sequenceOf([
-            expression, many(sequenceOf([optWs, regex(/^,/), optWs, expression]).map(arr => arr[3]))
+            expression, many(sequenceOf([optWs, str(','), optWs, expression]).map(arr => arr[3]))
         ]).map(arr => [arr[0], ...arr[1]]))),
-        optWs, regex(/^\)/)
+        optWs, str(')')
     ]).map(obj => obj.args || [])))
 ]).map(obj => ({ type: 'CALL', callee: obj.callee, args: obj.argsOpt || [] }));
 
 export const labelDef = sequenceObj([
-    capture('name', identifier), optWs, regex(/^:/)
+    capture('name', identifier), optWs, str(':')
 ]).map(obj => ({ type: 'LABEL', name: obj.name.value }));
 
 export const gotoStmt = sequenceObj([
@@ -160,11 +187,42 @@ export const widthStmt = sequenceObj([
 ]).map(obj => ({ type: 'WIDTH', col: obj.col, row: obj.rowOpt || null }));
 
 /**
- * Parses DATA statements containing comma-separated literal values.
+ * Parses generic unquoted text for DATA statements.
+ * Stops cleanly at commas, colons (statement separator), line breaks, or comments (').
+ */
+const unquotedDataText = regex(/^[^,:\r\n']+/).map(val => ({ 
+    type: 'STRING', 
+    // QBasic natively trims leading and trailing spaces on unquoted DATA strings
+    value: val.trim(), 
+    raw: val 
+}));
+
+/**
+ * Ultimate fallback for empty DATA entries (e.g. DATA 1, , 3 or trailing commas).
+ * Matches without consuming characters.
+ */
+const emptyDataItem = str('').map(() => ({ 
+    type: 'STRING', 
+    value: "", 
+    raw: "" 
+}));
+
+/**
+ * Prioritized choice for a single DATA element.
+ */
+const dataItem = choice([
+    stringLiteral,
+    signedNumberLiteral,
+    unquotedDataText,
+    emptyDataItem
+]);
+
+/**
+ * Parses DATA statements containing comma-separated values of mixed types.
  */
 export const dataStmt = sequenceObj([
     keyword('DATA'), ws,
-    capture('values', sepBy(choice([signedNumberLiteral, stringLiteral, identifier]), sequenceOf([optWs, str(','), optWs])))
+    capture('values', sepBy(dataItem, sequenceOf([optWs, str(','), optWs])))
 ]).map(obj => ({ type: 'DATA', values: obj.values }));
 
 export const readStmt = sequenceObj([
@@ -191,7 +249,7 @@ export const windowStmt = sequenceObj([
     // QBasic allows "WINDOW SCREEN" to invert the Y-axis mathematically
     capture('screenOpt', optional(sequenceOf([ws, keyword('SCREEN')]))),
     ws,
-    capture('coord1', coordParser), optWs, regex(/^-/), optWs,
+    capture('coord1', coordParser), optWs, str('-'), optWs,
     capture('coord2', coordParser)
 ]).map(obj => ({
     type: 'WINDOW',
@@ -207,7 +265,7 @@ export const psetStmt = sequenceObj([
     keyword('PSET'), ws,
     capture('coord', stepCoordParser),
     capture('colorOpt', optional(sequenceObj([
-        optWs, regex(/^,/), optWs, capture('c', expression)
+        optWs, str(','), optWs, capture('c', expression)
     ]).map(obj => obj.c)))
 ]).map(obj => ({
     type: 'PSET',
@@ -222,7 +280,7 @@ export const psetStmt = sequenceObj([
  */
 export const lineStmt = sequenceObj([
     keyword('LINE'), ws,
-    capture('start', stepCoordParser), optWs, regex(/^-/), optWs,
+    capture('start', stepCoordParser), optWs, str('-'), optWs,
     capture('end', stepCoordParser),
     capture('colorOpt', commaArg),
     capture('boxOpt', commaArg)
@@ -247,7 +305,7 @@ export const lineStmt = sequenceObj([
  */
 export const circleStmt = sequenceObj([
     keyword('CIRCLE'), ws,
-    capture('center', stepCoordParser), optWs, regex(/^,/), optWs,
+    capture('center', stepCoordParser), optWs, str(','), optWs,
     capture('radius', expression),
     capture('color', commaArg),
     capture('start', commaArg),
@@ -376,12 +434,12 @@ const putActionParser = choice([
 
 export const putGraphicsStmt = sequenceObj([
     keyword('PUT'), ws,
-    capture('coord', stepCoordParser), optWs, regex(/^,/), optWs,
+    capture('coord', stepCoordParser), optWs, str(','), optWs,
     // The sprite data array (e.g., LBan& or bananaArray(0))
     capture('target', expression),
     // The blending mode is optional. If omitted, QBasic defaults to XOR
     capture('actionOpt', optional(sequenceObj([
-        optWs, regex(/^,/), optWs,
+        optWs, str(','), optWs,
         capture('action', putActionParser)
     ]).map(obj => obj.action)))
 ]).map(obj => ({
@@ -399,7 +457,7 @@ export const putGraphicsStmt = sequenceObj([
  */
 export const getGraphicsStmt = sequenceObj([
     keyword('GET'), ws,
-    capture('start', stepCoordParser), optWs, regex(/^-/), optWs,
+    capture('start', stepCoordParser), optWs, str('-'), optWs,
     capture('end', stepCoordParser), optWs, str(','), optWs,
     capture('target', expression)
 ]).map(obj => ({
@@ -447,6 +505,21 @@ export const playStmt = sequenceObj([
  * Syntax: BEEP
  */
 export const beepStmt = keyword('BEEP').map(() => ({ type: 'BEEP' }));
+
+/**
+ * Parses the SOUND statement.
+ * Syntax: SOUND frequency, duration
+ * Note: duration is in DOS clock ticks (approx 18.2 ticks per second).
+ */
+export const soundStmt = sequenceObj([
+    keyword('SOUND'), ws,
+    capture('freq', expression), optWs, str(','), optWs,
+    capture('duration', expression)
+]).map(obj => ({
+    type: 'SOUND',
+    freq: obj.freq,
+    duration: obj.duration
+}));
 
 /**
  * Parses the SLEEP statement.
@@ -503,3 +576,15 @@ export const endStmt = sequenceObj([
     keyword('END'),
     regex(/^(?![ \t]*(?:IF|SUB|FUNCTION|TYPE|SELECT)\b)/i)
 ]).map(() => ({ type: 'END' }));
+
+/**
+ * Parses the EXIT statement used to break out of loops or subroutines.
+ * Syntax: EXIT FOR | EXIT DO | EXIT SUB | EXIT FUNCTION
+ */
+export const exitStmt = sequenceObj([
+    keyword('EXIT'), ws,
+    capture('target', choice([keyword('FOR'), keyword('DO'), keyword('SUB'), keyword('FUNCTION')]))
+]).map(obj => ({
+    type: 'EXIT',
+    target: obj.target
+}));

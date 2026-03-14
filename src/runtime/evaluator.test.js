@@ -163,6 +163,38 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         assertEqual(env.lookup('I'), 7); 
     });
 
+    test('Should handle EXIT FOR to break out of loops early', () => {
+        const env = new Environment();
+        executeCode(env, `
+            counter = 0
+            FOR i = 1 TO 10
+                IF i = 5 THEN EXIT FOR
+                counter = counter + 1
+            NEXT i
+        `);
+        
+        // Loop runs for i=1, 2, 3, 4. When i=5, it hits EXIT FOR.
+        assertEqual(env.lookup('COUNTER'), 4);
+        assertEqual(env.lookup('I'), 5); // The iterator preserves its exact value at the moment of exit
+    });
+
+    test('Should handle EXIT SUB correctly via bubbling', () => {
+        const env = new Environment();
+        executeCode(env, `
+            SUB ProcessData (status)
+                status = 1
+                EXIT SUB
+                status = 2 ' This should never execute
+            END SUB
+            
+            myStatus = 0
+            CALL ProcessData(myStatus)
+        `);
+        
+        // Ensure the subroutine aborted before setting status to 2
+        assertEqual(env.lookup('MYSTATUS'), 1);
+    });
+
     // --- DATA STRUCTURE TESTS ---
 
     test('Should allocate and manipulate 1D arrays (DIM and ARRAY ACCESS)', () => {
@@ -261,6 +293,21 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         assertEqual(snakeArray.get([50]).ROW, 0); 
     });
 
+    test('Should handle ERASE statement to clear array contents', () => {
+        const env = new Environment();
+        executeCode(env, `
+            DIM arr(1 TO 3)
+            arr(1) = 42
+            arr(2) = 84
+            ERASE arr
+        `);
+        
+        const arr = env.lookup('ARR');
+        // Proof that the array structure remains intact, but the memory is zeroed out
+        assertEqual(arr.get([1]), 0, "ERASE should zero out array element 1");
+        assertEqual(arr.get([2]), 0, "ERASE should zero out array element 2");
+    });
+
     // --- SUBROUTINE AND JUMP TESTS ---
 
     test('Should register and execute a SUB with isolated scope', () => {
@@ -300,6 +347,46 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         assertEqual(env.lookup('SCORE'), 15);
     });
 
+    test('Should perfectly isolate identical labels across different subroutines', () => {
+        const env = new Environment();
+        executeCode(env, `
+            DIM SHARED mainVal, sub1Val, sub2Val
+            
+            SUB RoutineOne ()
+                sub1Val = 1
+                GOTO JumpTarget
+                sub1Val = 999 ' Should be skipped
+                JumpTarget:
+                sub1Val = 2
+            END SUB
+            
+            SUB RoutineTwo ()
+                sub2Val = 1
+                GOTO JumpTarget
+                sub2Val = 999 ' Should be skipped
+                JumpTarget:
+                sub2Val = 2
+            END SUB
+            
+            ' Main Module
+            mainVal = 1
+            GOTO JumpTarget
+            mainVal = 999 ' Should be skipped
+            JumpTarget:
+            mainVal = 2
+            
+            ' Execute subs to prove their internal GOTOs resolve locally
+            CALL RoutineOne()
+            CALL RoutineTwo()
+        `);
+        
+        // If scopes leaked, the GOTO in Main would have jumped into a SUB,
+        // or the SUBs would have jumped back to Main, causing bad values or crashes.
+        assertEqual(env.lookup('MAINVAL'), 2, "Main scope label resolution failed");
+        assertEqual(env.lookup('SUB1VAL'), 2, "Subroutine 1 local label resolution failed");
+        assertEqual(env.lookup('SUB2VAL'), 2, "Subroutine 2 local label resolution failed");
+    });
+
     test('Should manage static data bank (DATA, READ, RESTORE)', () => {
         const env = new Environment();
         executeCode(env, `
@@ -318,6 +405,93 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         
         // RESTORE should rewind the tape pointer to the specific label
         assertEqual(env.lookup('C'), 30); 
+    });
+
+    test('Should manage global DATA bank across subroutines and modules', () => {
+        const env = new Environment();
+        executeCode(env, `
+            DIM SHARED global1, global2, global3
+            
+            SUB ReadTheData ()
+                ' SUB reads sequentially from the global tape pointer
+                READ global2
+            END SUB
+            
+            ' 1. Read first available data
+            READ global1
+            
+            ' 2. RESTORE must be executed in the scope where the label exists!
+            RESTORE LevelData
+            
+            ' 3. Call the SUB. It should pick up exactly where the main pointer left off.
+            CALL ReadTheData()
+            
+            ' 4. Main module continues reading after the SUB returns
+            READ global3
+            
+            DATA 10, 20
+            LevelData:
+            DATA 30, 40
+        `);
+        
+        assertEqual(env.lookup('GLOBAL1'), 10); // Main reads 10
+        assertEqual(env.lookup('GLOBAL2'), 30); // Sub reads 30 (because pointer was RESTORED to LevelData)
+        assertEqual(env.lookup('GLOBAL3'), 40); // Main reads 40
+    });
+
+    test('Should evaluate SWAP correctly for variables and array elements', () => {
+        const env = new Environment();
+        executeCode(env, `
+            a = 10
+            b = 20
+            SWAP a, b
+            
+            DIM arr(1 TO 2)
+            arr(1) = 99
+            arr(2) = 44
+            SWAP arr(1), arr(2)
+        `);
+        
+        assertEqual(env.lookup('A'), 20);
+        assertEqual(env.lookup('B'), 10);
+        
+        const arr = env.lookup('ARR');
+        assertEqual(arr.get([1]), 44);
+        assertEqual(arr.get([2]), 99);
+    });
+
+    test('Should deep clone UDTs on ASSIGN and SWAP to prevent JS reference leakage', () => {
+        const env = new Environment();
+        executeCode(env, `
+            TYPE Player
+                score AS INTEGER
+            END TYPE
+            
+            DIM p1 AS Player
+            p1.score = 100
+            
+            ' ASSIGN test: p2 should be a deep clone, not a JS memory reference
+            p2 = p1
+            p2.score = 500
+            
+            DIM p3 AS Player
+            p3.score = 999
+            
+            ' SWAP test: p1 and p3 should swap clones
+            SWAP p1, p3
+            p1.score = 777
+        `);
+        
+        const p1 = env.lookup('P1');
+        const p2 = env.lookup('P2');
+        const p3 = env.lookup('P3');
+        
+        // If it was a pure JS reference, mutating p2.score to 500 would have corrupted p1.
+        // But after the swap, p1 became 999, then mutated to 777.
+        // p3 became the OLD p1 (which was firmly 100).
+        assertEqual(p2.SCORE, 500, "p2 should be mutated independently");
+        assertEqual(p3.SCORE, 100, "p3 should receive the original p1 value via swap");
+        assertEqual(p1.SCORE, 777, "p1 should be mutated independently after swap");
     });
 
     test('Should gracefully ignore hardware stubs (PLAY, VIEW PRINT, RANDOMIZE) to avoid crashes', () => {
@@ -360,6 +534,22 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         // They should ideally be different (though random implies a tiny chance of equality)
         assertEqual(v1 !== v2, true);
     });
+
+    test('Should evaluate built-in string functions (STRING$, SPACE$, SPC, etc.)', () => {
+        const env = new Environment();
+        
+        executeCode(env, `
+            s1$ = STRING$(5, 65)   ' 65 is 'A'
+            s2$ = STRING$(3, "B")
+            s3$ = SPACE$(4)
+            s4$ = SPC(3)
+        `);
+        
+        assertEqual(env.lookup('S1$'), "AAAAA");
+        assertEqual(env.lookup('S2$'), "BBB");
+        assertEqual(env.lookup('S3$'), "    ");
+        assertEqual(env.lookup('S4$'), "   ");
+    });
 });
 
 /**
@@ -389,38 +579,43 @@ registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
     test('Should interface correctly with VGA for CLS, COLOR, LOCATE, and PRINT', () => {
         const env = new Environment();
         
-        // 1. Build the updated VGA Mock (Byte-Array aware)
+        // 1. Build the updated VGA Mock (Byte-Array aware + Cursor aware)
         const mockVga = {
             clsCalled: false,
             located: null,
             colored: null,
+            cursorState: null,
             printed: [],
             cls() { this.clsCalled = true; },
             locate(r, c) { this.located = [r, c]; },
             color(f, b) { this.colored = [f, b]; },
+            showCursor() { this.cursorState = 'VISIBLE'; },
+            hideCursor() { this.cursorState = 'HIDDEN'; },
             print(data) { 
-                // Decode the byte array back to a string for testing
-                this.printed.push(bytesToString(data)); 
+                this.printed.push(Array.from(data).map(b => String.fromCharCode(b)).join('')); 
             }
         };
         
         const code = `
             CLS
             COLOR 10, 2
-            LOCATE 5, 15
+            LOCATE 5, 15, 1
             PRINT "SYSCLONE"
+            LOCATE , , 0
         `;
         
         executeWithHardware(env, { vga: mockVga }, code);
         
         // 2. Assert that the CPU triggered the correct hardware states
         assertEqual(mockVga.clsCalled, true);
-        assertEqual(mockVga.colored[0], 10); // Foreground
-        assertEqual(mockVga.colored[1], 2);  // Background
-        assertEqual(mockVga.located[0], 5);  // Row
-        assertEqual(mockVga.located[1], 15); // Col
+        assertEqual(mockVga.colored[0], 10); 
+        assertEqual(mockVga.colored[1], 2);  
+        assertEqual(mockVga.located[0], null); // Last locate was LOCATE , , 0
+        assertEqual(mockVga.located[1], null);
         
-        // Verify the PRINT signal was sent (Note: PRINT auto-appends CR/LF at the end of the line)
+        // Verify cursor state changed to hidden at the end
+        assertEqual(mockVga.cursorState, 'HIDDEN');
+        
         assertEqual(mockVga.printed[0], "SYSCLONE\r\n");
     });
 
@@ -553,6 +748,74 @@ registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
         assertEqual(env.lookup('PNAME$'), "Smith, John", "Entire string including commas must be captured");
     });
 
+    test('PRINT should intercept TAB() and interact natively with VGA cursorX', () => {
+        const env = new Environment();
+        
+        // 1. Specific VGA Mock for TAB
+        // TAB absolutely needs to read 'cursorX' to calculate the space delta.
+        // Our Mock must therefore simulate cursor movement during a print().
+        const mockVga = {
+            cursorX: 0,
+            printed: [],
+            print(data) {
+                // Decode to facilitate our assertions
+                const str = Array.from(data).map(b => String.fromCharCode(b)).join('');
+                this.printed.push(str);
+                
+                // Strict hardware simulation of the text cursor
+                for (let i = 0; i < data.length; i++) {
+                    if (data[i] === 13) this.cursorX = 0;      // Carriage Return
+                    else if (data[i] !== 10) this.cursorX++; // Standard character (ignore LF for X)
+                }
+            }
+        };
+        
+        // 2. Execute QBasic code
+        // Case A: Normal TAB advancing on the same line.
+        // Case B: TAB with a value lower than the current cursor (must force a line wrap).
+        const code = `
+            PRINT "A"; TAB(5); "B"
+            PRINT "123456"; TAB(3); "X"
+        `;
+        
+        executeWithHardware(env, { vga: mockVga }, code);
+        
+        // Concatenate the entire output stream to verify absolute fidelity
+        const fullOutput = mockVga.printed.join('');
+        
+        // 3. Assertions
+        // Explanation Line 1: "A" (col 1) + TAB(5) generates 3 spaces (cols 2, 3, 4) + "B" (col 5)
+        // Explanation Line 2: "123456" puts cursor at col 7. TAB(3) is < 7, so CR/LF, then 2 spaces, then "X"
+        const expectedOutput = "A   B\r\n123456\r\n  X\r\n";
+        
+        assertEqual(fullOutput, expectedOutput, "TAB formatting and wrapping failed");
+    });
+
+    test('INPUT$ should block expression evaluation until exactly N keystrokes are read', () => {
+        const env = new Environment();
+        
+        // 1. Mock IO injecting 3 specific keys sequentially
+        const mockIo = {
+            keyQueue: ['A', 'B', 'C'],
+            inkey() {
+                return this.keyQueue.length > 0 ? this.keyQueue.shift() : "";
+            }
+        };
+        
+        // 2. The code will execute linearly, proving the CPU blocked 
+        // until the requested characters were fulfilled.
+        const code = `
+            val1$ = INPUT$(2)
+            val2$ = INPUT$(1)
+        `;
+        
+        executeWithHardware(env, { io: mockIo }, code);
+        
+        // 3. Assertions
+        assertEqual(env.lookup('VAL1$'), "AB", "First read must capture exactly 2 characters");
+        assertEqual(env.lookup('VAL2$'), "C", "Second read must capture exactly 1 character");
+    });
+
     test('Should interface correctly with Memory for POKE', () => {
         const env = new Environment();
         
@@ -596,5 +859,25 @@ registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
         assertEqual(env.lookup('A'), 3);
         // 14.9 rounds to 15, 3.1 rounds to 3 -> 15 \ 3 = 5
         assertEqual(env.lookup('B'), 5); 
+    });
+
+    test('SOUND should yield a SYS_DELAY calculated from DOS clock ticks (18.2 Hz)', () => {
+        const env = new Environment();
+        
+        // We use the generic 'block' parser to maintain import consistency
+        const ast = block.run('SOUND 440, 18.2').result; 
+        const evaluator = new Evaluator(env);
+        
+        const generator = evaluator.evaluate(ast);
+        
+        // 1. The first next() consumes the Virtual CPU TICK (yield at the start of the block)
+        generator.next();
+        
+        // 2. The second next() executes the SOUND statement and yields the hardware interrupt
+        const state = generator.next();
+        
+        // 18.2 ticks should equal roughly 1000 milliseconds
+        assertEqual(state.value.type, 'SYS_DELAY');
+        assertEqual(Math.round(state.value.ms), 1000);
     });
 });

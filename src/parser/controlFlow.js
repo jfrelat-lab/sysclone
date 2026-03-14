@@ -3,13 +3,13 @@ import { choice, many, regex, optional, capture, sequenceObj, lazy, sequenceOf }
 import { identifier, keyword, optWs, ws, eos } from './lexers.js';
 import { expression } from './expressions.js';
 import { 
-    labelDef, clsStmt, viewPrintStmt, playStmt, beepStmt, sleepStmt, printStmt, locateStmt, colorStmt, 
-    defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
+    labelDef, clsStmt, viewPrintStmt, playStmt, beepStmt, soundStmt, sleepStmt, printStmt, locateStmt, colorStmt, 
+    defSegStmt, pokeStmt, outStmt, assignStmt, swapStmt, eraseStmt, callStmt,
     gotoStmt, gosubStmt, returnStmt, randomizeStmt, 
     screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
     windowStmt, psetStmt, lineStmt, circleStmt, paintStmt,
     onErrorStmt, resumeStmt, paletteStmt, putGraphicsStmt, getGraphicsStmt,
-    inputStmt, lineInputStmt, endStmt, implicitCallStmt 
+    inputStmt, lineInputStmt, endStmt, exitStmt, implicitCallStmt 
 } from './statements.js';
 
 // Import declarations and subroutines from previous milestones
@@ -27,14 +27,14 @@ const skipEmpty = many(choice([ws, eos]));
  */
 const atomicStatement = lazy(() => choice([
     labelDef, clsStmt, printStmt, locateStmt, colorStmt, 
-    defSegStmt, pokeStmt, outStmt, assignStmt, callStmt,
+    defSegStmt, pokeStmt, outStmt, assignStmt, swapStmt, eraseStmt, callStmt,
     gotoStmt, gosubStmt, returnStmt, randomizeStmt, 
     lineInputStmt, // Before lineStmt
-    viewPrintStmt, playStmt, beepStmt, sleepStmt,
+    viewPrintStmt, playStmt, beepStmt, soundStmt, sleepStmt,
     screenStmt, widthStmt, dataStmt, readStmt, restoreStmt,
     windowStmt, psetStmt, lineStmt, circleStmt, paintStmt,
     onErrorStmt, resumeStmt, paletteStmt, putGraphicsStmt, getGraphicsStmt,
-    inputStmt, endStmt, implicitCallStmt
+    inputStmt, endStmt, exitStmt, implicitCallStmt
 ]));
 
 /**

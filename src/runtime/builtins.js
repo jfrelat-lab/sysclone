@@ -13,6 +13,18 @@ export const BuiltIns = {
     'LTRIM$': (args) => String(args[0]).trimStart(),
     'RTRIM$': (args) => String(args[0]).trimEnd(),
     'SPACE$': (args) => " ".repeat(Math.max(0, args[0] || 0)),
+    'SPC': (args) => " ".repeat(Math.max(0, args[0] || 0)),
+    'STRING$': (args) => {
+        const len = Math.max(0, Math.floor(args[0] || 0));
+        let char = "";
+        if (typeof args[1] === 'string') {
+            char = args[1].charAt(0); // Take the first character of the string
+        } else {
+            // Treat as an ASCII / CP437 code
+            char = getCharFromCP437(Math.floor(args[1] || 0));
+        }
+        return char.repeat(len);
+    },
     'STR$': (args) => args[0] >= 0 ? " " + args[0] : String(args[0]),
     'RIGHT$': (args) => String(args[0]).slice(-(args[1] || 0)),
     'LEFT$': (args) => String(args[0]).slice(0, (args[1] || 0)),

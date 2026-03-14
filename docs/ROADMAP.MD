@@ -156,17 +156,22 @@
 ## Phase 9: Advanced QBasic Semantics (Gorillas Prep)
 *Implement complex language features required by advanced Microsoft demos.*
 
-- [ ] **9.1. Static Data Structures:**
-  - [ ] Implement `DATA`, `READ`, and `RESTORE` with a global data pointer in the `Environment`.
+- [x] **9.1. Static Data Structures:**
+  - [x] Implement `DATA`, `READ`, and `RESTORE` with a global data pointer in the `Environment`.
+  - [x] Handle unquoted strings and empty entries in `DATA`.
 - [ ] **9.2. Exception Handling:**
   - [ ] Implement `ON ERROR GOTO`, `RESUME`, and `RESUME NEXT` to catch runtime hardware/software faults.
 - [ ] **9.3. Implicit Typing & Macros:**
   - [ ] Support `DEFINT`, `DEFSNG`, etc., for default variable typing.
   - [x] Parse and evaluate single-line macros: `DEF FNname(args) = expr`.
+  - [x] Support multiple `CONST` declarations and `STATIC` subroutine scoping.
+  - [x] Support fixed-length string allocation (`AS STRING * N`).
 - [x] **9.4. Math, Strings & Built-ins:**
   - [x] Abstract all pure native functions into a `builtins.js` standard library.
   - [x] Implement math: `INT`, `FIX`, `ABS`, `SQR`, `RND`, `SIN`, `COS`, `TAN`, `ATN`, `EXP`, `LOG`, `CINT`.
-  - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `VAL`, `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `INSTR`.
+  - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `VAL`, `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `INSTR`, `STRING$`, `SPC`.
+  - [x] Add memory/variable utilities: `SWAP`, `ERASE`.
+  - [x] Add hardware intercepts: `TAB`, `INPUT$`.
 
 ## Phase 10: Advanced Graphics Engine (Gorillas & Mandelbrot)
 *Expand the engine capabilities to support computationally and graphically intensive classics.*
@@ -195,15 +200,18 @@
   - [x] Upgrade state tracking with a strict 16-byte FIFO buffer.
   - [x] Implement deep anti-ghosting safeties (filtering `e.repeat` held-down keys) to prevent input flooding and game logic corruption (e.g., Gorillas 0-velocity bugs).
 - [ ] **11.2. Time & Audio Engine:**
-  - [x] Wire `SLEEP` to trigger a `SYS_DELAY` hardware interrupt, yielding execution control asynchronously to the Orchestrator without freezing the browser UI.
+  - [x] Wire `SLEEP` and `SOUND` to trigger a `SYS_DELAY` hardware interrupt, yielding execution control asynchronously to the Orchestrator without freezing the browser UI.
   - [x] Implement preliminary `BEEP` instruction.
-  - [ ] Wire the full `PLAY` and `SOUND` commands to the Web Audio API (`AudioContext`).
+  - [ ] Wire the full `PLAY` command to the Web Audio API (`AudioContext`).
 
 ## Phase 12: The Grand Playtest
 - [x] **12.1. Rosetta Code Mandelbrot:**
   - [x] Execute math-heavy visual rendering (`WINDOW`, `PSET`, MCGA).
 - [ ] **12.2. Gorillas.bas:**
   - [ ] Full execution (projectile math, explosive `PAINT` rendering, `XOR` sprite blitting, sound effects).
+- [x] **12.3. SortDemo.bas & Reversi.bas:**
+  - [x] 100% Parsing achieved.
+  - [ ] Full execution of sorting algorithms and board logic.
 
 ---
 

@@ -1,11 +1,11 @@
 // src/parser/statements.test.js
 import { 
     implicitCallStmt, inputStmt, locateStmt, colorStmt, pokeStmt, 
-    assignStmt, labelDef, gotoStmt, gosubStmt, returnStmt, 
+    assignStmt, swapStmt, labelDef, gotoStmt, gosubStmt, returnStmt, 
     printStmt, dataStmt, restoreStmt, windowStmt, psetStmt, 
     lineStmt, circleStmt, paintStmt, onErrorStmt, resumeStmt,
     paletteStmt, putGraphicsStmt, getGraphicsStmt, lineInputStmt,
-    clsStmt, viewPrintStmt, playStmt
+    clsStmt, viewPrintStmt, playStmt, exitStmt
 } from './statements.js';
 
 import { test, assertEqual, registerSuite } from '../test_runner.js';
@@ -39,15 +39,33 @@ registerSuite('QBasic Instructions (Statements)', () => {
         assertEqual(input2.result.targets[0].value, 'GAMESPEED$');
     });
 
-    test('locateStmt() should parse LOCATE with one or two arguments', () => {
+    test('locateStmt() should parse LOCATE with missing row, col, or cursor arguments', () => {
         const loc1 = locateStmt.run('LOCATE 10');
         assertEqual(loc1.result.type, 'LOCATE');
         assertEqual(loc1.result.row.value, 10);
         assertEqual(loc1.result.col, null);
+        assertEqual(loc1.result.cursor, null);
 
         const loc2 = locateStmt.run('LOCATE 5, 20');
         assertEqual(loc2.result.row.value, 5);
         assertEqual(loc2.result.col.value, 20);
+        assertEqual(loc2.result.cursor, null);
+        
+        // The critical sortdemo.bas format!
+        const loc3 = locateStmt.run('LOCATE , 30');
+        assertEqual(loc3.result.row, null);
+        assertEqual(loc3.result.col.value, 30);
+        assertEqual(loc3.result.cursor, null);
+
+        // Three parameters (Visibility)
+        const loc4 = locateStmt.run('LOCATE 5, 20, 1');
+        assertEqual(loc4.result.cursor.value, 1);
+
+        // Just the cursor! (Hide cursor without moving it)
+        const loc5 = locateStmt.run('LOCATE , , 0');
+        assertEqual(loc5.result.row, null);
+        assertEqual(loc5.result.col, null);
+        assertEqual(loc5.result.cursor.value, 0);
     });
 
     test('colorStmt() should parse COLOR with foreground, background, or missing arguments', () => {
@@ -108,6 +126,7 @@ registerSuite('QBasic Instructions (Statements)', () => {
     });
 
     test('Data Statements should parse DATA and RESTORE', () => {
+        // Test standard
         const data = dataStmt.run('DATA 15, "Color", 0');
         assertEqual(data.result.type, 'DATA');
         assertEqual(data.result.values.length, 3);
@@ -119,6 +138,31 @@ registerSuite('QBasic Instructions (Statements)', () => {
         const rest2 = restoreStmt.run('RESTORE InitColors');
         assertEqual(rest2.result.type, 'RESTORE');
         assertEqual(rest2.result.label, 'INITCOLORS');
+    });
+
+    test('dataStmt() should parse empty entries, trailing commas, and unquoted symbols', () => {
+        // Exact use-case from MS-DOS sortdemo.bas (with an added trailing comma to ensure robustness)
+        const code = 'DATA Toggle Sound, , <   (Slower), >   (Faster),';
+        const data = dataStmt.run(code);
+        
+        assertEqual(data.isError, false);
+        assertEqual(data.result.type, 'DATA');
+        
+        // 3 explicit values + 1 empty middle + 1 empty trailing = 5 elements
+        assertEqual(data.result.values.length, 5); 
+        
+        // 1. Unquoted String with spaces
+        assertEqual(data.result.values[0].value, 'Toggle Sound');
+        
+        // 2. Empty entry from consecutive commas ", ,"
+        assertEqual(data.result.values[1].value, '');
+        
+        // 3 & 4. Unquoted Strings with symbols and parens
+        assertEqual(data.result.values[2].value, '<   (Slower)');
+        assertEqual(data.result.values[3].value, '>   (Faster)');
+        
+        // 5. The trailing comma leaves an empty entry at the end
+        assertEqual(data.result.values[4].value, '');
     });
 
     test('windowStmt() should parse WINDOW statements with math coordinates', () => {
@@ -177,7 +221,7 @@ registerSuite('QBasic Instructions (Statements)', () => {
         assertEqual(paint.result.borderColor, null);
     });
 
-test('Legacy Hardware should parse ON ERROR, PALETTE and RESUME', () => {
+    test('Legacy Hardware should parse ON ERROR, PALETTE and RESUME', () => {
         // --- 1. ON ERROR GOTO ---
         // Disable error handling
         const onError = onErrorStmt.run('ON ERROR GOTO 0');
@@ -313,5 +357,45 @@ test('Legacy Hardware should parse ON ERROR, PALETTE and RESUME', () => {
         const play2 = playStmt.run('PLAY musicMacro$');
         assertEqual(play2.isError, false);
         assertEqual(play2.result.music.value, 'MUSICMACRO$');
+    });
+
+    test('exitStmt() should parse EXIT commands for loops and routines', () => {
+        const ex1 = exitStmt.run('EXIT FOR');
+        assertEqual(ex1.isError, false);
+        assertEqual(ex1.result.type, 'EXIT');
+        assertEqual(ex1.result.target, 'FOR');
+
+        const ex2 = exitStmt.run('EXIT SUB');
+        assertEqual(ex2.isError, false);
+        assertEqual(ex2.result.target, 'SUB');
+    });
+
+    test('swapStmt() should parse SWAP with variables and arrays', () => {
+        const swap1 = swapStmt.run('SWAP a, b');
+        assertEqual(swap1.isError, false);
+        assertEqual(swap1.result.type, 'SWAP');
+        assertEqual(swap1.result.target1.value, 'A');
+        assertEqual(swap1.result.target2.value, 'B');
+
+        const swap2 = swapStmt.run('SWAP SortArray(I), SortArray(J)');
+        assertEqual(swap2.isError, false);
+        assertEqual(swap2.result.target1.type, 'CALL'); // Array access is mapped as a CALL node
+        assertEqual(swap2.result.target2.type, 'CALL');
+    });
+
+    test('eraseStmt() should parse ERASE with one or multiple arrays', () => {
+        const ast = eraseStmt.run('ERASE Board, PlayerScores').result;
+        assertEqual(ast.type, 'ERASE');
+        assertEqual(ast.targets.length, 2);
+        assertEqual(ast.targets[0], 'BOARD');
+        assertEqual(ast.targets[1], 'PLAYERSCORES');
+    });
+
+    test('soundStmt() should parse SOUND with frequency and duration', () => {
+        const sound = soundStmt.run('SOUND 60 * CurrentRow, Pause');
+        assertEqual(sound.isError, false);
+        assertEqual(sound.result.type, 'SOUND');
+        assertEqual(sound.result.freq.type, 'BINARY_OP');
+        assertEqual(sound.result.duration.type, 'IDENTIFIER');
     });
 });
