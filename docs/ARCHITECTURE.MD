@@ -24,7 +24,7 @@ Rather than using heavy parser generators (ANTLR, PEG.js) or unreadable regular 
 The challenge on the Web is avoiding main thread blocking during infinite loops (`DO...LOOP`) or hardware pauses (`SLEEP`).
 * **Architectural Choice:** We use JavaScript Generators (`function*` and `yield*`) instead of Promises (`async/await`).
 * **Why?** `async/await` floods the browser's Microtask Queue, destroying the framerate and overloading the Garbage Collector. Generators create an ultra-fast synchronous iterator where each `yield` acts as a clock "Tick". The browser controls the cycles allocated per frame.
-* **SYS_DELAY Interrupts:** When the CPU hits a blocking instruction like `SLEEP`, the generator yields a `SYS_DELAY` token to the Orchestrator (`webvm.js`). The Orchestrator safely exits the execution loop, allows the browser to render the frame, and schedules a `setTimeout` to resume the Virtual CPU seamlessly.
+* **SYS_DELAY & Hardware Interrupts:** When the CPU hits a blocking instruction like `SLEEP`, `SOUND`, or an interactive read like `INPUT$`, the generator yields a `SYS_DELAY` (or simply yields) to the Orchestrator (`webvm.js`). The Orchestrator safely exits the execution loop, allows the browser to render the frame, and schedules a `setTimeout` or event listener to resume the Virtual CPU seamlessly.
 
 ### 2.3. The Video Engine & Dynamic Typography
 To emulate the VGA text mode screen (80x25), standard HTML canvas `ctx.fillText()` was rejected.
@@ -37,9 +37,9 @@ Old DOS games use `POKE` to write directly into system RAM (e.g., address `&H41A
 * **Why?** This guarantees compatibility with low-level BIOS tricks. The architecture uses **Memory-Mapped I/O**: the `Memory` class intercepts writes to vital addresses and drives the virtual peripherals accordingly.
 
 ### 2.5. The Environment: Scopes, Types, and Static Data
-* **Scope:** Managed by a chain of environments (Parent -> Child) to simulate global scope and local variables of subroutines.
-* **Arrays & Types:** QBasic allows arbitrary bounds (e.g., `DIM a(10 TO 50)`). The `QArray` class flattens these into a pure 1D mathematical array while natively handling index offsets. 
-* **Data Bank:** The Evaluator features a pre-execution scanning phase to hoist `LABEL`, `SUB`, and `DATA` statements, creating a sequential data bank accessed by `READ` and `RESTORE`.
+* **Scope:** Managed by a chain of environments (Parent -> Child) to simulate global scope and local variables of subroutines. Includes preliminary `STATIC` support.
+* **Arrays & Types:** QBasic allows arbitrary bounds (e.g., `DIM a(10 TO 50)`). The `QArray` class flattens these into a pure 1D mathematical array while natively handling index offsets. Supports fixed-length string allocation (`STRING * N`).
+* **Data Bank & Hoisting:** The Evaluator features a pre-execution scanning phase to hoist `LABEL`, `SUB`, and `DATA` statements. Crucially, **`DATA` is hoisted globally** across the entire program, while **`LABEL`s are strictly isolated** within their respective subroutines to authentically emulate x86 local jump tables.
 
 ### 2.6. I/O Encoding & The CP437 Bridge
 Modern web browsers fetch text files as UTF-8, which breaks legacy DOS games relying on extended ASCII characters for graphics.

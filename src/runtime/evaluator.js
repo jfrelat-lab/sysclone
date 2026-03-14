@@ -15,53 +15,57 @@ export class Evaluator {
         this.labels = new Map();
         this.hasScannedLabels = false;
         this.topLevelBlock = undefined;
-
-        // --- Static Data Bank (DATA/READ) ---
-        this.dataBank = []; 
-        this.dataPointer = 0;
     }
 
-    /**
+/**
      * Pre-calculates (hoists) labels, subroutines, types, and data entries.
      * Maps the program structure before execution starts.
+     * @param {Object|Array} node - The AST node to scan.
+     * @param {boolean} insideSub - Flag to prevent global label pollution from local subroutines.
      */
-    scanLabels(node) {
+    scanLabels(node, insideSub = false) {
         if (!node) return;
         
         if (Array.isArray(node)) {
             for (let i = 0; i < node.length; i++) {
                 if (node[i]) {
-                    // 1. Register global elements in memory
-                    if (node[i].type === 'LABEL') {
+                    if (node[i].type === 'LABEL' && !insideSub) {
+                        // Only register labels in the current execution scope
                         this.labels.set(node[i].name.toUpperCase(), { 
                             block: node, 
                             index: i,
-                            dataIndex: this.dataBank.length
+                            dataIndex: this.env.getDataCount() 
                         });
                     } else if (node[i].type === 'SUB_DEF' || node[i].type === 'FUNCTION_DEF' || node[i].type === 'DEF_FN') {
-                        const params = node[i].params || [];
-                        // For DEF_FN macros, the "body" is simply the AST expression to evaluate
-                        const body = node[i].type === 'DEF_FN' ? node[i].expression : node[i].body;                        
-                        this.env.defineSub(node[i].name, params, body, node[i].type);
+                        if (!insideSub) {
+                            const params = node[i].params || [];
+                            const body = node[i].type === 'DEF_FN' ? node[i].expression : node[i].body;                        
+                            this.env.defineSub(node[i].name, params, body, node[i].type, node[i].isStatic || false);
+                            
+                            // Recurse to hoist DATA, but lock the scope so local labels don't leak globally!
+                            this.scanLabels(node[i].body, true);
+                        }
                     } else if (node[i].type === 'DEFINT') {
-                        this.env.defineDefInt(node[i].range);
+                        if (!insideSub) this.env.defineDefInt(node[i].range);
                     } else if (node[i].type === 'TYPE_DECL') {
-                        this.env.defineType(node[i].name, node[i].fields);
+                        if (!insideSub) this.env.defineType(node[i].name, node[i].fields);
                     } else if (node[i].type === 'DATA') {
-                        for (let val of node[i].values) {
-                            this.dataBank.push(val);
+                        // DATA is universally global, BUT only hoisted by the top-level Evaluator (no parent)
+                        if (!this.env.parent) {
+                            this.env.addData(node[i].values);
                         }
                     }
-                    // 2. Recursively explore children (vital for finding labels inside IFs or SUBs)
-                    if (node[i].type !== 'LABEL') {
-                        this.scanLabels(node[i]);
+                    
+                    // Recurse into standard blocks (IF, FOR, DO, etc.)
+                    if (node[i].type !== 'LABEL' && node[i].type !== 'SUB_DEF' && node[i].type !== 'FUNCTION_DEF' && node[i].type !== 'DEF_FN') {
+                        this.scanLabels(node[i], insideSub);
                     }
                 }
             }
         } else if (typeof node === 'object') {
             for (let key in node) {
                 if (key !== 'parent' && key !== 'env' && typeof node[key] === 'object') {
-                    this.scanLabels(node[key]);
+                    this.scanLabels(node[key], insideSub);
                 }
             }
         }
@@ -115,6 +119,10 @@ export class Evaluator {
                         if (isTopLevel) throw new Error("RETURN without GOSUB detected");
                         return result; 
                     }
+                    // BUBBLING: Propagate the EXIT instruction up until a loop or block catches it
+                    if (result._control === 'EXIT') {
+                        return result;
+                    }
                 }
                 i++;
             }
@@ -130,6 +138,9 @@ export class Evaluator {
 
             case 'RETURN': 
                 return { _control: 'RETURN' };
+
+            case 'EXIT':
+                return { _control: 'EXIT', target: node.target };
 
             case 'GOSUB':
                 const target = this.labels.get(node.label.toUpperCase());
@@ -186,8 +197,10 @@ export class Evaluator {
 
             // --- DATA STRUCTURES ---
             case 'CONST':
-                const constVal = yield* this.evaluate(node.value);
-                this.env.define(node.name, constVal);
+                for (let decl of node.declarations) {
+                    const constVal = yield* this.evaluate(decl.value);
+                    this.env.define(decl.name, constVal);
+                }
                 return null;
 
             case 'SUB_DEF':
@@ -265,7 +278,12 @@ export class Evaluator {
                     if (stepVal < 0 && currentVal < endVal) break;
                     
                     const res = yield* this.evaluate(node.body);
-                    if (res && res._control) return res;
+                    if (res && res._control) {
+                        // Catch the EXIT specifically targeted for the FOR loop
+                        if (res._control === 'EXIT' && res.target === 'FOR') break;
+                        // Bubble up other control signals (GOTO, END, EXIT SUB)
+                        return res; 
+                    }
 
                     this.env.assign(node.variable, currentVal + stepVal);
                 }
@@ -321,7 +339,10 @@ export class Evaluator {
                     if (node.loopType === 'WHILE' && (cond === 0 || cond === false)) break;
 
                     const res = yield* this.evaluate(node.body);
-                    if (res && res._control) return res;
+                    if (res && res._control) {
+                        if (res._control === 'EXIT' && res.target === 'DO') break;
+                        return res;
+                    }
                 }
                 return null;
 
@@ -329,7 +350,10 @@ export class Evaluator {
                 while (true) {
                     yield; 
                     const res = yield* this.evaluate(node.body);
-                    if (res && res._control) return res;
+                    if (res && res._control) {
+                        if (res._control === 'EXIT' && res.target === 'DO') break;
+                        return res;
+                    }
                     
                     if (node.condition) {
                         const cond = yield* this.evaluate(node.condition);
@@ -372,7 +396,29 @@ export class Evaluator {
                         return numStr.padStart(match.length, ' ');
                     });
                 } else {
-                    for (let val of values) output += val.toString();
+                    for (let val of values) {
+                        // Surgical hardware interception of the TAB function response
+                        if (val && val._special === 'TAB') {
+                            if (this.hw.vga) {
+                                // Flush pending output to VRAM before computing dynamic columns
+                                if (output.length > 0) {
+                                    this.hw.vga.print(Array.from(toCP437Array(output)));
+                                    output = "";
+                                }
+                                const targetX = Math.max(1, Math.round(val.col)) - 1;
+                                // If already passed the column, wrap to next line (QBasic behavior)
+                                if (this.hw.vga.cursorX > targetX) {
+                                    this.hw.vga.print([13, 10]); 
+                                }
+                                const spaces = targetX - this.hw.vga.cursorX;
+                                if (spaces > 0) {
+                                    this.hw.vga.print(Array.from(toCP437Array(" ".repeat(spaces))));
+                                }
+                            }
+                        } else {
+                            output += (val !== null && val !== undefined) ? val.toString() : "";
+                        }
+                    }
                 }
                 
                 if (this.hw.vga) {
@@ -493,10 +539,21 @@ export class Evaluator {
             }
             
             case 'CLS': if (this.hw.vga) this.hw.vga.cls(); return null;
+
             case 'LOCATE':
+                // evaluate(null) elegantly returns null in our engine
                 const row = yield* this.evaluate(node.row);
                 const col = yield* this.evaluate(node.col);
-                if (this.hw.vga) this.hw.vga.locate(row, col);
+                const cur = yield* this.evaluate(node.cursor);
+                
+                if (this.hw.vga) {
+                    this.hw.vga.locate(row, col);
+                    // Hardware Cursor Control
+                    if (cur !== null) {
+                        if (cur === 0) this.hw.vga.hideCursor();
+                        else this.hw.vga.showCursor();
+                    }
+                }
                 return null;
 
             case 'COLOR':
@@ -514,16 +571,15 @@ export class Evaluator {
                 if (node.label) {
                     const target = this.labels.get(node.label.toUpperCase());
                     if (!target) throw new Error("Label not found for RESTORE: " + node.label);
-                    this.dataPointer = target.dataIndex || 0;
+                    this.env.restoreData(target.dataIndex || 0);
                 } else {
-                    this.dataPointer = 0;
+                    this.env.restoreData(0);
                 }
                 return null;
 
             case 'READ':
                 for (let target of node.targets) {
-                    if (this.dataPointer >= this.dataBank.length) throw new Error("Out of DATA");
-                    const val = yield* this.evaluate(this.dataBank[this.dataPointer++]);
+                    const val = yield* this.evaluate(this.env.readData());
                     const targetRef = yield* this.evaluateLValue(target);
                     if (targetRef.type === 'ENV') this.env.assign(targetRef.name, val);
                     else if (targetRef.type === 'ARRAY') targetRef.array.set(targetRef.indices, val);
@@ -547,10 +603,74 @@ export class Evaluator {
 
             case 'ASSIGN':
                 const tRef = yield* this.evaluateLValue(node.target);
-                const aVal = yield* this.evaluate(node.value);
+                let aVal = yield* this.evaluate(node.value);
+                // Deep clone UDTs (User-Defined Types) to prevent JavaScript reference mutation!
+                if (aVal !== null && typeof aVal === 'object' && !Array.isArray(aVal) && aVal.constructor.name === 'Object') {
+                    aVal = JSON.parse(JSON.stringify(aVal));
+                }
                 if (tRef.type === 'ENV') this.env.assign(tRef.name, aVal);
                 else if (tRef.type === 'ARRAY') tRef.array.set(tRef.indices, aVal);
                 else if (tRef.type === 'OBJECT') tRef.object[tRef.property] = aVal;
+                return null;
+
+            case 'SWAP':
+                const ref1 = yield* this.evaluateLValue(node.target1);
+                const ref2 = yield* this.evaluateLValue(node.target2);
+                
+                let val1, val2;
+                if (ref1.type === 'ENV') val1 = this.env.lookup(ref1.name);
+                else if (ref1.type === 'ARRAY') val1 = ref1.array.get(ref1.indices);
+                else if (ref1.type === 'OBJECT') val1 = ref1.object[ref1.property];
+                
+                if (ref2.type === 'ENV') val2 = this.env.lookup(ref2.name);
+                else if (ref2.type === 'ARRAY') val2 = ref2.array.get(ref2.indices);
+                else if (ref2.type === 'OBJECT') val2 = ref2.object[ref2.property];
+                
+                // Deep clone to guarantee pure memory value swapping
+                if (val1 !== null && typeof val1 === 'object' && val1.constructor.name === 'Object') val1 = JSON.parse(JSON.stringify(val1));
+                if (val2 !== null && typeof val2 === 'object' && val2.constructor.name === 'Object') val2 = JSON.parse(JSON.stringify(val2));
+                
+                if (ref1.type === 'ENV') this.env.assign(ref1.name, val2);
+                else if (ref1.type === 'ARRAY') ref1.array.set(ref1.indices, val2);
+                else if (ref1.type === 'OBJECT') ref1.object[ref1.property] = val2;
+
+                if (ref2.type === 'ENV') this.env.assign(ref2.name, val1);
+                else if (ref2.type === 'ARRAY') ref2.array.set(ref2.indices, val1);
+                else if (ref2.type === 'OBJECT') ref2.object[ref2.property] = val1;
+                return null;
+
+            case 'ERASE':
+                for (let target of node.targets) {
+                    let currEnv = this.env;
+                    let arr = null;
+                    
+                    // Traverse scope chain to find the array
+                    while (currEnv) {
+                        if (currEnv.variables.has(target)) {
+                            arr = currEnv.variables.get(target);
+                            break;
+                        }
+                        currEnv = currEnv.parent;
+                    }
+                    
+                    if (arr && arr.constructor.name === 'QArray') {
+                        // Soft reset array elements to simulate memory clear (Static Array behavior)
+                        // This prevents JS reference crashes while satisfying MS-DOS logic.
+                        for (let i = 0; i < arr.data.length; i++) {
+                            const val = arr.data[i];
+                            if (typeof val === 'string') {
+                                arr.data[i] = "";
+                            } else if (typeof val === 'object' && val !== null) {
+                                // Shallow reset of UDT properties
+                                for (let key in val) {
+                                    val[key] = (typeof val[key] === 'string') ? "" : 0;
+                                }
+                            } else {
+                                arr.data[i] = 0;
+                            }
+                        }
+                    }
+                }
                 return null;
 
             case 'CALL': return yield* this.evaluateCall(node);
@@ -667,6 +787,22 @@ export class Evaluator {
 
             // --- System & Hardware Delays ---
 
+            case 'SOUND': {
+                const freq = yield* this.evaluate(node.freq);
+                const durationTicks = yield* this.evaluate(node.duration);
+                
+                // DOS Clock ticks run at ~18.2 Hz.
+                // Convert ticks to milliseconds for the WebVM Orchestrator.
+                const ms = (durationTicks / 18.2) * 1000;
+                
+                // TODO: Wire 'freq' to the AudioContext when the sound engine is ready.
+                // For now, we MUST yield the delay to allow visual sorting animations.
+                if (ms > 0) {
+                    yield { type: 'SYS_DELAY', ms: ms };
+                }
+                return null;
+            }
+
             case 'SLEEP': {
                 let ms = 0;
                 
@@ -770,7 +906,11 @@ export class Evaluator {
             }
             // -----------------------------------------------------------
 
-            yield* subEvaluator.evaluate(subDef.body);
+            const res = yield* subEvaluator.evaluate(subDef.body);
+            if (res && res._control === 'END') return res; // Propagate total crash
+            
+            // 'EXIT SUB' and 'EXIT FUNCTION' signals are implicitly caught here.
+            // The subroutine aborts early and proceeds to the COPY-OUT phase.
             
             let returnValue = (subDef.type === 'FUNCTION_DEF') ? childEnv.lookup(callee) : null;
 
@@ -809,6 +949,27 @@ export class Evaluator {
                 return this.hw.vga.point(args[0], args[1]);
             }
             return 0; // Fallback to background color (0) if no VGA hardware is attached
+        }
+        if (callee === 'TAB') {
+            // Return a special token for the PRINT statement hardware interceptor
+            return { _special: 'TAB', col: args[0] || 1 };
+        }
+        if (callee === 'INPUT$') {
+            const charCount = Math.max(1, args[0] || 1);
+            let resultStr = "";
+            
+            // Loop and yield control to the browser until we collect exactly n characters
+            while (resultStr.length < charCount) {
+                yield; 
+                if (!this.hw.io) break; 
+                
+                const key = this.hw.io.inkey();
+                if (key) {
+                    // INPUT$ intercepts keystrokes silently (no hardware echo to VGA)
+                    resultStr += key;
+                }
+            }
+            return resultStr;
         }
 
         // --- 4. RESOLVE ARRAYS IN ENVIRONMENT ---

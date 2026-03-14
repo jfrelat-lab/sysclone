@@ -77,6 +77,16 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         assertEqual(success.result.params[3].toUpperCase(), 'SNAKE');
     });
 
+    test('subDef() should parse no-params with STATIC keyword', () => {
+        const code = `SUB BoxInit STATIC\n PRINT "Box"\n END SUB`;
+        const success = subDef.run(code);
+        
+        assertEqual(success.isError, false);
+        assertEqual(success.result.name.toUpperCase(), 'BOXINIT');
+        assertEqual(success.result.isStatic, true);
+        assertEqual(success.result.params.length, 0);
+    });
+
     // --- FUNCTIONS (FUNCTION) ---
 
     test('functionDef() should parse a full FUNCTION block', () => {
@@ -101,6 +111,19 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         assertEqual(success.result.type, 'FUNCTION_DEF');
         assertEqual(success.result.name.toUpperCase(), 'GETTIME');
         assertEqual(success.result.params.length, 0);
+    });
+
+    test('functionDef() should parse with STATIC keyword', () => {
+        // Typical use-case for accumulating values across calls
+        const code = `FUNCTION CalcScore (hits) STATIC\n CalcScore = hits * 10\nEND FUNCTION`;
+        
+        const success = functionDef.run(code);
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'FUNCTION_DEF');
+        assertEqual(success.result.name.toUpperCase(), 'CALCSCORE');
+        assertEqual(success.result.isStatic, true);
+        assertEqual(success.result.params.length, 1);
+        assertEqual(success.result.params[0].toUpperCase(), 'HITS');
     });
 
     // --- MACRO FUNCTIONS (DEF FN) ---

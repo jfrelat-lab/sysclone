@@ -11,6 +11,29 @@ export class Environment {
         this.types = new Map(); 
         this.subs = new Map();
         this.defIntRanges = []; // Stores character ranges for implicit typing (e.g., "A-Z")
+
+        // Global Data Bank for READ/DATA
+        this.dataBank = [];
+        this.dataPointer = 0;
+    }
+
+    // --- DATA BANK MANAGEMENT ---
+    addData(values) {
+        if (this.parent) return this.parent.addData(values);
+        for (let v of values) this.dataBank.push(v);
+    }
+    readData() {
+        if (this.parent) return this.parent.readData();
+        if (this.dataPointer >= this.dataBank.length) throw new Error("Out of DATA");
+        return this.dataBank[this.dataPointer++];
+    }
+    restoreData(index = 0) {
+        if (this.parent) return this.parent.restoreData(index);
+        this.dataPointer = index;
+    }
+    getDataCount() {
+        if (this.parent) return this.parent.getDataCount();
+        return this.dataBank.length;
     }
 
     // --- IMPLICIT TYPING MANAGEMENT (DEFINT) ---
@@ -44,8 +67,8 @@ export class Environment {
     /**
      * Registers a subroutine or function definition in the current scope.
      */
-    defineSub(name, params, body, type = 'SUB_DEF') {
-        this.subs.set(name.toUpperCase(), { params, body, type });
+    defineSub(name, params, body, type = 'SUB_DEF', isStatic = false) {
+        this.subs.set(name.toUpperCase(), { params, body, type, isStatic });
     }
 
     getSub(name) {
