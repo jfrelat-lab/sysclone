@@ -1,7 +1,10 @@
 [
+  "gorilla.bas",
   "graphics_test.bas",
   "mandelbrot.bas",
   "matrix.bas",
   "nibbles.bas",
-  "plasma.bas"
+  "plasma.bas",
+  "reversi.bas",
+  "sortdemo.bas"
 ]

@@ -144,3 +144,19 @@ export const redimDecl = sequenceObj([
     shared: obj.sharedOpt !== null,
     declarations: obj.declarations 
 }));
+
+/**
+ * Parses STATIC variable declarations used inside subroutines.
+ * Syntax is identical to DIM, but without the SHARED option.
+ * Example: STATIC counter AS INTEGER, lastTime AS SINGLE
+ */
+export const staticDecl = sequenceObj([
+    keyword('STATIC'), ws,
+    capture('declarations', sequenceOf([
+        singleDim,
+        many(sequenceOf([optWs, str(','), optWs, singleDim]).map(arr => arr[3]))
+    ]).map(arr => [arr[0], ...arr[1]]))
+]).map(obj => ({
+    type: 'STATIC',
+    declarations: obj.declarations 
+}));

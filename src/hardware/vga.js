@@ -42,33 +42,23 @@ export class VGA {
     }
 
     initDisplay(width, height) {
-        if (this.options.displayAdapter) {
+        // True Dependency Injection: The orchestrator handles DOM creation
+        if (typeof this.options.createDisplay === 'function') {
+            this.display = this.options.createDisplay(width, height);
+        } 
+        // Legacy injection support for existing tests
+        else if (this.options.displayAdapter) {
             this.display = this.options.displayAdapter;
             this.display.width = width;
             this.display.height = height;
-        } else {
-            const canvas = document.getElementById(this.options.canvasId || 'vga-display');
-            canvas.width = width;
-            canvas.height = height;
-            
-            // Dynamic CSS height calculation to maintain square pixels
-            // We fix the physical CSS width to 640px (standard emulator UI width)
-            const scale = 640 / width;
-            const physicalHeight = Math.floor(height * scale);
-            
-            canvas.style.width = "640px";
-            canvas.style.height = `${physicalHeight}px`;
-            canvas.style.imageRendering = "pixelated";
-            
-            const ctx = canvas.getContext('2d', { alpha: false });
-            // Recreate ImageData when the underlying resolution changes
-            const imageData = ctx.createImageData(width, height);
-            
+        } 
+        // Headless / Test Environment Fallback (Zero-Risk for Node.js)
+        else {
             this.display = {
                 width: width,
                 height: height,
-                pixelBuffer32: new Uint32Array(imageData.data.buffer),
-                commit: () => ctx.putImageData(imageData, 0, 0)
+                pixelBuffer32: new Uint32Array(width * height),
+                commit: () => {} // No-op
             };
         }
     }
@@ -180,10 +170,23 @@ export class VGA {
             const width = this.activeDriver.width;
             const height = this.activeDriver.height;
 
-            physX = ((logicalX - x1) / (x2 - x1)) * width;
+            // MS-DOS Hardware Quirk: WINDOW automatically sorts coordinates!
+            // It guarantees X always increases from left to right.
+            const xMin = Math.min(x1, x2);
+            const xMax = Math.max(x1, x2);
+            const yMin = Math.min(y1, y2);
+            const yMax = Math.max(y1, y2);
+
+            // X-Axis Mapping: Linear interpolation from [xMin, xMax] to [0, width]
+            physX = ((logicalX - xMin) / ((xMax - xMin) || 1)) * width;
             
-            let mappedY = ((logicalY - y1) / (y2 - y1)) * height;
-            physY = invertY ? (height - mappedY) : mappedY;
+            // Y-Axis Mapping: Linear interpolation from [yMin, yMax] to [0, height]
+            let mappedY = ((logicalY - yMin) / ((yMax - yMin) || 1)) * height;
+            
+            // In QBasic:
+            // WINDOW (Cartesian): invertY = false -> yMin is bottom, yMax is top.
+            // WINDOW SCREEN (Screen): invertY = true -> yMin is top, yMax is bottom.
+            physY = invertY ? mappedY : (height - mappedY);
         }
 
         return { px: Math.round(physX), py: Math.round(physY) };

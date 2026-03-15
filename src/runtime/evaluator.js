@@ -9,15 +9,21 @@ import { getCharFromCP437, getCP437FromChar, toCP437Array } from '../hardware/en
  * Uses Generator functions (*evaluate) to allow non-blocking execution in the browser.
  */
 export class Evaluator {
-    constructor(env = new Environment(), hardware = { vga: null, io: null, memory: null }) {
-        this.env = env;
+    constructor(env = null, hardware = { vga: null, io: null, memory: null }) {
+        // Setup the 3-Tier Architecture natively if no custom env is provided
+        if (!env) {
+            const rootEnv = new Environment();     // Tier 1: Global/Shared
+            this.env = new Environment(rootEnv);   // Tier 2: Main Module
+        } else {
+            this.env = env;
+        }
         this.hw = hardware;
         this.labels = new Map();
         this.hasScannedLabels = false;
         this.topLevelBlock = undefined;
     }
 
-/**
+    /**
      * Pre-calculates (hoists) labels, subroutines, types, and data entries.
      * Maps the program structure before execution starts.
      * @param {Object|Array} node - The AST node to scan.
@@ -219,17 +225,45 @@ export class Evaluator {
                 for (let decl of node.declarations) {
                     const typeName = decl.varType || decl.type || 'SINGLE'; 
                     const creator = () => this.env.createDefaultValue(typeName);
+                    
+                    let initValue;
                     if (decl.isArray) {
                         const bounds = [];
                         for (let b of decl.bounds) {
-                            bounds.push({ 
-                                min: yield* this.evaluate(b.min), 
-                                max: yield* this.evaluate(b.max) 
-                            });
+                            bounds.push({ min: yield* this.evaluate(b.min), max: yield* this.evaluate(b.max) });
                         }
-                        this.env.define(decl.name, new QArray(bounds, creator));
+                        initValue = new QArray(bounds, creator);
                     } else {
-                        this.env.define(decl.name, creator());
+                        initValue = creator();
+                    }
+                    
+                    // Route to Tier 1 if SHARED (using node.shared from dimDecl), otherwise stay in local scope
+                    if (node.shared) {
+                        this.env.sharedEnv.define(decl.name, initValue);
+                    } else {
+                        this.env.define(decl.name, initValue);
+                    }
+                }
+                return null;
+
+            case 'STATIC':
+                for (let decl of node.declarations) {
+                    const upperName = decl.name.toUpperCase();
+                    // Initialize ONLY ONCE: if it's already in the vault, we skip!
+                    if (this.env.staticScope && !this.env.staticScope.has(upperName)) {
+                        const typeName = decl.varType || decl.type || 'SINGLE'; 
+                        const creator = () => this.env.createDefaultValue(typeName);
+                        let initValue;
+                        if (decl.isArray) {
+                            const bounds = [];
+                            for (let b of decl.bounds) {
+                                bounds.push({ min: yield* this.evaluate(b.min), max: yield* this.evaluate(b.max) });
+                            }
+                            initValue = new QArray(bounds, creator);
+                        } else {
+                            initValue = creator();
+                        }
+                        this.env.staticScope.set(upperName, initValue);
                     }
                 }
                 return null;
@@ -377,12 +411,15 @@ export class Evaluator {
             case 'PRINT': {
                 let output = "";
                 const values = [];
+                
+                // 1. Evaluate all expressions in the PRINT statement and store their resolved values.
                 if (node.values && node.values.length > 0) {
                     for (let expr of node.values) {
                         values.push(yield* this.evaluate(expr));
                     }
                 }
                 
+                // 2. Handle the PRINT USING statement for specific string/number formatting (e.g., currency).
                 if (node.usingFormat) {
                     const formatStr = yield* this.evaluate(node.usingFormat);
                     let valIndex = 0;
@@ -396,36 +433,51 @@ export class Evaluator {
                         return numStr.padStart(match.length, ' ');
                     });
                 } else {
+                    // 3. Handle standard PRINT statements.
                     for (let val of values) {
-                        // Surgical hardware interception of the TAB function response
+                        // Surgical hardware interception for the TAB() function.
                         if (val && val._special === 'TAB') {
                             if (this.hw.vga) {
-                                // Flush pending output to VRAM before computing dynamic columns
+                                // Flush any pending text in the output buffer to the VRAM before moving the cursor.
                                 if (output.length > 0) {
                                     this.hw.vga.print(Array.from(toCP437Array(output)));
                                     output = "";
                                 }
+                                
                                 const targetX = Math.max(1, Math.round(val.col)) - 1;
-                                // If already passed the column, wrap to next line (QBasic behavior)
+                                
+                                // If the cursor is already past the target column, QBasic wraps it to the next line.
                                 if (this.hw.vga.cursorX > targetX) {
-                                    this.hw.vga.print([13, 10]); 
+                                    this.hw.vga.print([13, 10]); // CR LF
                                 }
+                                
+                                // Pad the screen with spaces until the cursor reaches the target column.
                                 const spaces = targetX - this.hw.vga.cursorX;
                                 if (spaces > 0) {
                                     this.hw.vga.print(Array.from(toCP437Array(" ".repeat(spaces))));
                                 }
                             }
                         } else {
-                            output += (val !== null && val !== undefined) ? val.toString() : "";
+                            // Apply strict MS-DOS formatting rules for standard values.
+                            if (typeof val === 'number') {
+                                // Numbers always get a trailing space.
+                                // Positive numbers and zero get a leading space (acting as an implicit '+' sign).
+                                // Negative numbers keep their '-' sign instead of the leading space.
+                                output += (val >= 0 ? " " + val.toString() + " " : val.toString() + " ");
+                            } else {
+                                // Strings are concatenated exactly as they are, without any automatic spacing.
+                                output += (val !== null && val !== undefined) ? val.toString() : "";
+                            }
                         }
                     }
                 }
                 
                 if (this.hw.vga) {
-                    // CPU Phase: Translate Unicode to CP437 bytes
+                    // CPU Phase: Translate the final Unicode string into a CP437 byte array for the MS-DOS hardware.
                     const byteStream = Array.from(toCP437Array(output));
                     
-                    // Hardware Phase: Inject CR (13) and LF (10) if newline is required
+                    // Hardware Phase: Inject Carriage Return (13) and Line Feed (10) if a newline is required.
+                    // (i.e., the PRINT statement did not end with a semicolon or comma).
                     if (node.newline) {
                         byteStream.push(13, 10);
                     }
@@ -877,7 +929,15 @@ export class Evaluator {
         const subDef = this.env.getSub(callee);
         
         if (subDef) {
-            const childEnv = new Environment(this.env);
+            // Pass the persistent vault to the new environment
+            const childEnv = new Environment(this.env.sharedEnv, subDef.persistentVars);
+            
+            // MAGIC: If the whole routine was declared "SUB Foo STATIC", 
+            // all local variables ARE persistent variables natively!
+            if (subDef.isStatic) {
+                childEnv.variables = subDef.persistentVars;
+            }
+
             const argRefs = [];
             const argValues = [];
             

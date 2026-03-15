@@ -24,5 +24,5 @@ The primary objective is to create a universal execution engine running directly
 
 ## Milestones
 * **Milestone 1 (Proof of Concept - Completed):** Perfectly parse and execute the original source code of the game *Nibbles.bas* (Microsoft QBasic DOS 5) using basic text-mode VGA and memory-mapped I/O.
-* **Milestone 2 (Advanced Emulation - Current):** Execute graphically and computationally intensive classics like *Gorillas.bas* and *Mandelbrot (Rosetta Code)*. This requires complex geometric algorithms (4-connected ellipses), Bitplanar `GET`/`PUT` rendering, asynchronous hardware interrupts (`SLEEP`), and PC Speaker audio mapping.
-* **Milestone 3 (JIT Compilation - Planned):** Translate the AST directly into JavaScript or WebAssembly to achieve near-native performance for heavy computational loops.
+* **Milestone 2 (Advanced Emulation - Completed):** Execute graphically and computationally intensive classics like *Gorillas.bas*, *Reversi.bas*, and *Mandelbrot*. This requires complex geometric algorithms, rigid scope 3-tier architecture, asynchronous hardware interrupts (`SLEEP`), and pure DOM-decoupled VGA injection.
+* **Milestone 3 (JIT Compilation - Next):** Translate the AST directly into JavaScript or WebAssembly to achieve near-native performance for heavy computational loops and strict fixed-length memory blocks.

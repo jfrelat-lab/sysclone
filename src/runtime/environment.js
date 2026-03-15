@@ -5,93 +5,69 @@
  * Handles the hierarchical relationship between local and global execution contexts.
  */
 export class Environment {
-    constructor(parent = null) {
+    // Add staticScope parameter to the constructor
+    constructor(parent = null, staticScope = null) {
         this.parent = parent;
+        this.sharedEnv = parent ? parent.sharedEnv : this;
+        
+        // The vault for persistent local variables across calls
+        this.staticScope = staticScope; 
         this.variables = new Map();
+        
         this.types = new Map(); 
         this.subs = new Map();
-        this.defIntRanges = []; // Stores character ranges for implicit typing (e.g., "A-Z")
-
-        // Global Data Bank for READ/DATA
+        this.defIntRanges = []; 
         this.dataBank = [];
         this.dataPointer = 0;
     }
 
     // --- DATA BANK MANAGEMENT ---
     addData(values) {
-        if (this.parent) return this.parent.addData(values);
-        for (let v of values) this.dataBank.push(v);
+        for (let v of values) this.sharedEnv.dataBank.push(v);
     }
     readData() {
-        if (this.parent) return this.parent.readData();
-        if (this.dataPointer >= this.dataBank.length) throw new Error("Out of DATA");
-        return this.dataBank[this.dataPointer++];
+        if (this.sharedEnv.dataPointer >= this.sharedEnv.dataBank.length) throw new Error("Out of DATA");
+        return this.sharedEnv.dataBank[this.sharedEnv.dataPointer++];
     }
     restoreData(index = 0) {
-        if (this.parent) return this.parent.restoreData(index);
-        this.dataPointer = index;
+        this.sharedEnv.dataPointer = index;
     }
     getDataCount() {
-        if (this.parent) return this.parent.getDataCount();
-        return this.dataBank.length;
+        return this.sharedEnv.dataBank.length;
     }
 
     // --- IMPLICIT TYPING MANAGEMENT (DEFINT) ---
-
-    /**
-     * Registers a range of letters to be treated as Integers by default.
-     * Equivalent to QBasic: DEFINT A-Z
-     */
     defineDefInt(range) {
-        this.defIntRanges.push(range.toUpperCase());
+        this.sharedEnv.defIntRanges.push(range.toUpperCase());
     }
-
-    /**
-     * Determines if a variable should be treated as an Integer based on 
-     * explicit suffixes (%, &) or registered DEFINT ranges.
-     */
     isImplicitInteger(name) {
         if (name.endsWith('%') || name.endsWith('&')) return true;
         if (name.endsWith('$') || name.endsWith('!') || name.endsWith('#')) return false;
 
         const first = name.charAt(0).toUpperCase();
-        for (let range of this.defIntRanges) {
+        for (let range of this.sharedEnv.defIntRanges) {
             if (first >= range.charAt(0) && first <= range.charAt(2)) return true;
         }
-        if (this.parent) return this.parent.isImplicitInteger(name);
         return false;
     }
 
     // --- SUBROUTINE MANAGEMENT (SUB / FUNCTION) ---
-
-    /**
-     * Registers a subroutine or function definition in the current scope.
-     */
     defineSub(name, params, body, type = 'SUB_DEF', isStatic = false) {
-        this.subs.set(name.toUpperCase(), { params, body, type, isStatic });
+        this.sharedEnv.subs.set(name.toUpperCase(), { 
+            params, body, type, isStatic,
+            persistentVars: new Map() // Creates the persistent vault
+        });
     }
-
     getSub(name) {
-        const upperName = name.toUpperCase();
-        if (this.subs.has(upperName)) return this.subs.get(upperName);
-        if (this.parent) return this.parent.getSub(name);
-        return null;
+        return this.sharedEnv.subs.get(name.toUpperCase()) || null;
     }
 
     // --- STRUCTURE MANAGEMENT (TYPE) ---
-
-    /**
-     * Registers a User-Defined Type (UDT) structure.
-     */
     defineType(name, fields) {
-        this.types.set(name.toUpperCase(), fields);
+        this.sharedEnv.types.set(name.toUpperCase(), fields);
     }
-
     getType(name) {
-        const upperName = name.toUpperCase();
-        if (this.types.has(upperName)) return this.types.get(upperName);
-        if (this.parent) return this.parent.getType(name);
-        return null;
+        return this.sharedEnv.types.get(name.toUpperCase()) || null;
     }
 
     /**
@@ -127,19 +103,23 @@ export class Environment {
      */
     assign(name, value) {
         const upperName = name.toUpperCase();
-
-        // Enforce rounding if the variable is an implicit Integer (DEFINT logic)
         if (this.isImplicitInteger(name) && typeof value === 'number') {
             value = Math.round(value); 
         }
 
-        // 1. Update if it exists locally
+        // 1. Check persistent static scope FIRST
+        if (this.staticScope && this.staticScope.has(upperName)) {
+            this.staticScope.set(upperName, value);
+            return true;
+        }
+
+        // 2. Local variables
         if (this.variables.has(upperName)) {
             this.variables.set(upperName, value);
             return true;
         }
         
-        // 2. Search through parents to update existing global/outer variables
+        // 3. Parent traversal (Tier 2 and Tier 1)
         let curr = this.parent;
         while (curr) {
             if (curr.variables.has(upperName)) {
@@ -149,7 +129,6 @@ export class Environment {
             curr = curr.parent;
         }
         
-        // 3. If not found anywhere, define it strictly in the local scope
         this.define(name, value);
         return true;
     }
@@ -160,11 +139,26 @@ export class Environment {
      */
     lookup(name) {
         const upperName = name.toUpperCase();
-        if (this.variables.has(upperName)) return this.variables.get(upperName);
-        if (this.parent) return this.parent.lookup(name);
         
+        // 1. Search in local and parent scopes strictly in READ-ONLY mode
+        let curr = this;
+        while (curr) {
+            if (curr.staticScope && curr.staticScope.has(upperName)) {
+                return curr.staticScope.get(upperName);
+            }
+            if (curr.variables.has(upperName)) {
+                return curr.variables.get(upperName);
+            }
+            curr = curr.parent;
+        }
+        
+        // 2. If completely unknown anywhere, initialize it strictly in the LOCAL scope!
         const defaultValue = name.endsWith('$') ? "" : 0;
+        
+        // Because childEnv.variables is linked to persistentVars in a SUB STATIC,
+        // this locally defines it straight into the vault.
         this.define(name, defaultValue);
+        
         return defaultValue;
     }
 }

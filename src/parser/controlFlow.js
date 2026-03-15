@@ -13,7 +13,7 @@ import {
 } from './statements.js';
 
 // Import declarations and subroutines from previous milestones
-import { dimDecl, redimDecl, typeDecl, defintDecl, constDecl } from './declarations.js';
+import { dimDecl, redimDecl, staticDecl, typeDecl, defintDecl, constDecl } from './declarations.js';
 import { subDef, functionDef, declareStmt, defFnStmt } from './subroutines.js';
 
 /**
@@ -105,7 +105,7 @@ const anyStatement = lazy(() => choice([
     functionDef,
     subDef,
     typeDecl,
-    dimDecl, redimDecl,
+    dimDecl, redimDecl, staticDecl,
     defintDecl,
     constDecl,
     ifStmt,

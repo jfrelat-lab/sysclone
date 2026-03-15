@@ -2,6 +2,8 @@
 import { Evaluator } from './evaluator.js';
 import { Environment } from './environment.js';
 import { block } from '../parser/controlFlow.js';
+import { Memory } from '../hardware/memory.js';
+import { VGA } from '../hardware/vga.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
 /**
@@ -439,6 +441,74 @@ registerSuite('AST Evaluator (Variables, Arrays, and Types)', () => {
         assertEqual(env.lookup('GLOBAL3'), 40); // Main reads 40
     });
 
+    test('Should isolate Main variables from Subroutines and respect DIM SHARED', () => {
+        // By instantiating the Evaluator without an env, it builds the strict 3-Tier structure natively.
+        const evaluator = new Evaluator(); 
+        const ast = block.run(`
+            DIM SHARED sharedScore
+            mainScore = 50
+            sharedScore = 100
+            
+            SUB ModifyScores()
+                ' Should easily modify the SHARED variable
+                sharedScore = sharedScore + 10
+                
+                ' Should NEVER touch the Main Module's variable!
+                ' Instead, it will create a useless local variable called "mainScore" in the SUB.
+                mainScore = 999 
+            END SUB
+            
+            CALL ModifyScores()
+        `).result;
+        
+        runSync(evaluator.evaluate(ast));
+        
+        // Proof 1: The Main Module variable was protected and remained 50
+        assertEqual(evaluator.env.lookup('MAINSCORE'), 50, "Main variables must not be accessible from SUBs");
+        
+        // Proof 2: The Shared variable was properly modified across tiers
+        assertEqual(evaluator.env.lookup('SHAREDSCORE'), 110, "DIM SHARED variables must be accessible from SUBs");
+    });
+
+    test('Should persist STATIC local variables and SUB STATIC routines across multiple calls', () => {
+        const evaluator = new Evaluator(); 
+        const ast = block.run(`
+            ' 1. Normal routine with a specific STATIC variable
+            SUB CountHits()
+                STATIC hitCounter AS INTEGER
+                hitCounter = hitCounter + 1
+                latestHit = hitCounter ' Normal local variable
+            END SUB
+            
+            ' 2. Fully STATIC routine
+            SUB TrackMovement() STATIC
+                x = x + 10
+            END SUB
+            
+            CALL CountHits()
+            CALL CountHits()
+            CALL CountHits()
+            
+            CALL TrackMovement()
+            CALL TrackMovement()
+        `).result;
+        
+        runSync(evaluator.evaluate(ast));
+        
+        // Fetch the Sub definitions from Tier 1 (Root)
+        const hitSub = evaluator.env.getSub('COUNTHITS');
+        const trackSub = evaluator.env.getSub('TRACKMOVEMENT');
+        
+        // Proof 1: The specific STATIC variable incremented correctly across calls
+        assertEqual(hitSub.persistentVars.get('HITCOUNTER'), 3, "STATIC variable failed to persist");
+        
+        // Proof 2: The normal local variable died and was never stored persistently
+        assertEqual(hitSub.persistentVars.has('LATESTHIT'), false, "Normal variables should not leak into static vault");
+        
+        // Proof 3: In a SUB STATIC, standard assignments become natively persistent
+        assertEqual(trackSub.persistentVars.get('X'), 20, "SUB STATIC failed to persist normal variable");
+    });
+
     test('Should evaluate SWAP correctly for variables and array elements', () => {
         const env = new Environment();
         executeCode(env, `
@@ -617,6 +687,68 @@ registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
         assertEqual(mockVga.cursorState, 'HIDDEN');
         
         assertEqual(mockVga.printed[0], "SYSCLONE\r\n");
+    });
+
+    test('Should project physical coordinates correctly using WINDOW and WINDOW SCREEN', () => {
+        const env = new Environment();
+        
+        // 1. The Headless Hardware Stack!
+        // We use the REAL Memory so the VGA can boot, but we MOCK the IO.
+        // This prevents the IO class from calling window.addEventListener() in Node.js.
+        const mockIo = {}; 
+        const memory = new Memory(mockIo);
+        const realVga = new VGA(memory); 
+        
+        // 2. Intercept the final physical PSET calls made by the active driver
+        const psetLogs = [];
+        const originalSetMode = realVga.setMode.bind(realVga);
+        
+        realVga.setMode = function(mode) {
+            originalSetMode(mode); 
+            
+            // Override ONLY the low-level pixel drawing to capture the resolved coordinates
+            this.activeDriver.pset = (px, py, color) => {
+                psetLogs.push({ px, py, color });
+            };
+        };
+
+        // 3. Execute QBasic code covering all MS-DOS geometric quirks
+        const code = `
+            SCREEN 13 ' Forces 320x200 resolution
+            
+            ' --- Test A: Cartesian WINDOW (Y goes UP) ---
+            WINDOW (0, 0)-(100, 100)
+            PSET (0, 0), 1      
+            PSET (100, 100), 2  
+            
+            ' --- Test B: Screen WINDOW (Y goes DOWN) ---
+            WINDOW SCREEN (0, 0)-(100, 100)
+            PSET (0, 0), 3      
+            
+            ' --- Test C: Reversi Quirk (Inverted bounds, Auto-sorted by VGA) ---
+            WINDOW SCREEN (640, 480)-(0, 0)
+            PSET (0, 0), 4      
+            PSET (640, 480), 5  
+        `;
+        
+        // Pass the mockIo so the evaluator doesn't crash if it looks for hardware.io
+        executeWithHardware(env, { io: mockIo, memory: memory, vga: realVga }, code);
+        
+        // 4. Assertions on the physical screen coordinates (px, py)
+        assertEqual(psetLogs[0].px, 0, "Cartesian (0,0) X is left edge");
+        assertEqual(psetLogs[0].py, 200, "Cartesian (0,0) Y is bottom edge (200)");
+        
+        assertEqual(psetLogs[1].px, 320, "Cartesian (100,100) X is right edge (320)");
+        assertEqual(psetLogs[1].py, 0, "Cartesian (100,100) Y is top edge (0)");
+        
+        assertEqual(psetLogs[2].px, 0, "Screen (0,0) X is left edge");
+        assertEqual(psetLogs[2].py, 0, "Screen (0,0) Y is top edge");
+        
+        assertEqual(psetLogs[3].px, 0, "Reversi (0,0) X is auto-sorted left edge");
+        assertEqual(psetLogs[3].py, 0, "Reversi (0,0) Y is auto-sorted top edge");
+        
+        assertEqual(psetLogs[4].px, 320, "Reversi (640,480) X is right edge");
+        assertEqual(psetLogs[4].py, 200, "Reversi (640,480) Y is bottom edge");
     });
 
     // --- GRAPHICS BLITTING (GET / PUT) INTEGRATION TESTS ---
@@ -879,5 +1011,90 @@ registerSuite('AST Evaluator (Hardware Integration & HAL)', () => {
         // 18.2 ticks should equal roughly 1000 milliseconds
         assertEqual(state.value.type, 'SYS_DELAY');
         assertEqual(Math.round(state.value.ms), 1000);
+    });
+});
+
+registerSuite('Evaluator: PRINT Statement Formatting (MS-DOS Rules)', () => {
+
+    /**
+     * Helper function to execute QBasic code and capture the raw PRINT output.
+     * It mocks the VGA hardware to intercept the CP437 byte stream.
+     */
+    function capturePrintOutput(sourceCode) {
+        const env = new Environment();
+        
+        // Mock VGA to intercept the byte stream sent by the PRINT instruction
+        const mockVga = {
+            cursorX: 0,
+            output: "",
+            print: function(bytes) {
+                // Convert the raw byte array back to a string for easy assertions
+                this.output += String.fromCharCode(...bytes);
+            }
+        };
+
+        const evaluator = new Evaluator(env, { vga: mockVga });
+        
+        // Parse and run
+        const ast = block.run(sourceCode).result;
+        const process = evaluator.evaluate(ast);
+        
+        let state = process.next();
+        while (!state.done) {
+            state = process.next();
+        }
+        
+        return mockVga.output;
+    }
+
+    test('1. Strings should print exactly as provided without added spaces', () => {
+        const result = capturePrintOutput(`PRINT "HELLO"`);
+        // Expected: "HELLO" followed by Carriage Return (13) and Line Feed (10)
+        assertEqual(result, "HELLO\r\n", "Pure strings must not have trailing spaces");
+        
+        const resultConcat = capturePrintOutput(`PRINT "A"; "B"`);
+        assertEqual(resultConcat, "AB\r\n", "Semicolon concatenation between strings must be seamless");
+    });
+
+    test('2. Positive numbers and Zero must include a leading and trailing space', () => {
+        const resultPositive = capturePrintOutput(`PRINT 42`);
+        // Expected: " 42 " (Leading space replaces the '+' sign)
+        assertEqual(resultPositive, " 42 \r\n", "Positive numbers must be padded with spaces");
+
+        const resultZero = capturePrintOutput(`PRINT 0`);
+        assertEqual(resultZero, " 0 \r\n", "Zero must be padded exactly like a positive number");
+    });
+
+    test('3. Negative numbers must include a trailing space, but no leading space', () => {
+        const resultNegative = capturePrintOutput(`PRINT -99`);
+        // Expected: "-99 " (The minus sign takes the place of the leading space)
+        assertEqual(resultNegative, "-99 \r\n", "Negative numbers must keep their sign and trail with a space");
+    });
+
+    test('4. Mixed Concatenation (The Reversi "Score" Quirk)', () => {
+        const result = capturePrintOutput(`PRINT "You lost by"; 20`);
+        // Expected: "You lost by 20 "
+        // "You lost by" is a string (no spaces added).
+        // 20 is a positive number (leading and trailing spaces added).
+        assertEqual(result, "You lost by 20 \r\n", "Mixed string and number concatenation must respect numerical padding");
+    });
+
+    test('5. Semicolon at the end of the statement suppresses the newline', () => {
+        const result = capturePrintOutput(`PRINT "No Line";`);
+        // Expected: "No Line" (Without \r\n)
+        assertEqual(result, "No Line", "Trailing semicolon must suppress CR/LF");
+        
+        const resultNum = capturePrintOutput(`PRINT 100;`);
+        assertEqual(resultNum, " 100 ", "Trailing semicolon on a number must still preserve the number's trailing space");
+    });
+
+    test('6. Multiple numbers concatenated with semicolons', () => {
+        const result = capturePrintOutput(`PRINT 1; 2; 3`);
+        // Expected: " 1  2  3 "
+        // Number 1 -> " 1 "
+        // Number 2 -> " 2 "
+        // Number 3 -> " 3 "
+        // Combined -> " 1  2  3 "
+        assertEqual(result, " 1  2  3 \r\n", "Multiple numbers must stack their padded spaces");
     });
 });

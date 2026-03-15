@@ -28,7 +28,38 @@ function resetHardware() {
 
     io = new IO();
     memory = new Memory(io);
-    screen = new VGA(memory, { canvasId: 'vga-display' });
+    
+    // --- VGA Dependency Injection ---
+    // The WebVM orchestrator handles all DOM interactions.
+    // The Virtual Card (VGA) only cares about the pixel buffer it receives.
+    screen = new VGA(memory, { 
+        createDisplay: (width, height) => {
+            const canvas = document.getElementById('vga-display');
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Dynamic CSS height calculation to maintain square pixels
+            // We fix the physical CSS width to 640px (standard emulator UI width)
+            const scale = 640 / width;
+            const physicalHeight = Math.floor(height * scale);
+            
+            canvas.style.width = "640px";
+            canvas.style.height = `${physicalHeight}px`;
+            canvas.style.imageRendering = "pixelated";
+            
+            const ctx = canvas.getContext('2d', { alpha: false });
+            // Recreate ImageData when the underlying resolution changes
+            const imageData = ctx.createImageData(width, height);
+            
+            return {
+                width: width,
+                height: height,
+                pixelBuffer32: new Uint32Array(imageData.data.buffer),
+                commit: () => ctx.putImageData(imageData, 0, 0)
+            };
+        }
+    });
+    
     env = new Environment();
     evaluator = new Evaluator(env, { vga: screen, io: io, memory: memory });
     

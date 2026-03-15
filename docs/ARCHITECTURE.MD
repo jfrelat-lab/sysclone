@@ -29,7 +29,8 @@ The challenge on the Web is avoiding main thread blocking during infinite loops 
 ### 2.3. The Video Engine & Dynamic Typography
 To emulate the VGA text mode screen (80x25), standard HTML canvas `ctx.fillText()` was rejected.
 * **Why?** Anti-aliased vector fonts create artifacts between block characters (CHR$ 219, 220, 223) used for "text-graphics".
-* **Architectural Choice:** We implemented an authentic **Hardware Typography Engine**. Depending on the active `SCREEN` mode, the Virtual Card mounts specific binary ROM fonts extracted from DOSBox (e.g., `8x8` for VGA, `8x14` for EGA block alignment). Rendering uses bitwise operators (`&`, `>>`) to check each pixel of the character grid, pushing directly to a raw `ImageData` buffer.
+* **Architectural Choice:** We implemented an authentic **Hardware Typography Engine**. Rendering uses bitwise operators (`&`, `>>`) to check each pixel of the character grid, pushing directly to a raw `ImageData` buffer via pure Dependency Injection (making the VGA component fully Headless-ready).
+* **MS-DOS Print Formatting:** The Evaluator strictly implements the legacy `PRINT` number padding quirk (implicit leading space for positive signs, trailing space for all numbers), ensuring authentic alignment for games like *Reversi*.
 
 ### 2.4. Memory and BIOS Data Area (Mocking vs Purism)
 Old DOS games use `POKE` to write directly into system RAM (e.g., address `&H41A` to clear the keyboard buffer).
@@ -37,9 +38,9 @@ Old DOS games use `POKE` to write directly into system RAM (e.g., address `&H41A
 * **Why?** This guarantees compatibility with low-level BIOS tricks. The architecture uses **Memory-Mapped I/O**: the `Memory` class intercepts writes to vital addresses and drives the virtual peripherals accordingly.
 
 ### 2.5. The Environment: Scopes, Types, and Static Data
-* **Scope:** Managed by a chain of environments (Parent -> Child) to simulate global scope and local variables of subroutines. Includes preliminary `STATIC` support.
-* **Arrays & Types:** QBasic allows arbitrary bounds (e.g., `DIM a(10 TO 50)`). The `QArray` class flattens these into a pure 1D mathematical array while natively handling index offsets. Supports fixed-length string allocation (`STRING * N`).
-* **Data Bank & Hoisting:** The Evaluator features a pre-execution scanning phase to hoist `LABEL`, `SUB`, and `DATA` statements. Crucially, **`DATA` is hoisted globally** across the entire program, while **`LABEL`s are strictly isolated** within their respective subroutines to authentically emulate x86 local jump tables.
+* **3-Tier Scope Architecture:** Managed by a hierarchical chain of environments: Shared (Global Root), Main (Program execution), and Local (Subroutines). 
+* **Static Vault:** Subroutines utilize a decoupled `persistentVars` map (`STATIC`) to retain state across calls without leaking into the global tier.
+* **Arrays & Types:** The `QArray` class flattens multi-dimensional bounds into a pure 1D mathematical array.
 
 ### 2.6. I/O Encoding & The CP437 Bridge
 Modern web browsers fetch text files as UTF-8, which breaks legacy DOS games relying on extended ASCII characters for graphics.
@@ -52,6 +53,7 @@ Emulating legacy graphics modes (`SCREEN 7`, `9`, `13`) requires intensive memor
 * **Planar vs Linear Blitting (`GET` / `PUT`):** The engine natively supports dual memory decoding for sprites. It dynamically extracts QBasic's Little-Endian array headers and processes bit-packing either as chunky bytes (Linear VGA Mode 13) or complex separated Bitplanes (EGA Mode 9) seamlessly.
 * **Algorithmic Purity (Circles & Paint):** The `PAINT` command utilizes a flat, iterative stack-based Flood Fill algorithm rather than native recursion to prevent Call Stack Overflow. The `CIRCLE` command employs a mathematically purist **4-Connected Midpoint Algorithm**, eradicating Moire pattern gaps (bleeding backgrounds) in concentric animations, while natively supporting MS-DOS's default aspect ratios and undocumented negative inversions.
 * **Pixel Aspect Ratio (PAR) Correction:** Legacy DOS resolutions rarely used square pixels (e.g., Mode 9 is 640x350). The `VGA` hardware router dynamically calculates the CSS canvas scaling against a fixed UI baseline (640px). This guarantees perfectly round circles and undistorted native rendering regardless of the active QBasic `SCREEN` mode.
+* **Coordinate Projection (`WINDOW`):** The VGA router natively translates logical bounding boxes into physical pixels. It faithfully implements the MS-DOS auto-sorting quirk (normalizing inverted X/Y bounds) and discriminates between Cartesian (`WINDOW`) and Screen (`WINDOW SCREEN`) Y-axis inversion logic.
 
 ### 2.8. Keyboard and Audio Engine
 * **Anti-Ghosting Keyboard:** The `IO` class implements an authentic 16-byte FIFO BIOS buffer that strictly filters browser `e.repeat` events. This provides input safety against "held-down" keys, preventing fast-paced games from instantly consuming trailing inputs in tight event loops.

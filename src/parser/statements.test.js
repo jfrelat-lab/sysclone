@@ -1,11 +1,11 @@
 // src/parser/statements.test.js
 import { 
     implicitCallStmt, inputStmt, locateStmt, colorStmt, pokeStmt, 
-    assignStmt, swapStmt, labelDef, gotoStmt, gosubStmt, returnStmt, 
+    assignStmt, swapStmt, eraseStmt, labelDef, gotoStmt, gosubStmt, returnStmt, 
     printStmt, dataStmt, restoreStmt, windowStmt, psetStmt, 
     lineStmt, circleStmt, paintStmt, onErrorStmt, resumeStmt,
     paletteStmt, putGraphicsStmt, getGraphicsStmt, lineInputStmt,
-    clsStmt, viewPrintStmt, playStmt, exitStmt
+    clsStmt, viewPrintStmt, playStmt, soundStmt, exitStmt
 } from './statements.js';
 
 import { test, assertEqual, registerSuite } from '../test_runner.js';

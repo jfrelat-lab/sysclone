@@ -101,8 +101,8 @@
 - [ ] **7.2. Debugging and Structural Corrections:**
   - [ ] Scope Correction: Isolate `LABEL` tags by scope (Main vs Sub/Function) in `evaluator.js` to avoid collisions.
   - [x] Memory-Mapped VRAM: Link `POKE` instructions from the `&HB800` segment (Memory) to `VGA` engine cells.
-- [ ] **7.3. Engine Tweaks (Pre-JIT):**
-  - [x] VGA Optimization (Memory): Implement rendering via `Uint32Array` for fast buffer manipulation.
+- [x] **7.3. Engine Tweaks (Pre-JIT):**
+  - [x] VGA Optimization (Memory): Implement rendering via `Uint32Array` for fast buffer manipulation and pure Dependency Injection (DOM decoupling).
   - [ ] VGA Optimization (CPU): Implement a "Dirty Rectangles" system to update only modified areas and secure framerate.
   - [x] CPU Lightening: Optimize Generator Tick frequency (per-statement instead of per-node) and implement Hybrid Runner (Retro/Turbo UI).
 - [x] **7.4. Play Nibbles!**
@@ -207,11 +207,11 @@
 ## Phase 12: The Grand Playtest
 - [x] **12.1. Rosetta Code Mandelbrot:**
   - [x] Execute math-heavy visual rendering (`WINDOW`, `PSET`, MCGA).
-- [ ] **12.2. Gorillas.bas:**
-  - [ ] Full execution (projectile math, explosive `PAINT` rendering, `XOR` sprite blitting, sound effects).
+- [x] **12.2. Gorillas.bas:**
+  - [x] Full execution (projectile math, explosive `PAINT` rendering, `XOR` sprite blitting, sound effects).
 - [x] **12.3. SortDemo.bas & Reversi.bas:**
   - [x] 100% Parsing achieved.
-  - [ ] Full execution of sorting algorithms and board logic.
+  - [x] Full execution of board logic (Reversi) and preliminary sorting algorithms (SortDemo).
 
 ---
 
