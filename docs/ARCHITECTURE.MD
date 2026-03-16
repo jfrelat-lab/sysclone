@@ -37,10 +37,12 @@ Old DOS games use `POKE` to write directly into system RAM (e.g., address `&H41A
 * **Architectural Choice:** We implemented a true **1 MB virtual RAM stick** (`memory.js`) addressable via Segment:Offset.
 * **Why?** This guarantees compatibility with low-level BIOS tricks. The architecture uses **Memory-Mapped I/O**: the `Memory` class intercepts writes to vital addresses and drives the virtual peripherals accordingly.
 
-### 2.5. The Environment: Scopes, Types, and Static Data
-* **3-Tier Scope Architecture:** Managed by a hierarchical chain of environments: Shared (Global Root), Main (Program execution), and Local (Subroutines). 
+### 2.5. The Environment: Memory Vaults, Flat Scoping, and Types
+* **3-Tier Flat Scoping:** Managed by a hierarchical chain of environments: Shared (Global Root), Main (Program execution), and Local (Subroutines). The engine strictly enforces MS-DOS **Flat Scoping**, actively blocking JavaScript's native lexical traversal. Local subroutine variables (`Tier 2`) never bleed into or mutate the Main Module's state, reserving hierarchical resolution exclusively for the Tier 1 Shared Environment.
 * **Static Vault:** Subroutines utilize a decoupled `persistentVars` map (`STATIC`) to retain state across calls without leaking into the global tier.
-* **Arrays & Types:** The `QArray` class flattens multi-dimensional bounds into a pure 1D mathematical array.
+* **Memory Classes & In-Place Mutation:** * The `QArray` class (abstracted into a standalone module) flattens multi-dimensional bounds into a pure 1D mathematical array.
+  * The `QFixedString` class implements locked-memory block allocations (`STRING * N`), explicitly designed for O(1) in-place mutations. This prevents object destruction, preserving V8 hidden classes and shielding the Garbage Collector from high-frequency string assignments during Virtual CPU execution.
+* **Duck-Typed Deep Cloning:** User-Defined Types (UDTs) utilize an internal deep cloning mechanism during `ASSIGN` and `SWAP` instructions to effectively sever JavaScript reference entanglements, ensuring purist value-type behavior for complex structures.
 
 ### 2.6. I/O Encoding & The CP437 Bridge
 Modern web browsers fetch text files as UTF-8, which breaks legacy DOS games relying on extended ASCII characters for graphics.

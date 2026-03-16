@@ -2,9 +2,17 @@
 
 /**
  * Global registry for test suites.
- * Allows anonymous imports to register tests automatically.
  */
 const registry = [];
+
+/**
+ * Internal state tracking for Test KPIs.
+ */
+const stats = {
+    total: 0,
+    passed: 0,
+    failed: 0
+};
 
 /**
  * Basic assertion utility for the Sysclone test suite.
@@ -21,20 +29,28 @@ export function assertEqual(actual, expected, message = "Assertion failed") {
 
 /**
  * Defines and executes a single test case.
- * Logs the result with color-coded status in the console.
+ * Tracks execution time and updates global KPI metrics.
  */
 export function test(description, testFunction) {
+    stats.total++;
+    // Fallback to Date.now() if performance.now is unavailable in older Node environments
+    const now = typeof performance !== 'undefined' ? performance.now.bind(performance) : Date.now;
+    const start = now();
+    
     try {
         testFunction();
-        console.log(`✅ %c[PASS]%c ${description}`, 'color: green; font-weight: bold;', 'color: inherit;');
+        const duration = (now() - start).toFixed(2);
+        // Stripped the %c CSS hacks to ensure clean output in both Browser console and Node.js terminals
+        console.log(`✅ [PASS] ${description} (${duration}ms)`);
+        stats.passed++;
     } catch (error) {
-        console.error(`❌ %c[FAIL]%c ${description}\n   ${error.message}`, 'color: red; font-weight: bold;', 'color: inherit;');
+        console.error(`❌ [FAIL] ${description}\n   ${error.message}`);
+        stats.failed++;
     }
 }
 
 /**
  * Registers a suite in the global registry for organized execution.
- * Replaces the old runSuite to allow for generic automated imports.
  */
 export function registerSuite(suiteName, tests) {
     registry.push({ name: suiteName, testFn: tests });
@@ -42,13 +58,51 @@ export function registerSuite(suiteName, tests) {
 
 /**
  * Orchestrates the execution of all registered suites.
- * Logs the start of the quality harness to the console.
+ * Outputs a professional KPI summary report at the end of the run.
  */
 export function runAllTests() {
-    console.log("🚀 Starting Sysclone Quality Harness...");
+    console.log("🚀 Starting Sysclone Quality Harness...\n");
+    
+    // Reset stats for multiple runs (e.g., watch mode)
+    stats.total = 0;
+    stats.passed = 0;
+    stats.failed = 0;
+    
+    const now = typeof performance !== 'undefined' ? performance.now.bind(performance) : Date.now;
+    const globalStart = now();
+
+    // Execute all suites
     registry.forEach(suite => {
-        console.group(`🧪 Test Suite: ${suite.name}`);
+        // Fallback for Node.js if console.group is not fully supported
+        if (console.group) console.group(`\n🧪 Test Suite: ${suite.name}`);
+        else console.log(`\n--- 🧪 Test Suite: ${suite.name} ---`);
+        
         suite.testFn();
-        console.groupEnd();
+        
+        if (console.groupEnd) console.groupEnd();
     });
+
+    const globalDuration = (now() - globalStart).toFixed(2);
+    const successRate = stats.total > 0 ? ((stats.passed / stats.total) * 100).toFixed(1) : 0;
+
+    // --- KPI SUMMARY BLOCK ---
+    console.log("\n=======================================");
+    console.log("📊 SYSCLONE TEST EXECUTION SUMMARY");
+    console.log("=======================================");
+    console.log(`⏱️  Time:       ${globalDuration} ms`);
+    console.log(`🎯 Rate:       ${successRate}%`);
+    console.log(`🧪 Total:      ${stats.total}`);
+    console.log(`✅ Passed:     ${stats.passed}`);
+    console.log(`❌ Failed:     ${stats.failed}`);
+    console.log("=======================================");
+
+    if (stats.failed > 0) {
+        console.error("⚠️  Some tests failed. Please review the logs above.");
+        // If running in a pure Node CLI environment, this ensures CI/CD pipelines fail correctly
+        if (typeof process !== 'undefined' && process.exit) {
+            process.exitCode = 1;
+        }
+    } else {
+        console.log("🎉 All tests passed successfully!");
+    }
 }

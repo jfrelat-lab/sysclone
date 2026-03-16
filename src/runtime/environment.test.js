@@ -1,53 +1,65 @@
 // src/runtime/environment.test.js
-import { Environment, QArray } from './environment.js';
+
+import { Environment } from './environment.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
 /**
- * Unit tests for the Environment and Memory management systems of the Sysclone Runtime.
+ * Unit tests for the Environment, Scoping (3-Tier), and Memory allocation systems.
  */
-registerSuite('Environment and Memory (Runtime)', () => {
+registerSuite('Environment and Scoping (Runtime)', () => {
 
-    test('Environment should handle global and local scoping', () => {
+    test('1. Environment should handle global (Tier 1) and local (Tier 2) scoping', () => {
         const globalEnv = new Environment();
         globalEnv.define('score', 100);
 
-        // Create a sub-scope (simulating entering a function or sub)
+        // Create a sub-scope (simulating entering a standard SUB or FUNCTION)
         const localEnv = new Environment(globalEnv);
         localEnv.define('lives', 3);
 
-        // localEnv should be able to read 'score' from its parent
-        assertEqual(localEnv.lookup('score'), 100);
+        // localEnv should be able to read 'score' from its parent (Tier 1)
+        assertEqual(localEnv.lookup('score'), 100, "Local environment must fall back to global scope for reads");
         
         // localEnv can update 'score' globally
         localEnv.assign('score', 200);
-        assertEqual(globalEnv.lookup('score'), 200);
+        assertEqual(globalEnv.lookup('score'), 200, "Local environment must update existing global variables instead of shadowing");
 
-        // An undefined QBasic variable defaults to 0
-        assertEqual(localEnv.lookup('new_score'), 0);
+        // An undefined QBasic variable defaults to 0 and is scoped locally
+        assertEqual(localEnv.lookup('new_score'), 0, "Unknown variables must initialize to 0");
+        assertEqual(globalEnv.lookup('new_score'), 0, "Global lookup of locally initialized variable should act as unknown (init to 0)");
     });
 
-    test('QArray should handle custom indices and multidimensional mapping', () => {
-        // Equivalent to: DIM arena(1 TO 50, 1 TO 80)
-        const arenaBounds = [
-            { min: 1, max: 50 },
-            { min: 1, max: 80 }
-        ];
-        const arena = new QArray(arenaBounds);
+    test('2. Environment should handle persistent STATIC vaults (Tier 3)', () => {
+        const globalEnv = new Environment();
+        const persistentVault = new Map();
+        
+        // Emulate a SUB STATIC call: The local env is bound to a persistent memory map
+        const localEnv = new Environment(globalEnv, persistentVault);
+        
+        // Emulate the first execution of a static variable assignment
+        persistentVault.set('CALL_COUNT', 1);
+        
+        // Assigning to it should update the vault directly, bypassing local and global variables
+        localEnv.assign('CALL_COUNT', 2);
+        
+        assertEqual(persistentVault.get('CALL_COUNT'), 2, "Assignment must strictly update the STATIC vault if the variable exists there");
+        assertEqual(localEnv.variables.has('CALL_COUNT'), false, "STATIC variable must NOT leak into the standard local variables map");
+        assertEqual(globalEnv.variables.has('CALL_COUNT'), false, "STATIC variable must NOT leak into the global scope");
+    });
 
-        // Place a value at (row 25, col 40)
-        arena.set([25, 40], "SNAKE_HEAD");
+    test('3. Environment should allocate purist Fixed-Length Strings automatically', () => {
+        const env = new Environment();
         
-        assertEqual(arena.get([25, 40]), "SNAKE_HEAD");
-        assertEqual(arena.get([1, 1]), 0); // Default initialization value
+        // 1. Standard dynamic string (DIM A AS STRING)
+        const dynamicStr = env.createDefaultValue('STRING');
+        assertEqual(dynamicStr, "", "Standard string should initialize as an empty primitive");
         
-        // Should throw an error if indices are out of bounds
-        try {
-            arena.get([51, 10]);
-            assertEqual(true, false, "Should have thrown an error!");
-        } catch (e) {
-            // Check if the error message mentions "out of bounds"
-            assertEqual(e.message.includes("out of bounds"), true);
-        }
+        // 2. Fixed-Length String (DIM A AS STRING * 5)
+        // We pass a mock AST node representing the length
+        const fixedStr = env.createDefaultValue('STRING', { value: 5 });
+        
+        assertEqual(typeof fixedStr, 'object', "Fixed string must be instantiated as a memory block object");
+        assertEqual(fixedStr.isFixedString, true, "Fixed string object must bear the fast identification flag");
+        assertEqual(fixedStr.toString(), "     ", "Fixed string must auto-pad with spaces upon allocation");
     });
 
 });

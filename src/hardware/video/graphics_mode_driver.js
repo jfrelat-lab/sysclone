@@ -1,6 +1,5 @@
 // src/hardware/video/graphics_mode_driver.js
 import { VideoDriver } from './video_driver.js';
-import { fontVGA8x8 } from '../font.js';
 
 /**
  * Abstract Driver for MS-DOS Graphics Modes (e.g., Mode 13, Mode 9, Mode 7).

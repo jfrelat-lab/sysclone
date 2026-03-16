@@ -14,6 +14,9 @@
   - [x] Numbers (integers and floats, e.g., `100`, `.5`).
   - [x] Strings (`"..."`).
   - [x] Case-insensitive identifiers (variables, function names, including type suffixes like `$`, `%`).
+- [x] **1.3. Custom Test Framework (Quality Harness):**
+  - [x] Implement test orchestrator with performance KPIs (execution time per test) and global pass/fail summaries.
+  - [x] Add V8 stack trace extraction to accurately map syntax/parse errors to specific source files during CI.
 
 ## Phase 2: QBasic Grammar and AST Generation
 *Parse the Nibbles source code to build a typed Abstract Syntax Tree (AST).*
@@ -40,6 +43,7 @@
 
 - [x] **3.1. Memory and Scope Management:**
   - [x] Create a chained `Environment` manager to store global and local variables.
+  - [x] **[CRITICAL]** Enforce MS-DOS "Flat Scoping" to prevent JS-style lexical bleeding, isolating the Main Module strictly from Subroutine scopes by restricting hierarchical traversal to the Tier 1 Global Environment.  
 - [x] **3.2. QBasic Array Abstraction:**
   - [x] Implement the `QArray` class to flatten multi-dimensional arrays with custom bounds (e.g., `1 TO 50`).
 
@@ -76,6 +80,7 @@
 - [x] **6.1. Arrays and Types (UDT) at Runtime:**
   - [x] Teach the Evaluator to handle `TYPE_DECL` nodes (register the structure's "blueprint").
   - [x] Teach the Evaluator to instantiate `DIM` (and dynamically resize via `REDIM`), handling both array structures and single scalar variable declarations (`DIM x AS type`).
+  - [x] Implement deep cloning for UDTs to prevent JavaScript object reference mutation during `SWAP` and `ASSIGN`.
 - [x] **6.2. Subroutines (`SUB` and `FUNCTION`):**
   - [x] Handle `SUB` definition registration.
   - [x] Implement the `CALL` mechanism: creating a sub-scope (new memory "bubble") and passing arguments.
@@ -168,6 +173,7 @@
   - [x] Support fixed-length string allocation (`AS STRING * N`).
 - [x] **9.4. Math, Strings & Built-ins:**
   - [x] Abstract all pure native functions into a `builtins.js` standard library.
+  - [x] Implement strict `PRINT USING` formatting engine (variable-length string interception `&` and decimal precision `###.###`).
   - [x] Implement math: `INT`, `FIX`, `ABS`, `SQR`, `RND`, `SIN`, `COS`, `TAN`, `ATN`, `EXP`, `LOG`, `CINT`.
   - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `VAL`, `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `INSTR`, `STRING$`, `SPC`.
   - [x] Add memory/variable utilities: `SWAP`, `ERASE`.

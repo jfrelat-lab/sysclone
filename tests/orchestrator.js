@@ -30,10 +30,28 @@ async function discoverAndImportTests(dir) {
             // Recursive call for subdirectories
             await discoverAndImportTests(fullPath);
         } else if (entry.name.endsWith('.test.js')) {
-            // Convert absolute system path to File URL for ES Module compatibility
-            // This ensures cross-platform support (Windows/macOS/Linux)
             const fileURL = pathToFileURL(fullPath).href;
-            await import(fileURL);
+            
+            try {
+                // The V8 Engine compiles and evaluates the file here
+                await import(fileURL);
+            } catch (error) {
+                console.error(`\n❌ [FATAL PARSE ERROR] Cannot load test suite: ${entry.name}`);
+                
+                // --- SMART SYNTAX & IMPORT ERROR DETECTOR ---
+                if (error instanceof SyntaxError) {
+                    console.error(`   ⚠️  Syntax Error! (Missing backticks \` \`, unclosed brackets, etc.)`);
+                    console.error(`   📝 Message: ${error.message}`);
+                } else {
+                    console.error(`   💥 V8 Reference/Import Error: ${error.message}`);
+                }
+                
+                // Expose the raw stack trace to immediately pinpoint the file and line number
+                console.error(`\n📍 Stack Trace:\n${error.stack}`);
+                
+                // Hard exit: Stop the orchestrator, don't pretend everything is fine
+                process.exit(1);
+            }
         }
     }
 }

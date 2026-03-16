@@ -1,5 +1,6 @@
 // src/runtime/evaluator.js
-import { Environment, QArray } from './environment.js';
+import { Environment } from './environment.js';
+import { QArray } from './qarray.js';
 import { BuiltIns } from './builtins.js';
 import { getCharFromCP437, getCP437FromChar, toCP437Array } from '../hardware/encoding.js';
 
@@ -21,6 +22,30 @@ export class Evaluator {
         this.labels = new Map();
         this.hasScannedLabels = false;
         this.topLevelBlock = undefined;
+    }
+
+    /**
+     * Purist Deep Clone for the Virtual Machine.
+     * Safely copies UDTs while preserving VM memory classes like QFixedString.
+     */
+    cloneValue(val) {
+        if (val === null || typeof val !== 'object') return val;
+        
+        // Duck Typing: If the object implements a custom clone method, trust it!
+        if (typeof val.clone === 'function') return val.clone();
+        
+        if (Array.isArray(val)) return val.map(v => this.cloneValue(v));
+        
+        // Clone plain UDT objects
+        if (val.constructor.name === 'Object') {
+            const copy = {};
+            for (let key in val) {
+                copy[key] = this.cloneValue(val[key]);
+            }
+            return copy;
+        }
+        
+        return val;
     }
 
     /**
@@ -75,6 +100,53 @@ export class Evaluator {
                 }
             }
         }
+    }
+
+    /**
+     * Purist MS-DOS string formatter for PRINT USING.
+     * Decoupled from the I/O engine for strict unit testing.
+     */
+    formatPrintUsing(formatStr, values) {
+        let valIndex = 0;
+        
+        // The regex catches '&' (Strings) and '[#,\.]+' (Numbers)
+        return formatStr.replace(/&|[#,\.]+/g, (match) => {
+            if (valIndex >= values.length) return match;
+            let val = values[valIndex++];
+            
+            // --- 1. String Formatting ---
+            if (match === '&') {
+                return (val !== null && val !== undefined) ? val.toString() : "";
+            }
+            
+            // --- 2. Number Formatting ---
+            let numVal = Number(val);
+            if (isNaN(numVal)) numVal = 0; // Fallback to avoid outright NaN crashes
+            
+            let numStr = "";
+            
+            if (match.includes('.')) {
+                // Extract the number of decimal places requested (e.g., .### -> 3)
+                const decimals = match.split('.')[1].replace(/[^#]/g, '').length;
+                numStr = numVal.toFixed(decimals); // Preserve floating point precision!
+            } else {
+                // Integers only
+                numStr = Math.round(numVal).toString(); 
+            }
+            
+            // Handle comma thousands separators
+            if (match.includes(',')) {
+                let parts = numStr.split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                numStr = parts.join('.');
+            }
+            
+            // MS-DOS overflow rule: Prefix with '%' if the formatted number is too wide
+            if (numStr.length > match.length) return "%" + numStr;
+            
+            // Right-align numbers within the specified width
+            return numStr.padStart(match.length, ' ');
+        });
     }
 
     /**
@@ -221,10 +293,12 @@ export class Evaluator {
                 return null;
 
             case 'REDIM': // REDIM is treated exactly like DIM for now (reallocation)
-            case 'DIM':
+            case 'DIM': {
                 for (let decl of node.declarations) {
                     const typeName = decl.varType || decl.type || 'SINGLE'; 
-                    const creator = () => this.env.createDefaultValue(typeName);
+                    
+                    // --- PURIST VM: Pass the length node to allocate QFixedString if needed ---
+                    const creator = () => this.env.createDefaultValue(typeName, decl.length);
                     
                     let initValue;
                     if (decl.isArray) {
@@ -236,15 +310,16 @@ export class Evaluator {
                     } else {
                         initValue = creator();
                     }
-                    
-                    // Route to Tier 1 if SHARED (using node.shared from dimDecl), otherwise stay in local scope
+   
+                    // Route to Tier 1 if SHARED, otherwise stay in local scope
                     if (node.shared) {
-                        this.env.sharedEnv.define(decl.name, initValue);
+                        this.env.sharedEnv.define(decl.name.toUpperCase(), initValue);
                     } else {
                         this.env.define(decl.name, initValue);
                     }
                 }
                 return null;
+            }
 
             case 'STATIC':
                 for (let decl of node.declarations) {
@@ -422,16 +497,10 @@ export class Evaluator {
                 // 2. Handle the PRINT USING statement for specific string/number formatting (e.g., currency).
                 if (node.usingFormat) {
                     const formatStr = yield* this.evaluate(node.usingFormat);
-                    let valIndex = 0;
-                    output = formatStr.replace(/[#,\.]+/g, (match) => {
-                        if (valIndex >= values.length) return match;
-                        let val = values[valIndex++];
-                        let numStr = Math.round(val).toString(); 
-                        if (match.includes(',')) numStr = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-                        
-                        if (numStr.length > match.length) return "%" + numStr;
-                        return numStr.padStart(match.length, ' ');
-                    });
+                    
+                    // --- PURIST USING ENGINE ---
+                    // The heavy lifting is delegated to our unit-tested method
+                    output = this.formatPrintUsing(formatStr, values);
                 } else {
                     // 3. Handle standard PRINT statements.
                     for (let val of values) {
@@ -653,57 +722,78 @@ export class Evaluator {
                 }
                 return null;
 
-            case 'ASSIGN':
+            case 'ASSIGN': {
                 const tRef = yield* this.evaluateLValue(node.target);
-                let aVal = yield* this.evaluate(node.value);
-                // Deep clone UDTs (User-Defined Types) to prevent JavaScript reference mutation!
-                if (aVal !== null && typeof aVal === 'object' && !Array.isArray(aVal) && aVal.constructor.name === 'Object') {
-                    aVal = JSON.parse(JSON.stringify(aVal));
+                
+                // Use the new central cloner to evaluate and copy the right-hand side
+                let aVal = this.cloneValue(yield* this.evaluate(node.value));
+                
+                if (tRef.type === 'ENV') {
+                    this.env.assign(tRef.name, aVal);
+                } else if (tRef.type === 'ARRAY') {
+                    tRef.array.set(tRef.indices, aVal);
+                } else if (tRef.type === 'OBJECT') {
+                    const currentValue = tRef.object[tRef.property];
+                    if (currentValue && currentValue.isFixedString) {
+                        currentValue.update(aVal); // In-place update
+                    } else {
+                        tRef.object[tRef.property] = aVal;
+                    }
                 }
-                if (tRef.type === 'ENV') this.env.assign(tRef.name, aVal);
-                else if (tRef.type === 'ARRAY') tRef.array.set(tRef.indices, aVal);
-                else if (tRef.type === 'OBJECT') tRef.object[tRef.property] = aVal;
                 return null;
+            }
 
-            case 'SWAP':
-                const ref1 = yield* this.evaluateLValue(node.target1);
-                const ref2 = yield* this.evaluateLValue(node.target2);
+            case 'SWAP': {
+                // 1. Resolve L-Values strictly using your parser's AST keys (target1, target2)
+                const t1Ref = yield* this.evaluateLValue(node.target1);
+                const t2Ref = yield* this.evaluateLValue(node.target2);
                 
-                let val1, val2;
-                if (ref1.type === 'ENV') val1 = this.env.lookup(ref1.name);
-                else if (ref1.type === 'ARRAY') val1 = ref1.array.get(ref1.indices);
-                else if (ref1.type === 'OBJECT') val1 = ref1.object[ref1.property];
+                // 2. Extract current raw values from the memory references
+                let val1 = t1Ref.type === 'ENV' ? this.env.lookup(t1Ref.name) :
+                           t1Ref.type === 'ARRAY' ? t1Ref.array.get(t1Ref.indices) :
+                           t1Ref.object[t1Ref.property];
+                              
+                let val2 = t2Ref.type === 'ENV' ? this.env.lookup(t2Ref.name) :
+                           t2Ref.type === 'ARRAY' ? t2Ref.array.get(t2Ref.indices) :
+                           t2Ref.object[t2Ref.property];
                 
-                if (ref2.type === 'ENV') val2 = this.env.lookup(ref2.name);
-                else if (ref2.type === 'ARRAY') val2 = ref2.array.get(ref2.indices);
-                else if (ref2.type === 'OBJECT') val2 = ref2.object[ref2.property];
+                // 3. Clone them using the purist deep cloner to prevent reference entanglement
+                // (This is what prevents the prototype destruction of QFixedString in Bubble Sort)
+                const newT1 = this.cloneValue(val2);
+                const newT2 = this.cloneValue(val1);
                 
-                // Deep clone to guarantee pure memory value swapping
-                if (val1 !== null && typeof val1 === 'object' && val1.constructor.name === 'Object') val1 = JSON.parse(JSON.stringify(val1));
-                if (val2 !== null && typeof val2 === 'object' && val2.constructor.name === 'Object') val2 = JSON.parse(JSON.stringify(val2));
+                // 4. Inject swapped value into target 1
+                if (t1Ref.type === 'ENV') {
+                    this.env.assign(t1Ref.name, newT1);
+                } else if (t1Ref.type === 'ARRAY') {
+                    t1Ref.array.set(t1Ref.indices, newT1);
+                } else {
+                    const curr1 = t1Ref.object[t1Ref.property];
+                    if (curr1 && curr1.isFixedString) curr1.update(newT1);
+                    else t1Ref.object[t1Ref.property] = newT1;
+                }
                 
-                if (ref1.type === 'ENV') this.env.assign(ref1.name, val2);
-                else if (ref1.type === 'ARRAY') ref1.array.set(ref1.indices, val2);
-                else if (ref1.type === 'OBJECT') ref1.object[ref1.property] = val2;
-
-                if (ref2.type === 'ENV') this.env.assign(ref2.name, val1);
-                else if (ref2.type === 'ARRAY') ref2.array.set(ref2.indices, val1);
-                else if (ref2.type === 'OBJECT') ref2.object[ref2.property] = val1;
+                // 5. Inject swapped value into target 2
+                if (t2Ref.type === 'ENV') {
+                    this.env.assign(t2Ref.name, newT2);
+                } else if (t2Ref.type === 'ARRAY') {
+                    t2Ref.array.set(t2Ref.indices, newT2);
+                } else {
+                    const curr2 = t2Ref.object[t2Ref.property];
+                    if (curr2 && curr2.isFixedString) curr2.update(newT2);
+                    else t2Ref.object[t2Ref.property] = newT2;
+                }
+                
                 return null;
+            }
 
             case 'ERASE':
                 for (let target of node.targets) {
-                    let currEnv = this.env;
-                    let arr = null;
-                    
-                    // Traverse scope chain to find the array
-                    while (currEnv) {
-                        if (currEnv.variables.has(target)) {
-                            arr = currEnv.variables.get(target);
-                            break;
-                        }
-                        currEnv = currEnv.parent;
-                    }
+                    const upperTarget = target.toUpperCase();
+                    // Flat search: Local -> Static -> Shared
+                    let arr = this.env.variables.get(upperTarget) || 
+                              (this.env.staticScope && this.env.staticScope.get(upperTarget)) || 
+                              this.env.sharedEnv.variables.get(upperTarget);
                     
                     if (arr && arr.constructor.name === 'QArray') {
                         // Soft reset array elements to simulate memory clear (Static Array behavior)
@@ -905,9 +995,12 @@ export class Evaluator {
         if (node.type === 'IDENTIFIER') return { type: 'ENV', name: node.value };
         else if (node.type === 'CALL') {
             const callee = node.callee.value.toUpperCase();
-            let val = this.env.variables.get(callee);
-            let currEnv = this.env.parent;
-            while (!val && currEnv) { val = currEnv.variables.get(callee); currEnv = currEnv.parent; }
+            
+            // Flat search replacing the old while(curr) traversal
+            let val = this.env.variables.get(callee) || 
+                      (this.env.staticScope && this.env.staticScope.get(callee)) || 
+                      this.env.sharedEnv.variables.get(callee);
+
             if (!val || val.constructor.name !== 'QArray') throw new Error(`${callee} is not an array.`);
             const indices = [];
             for (let arg of node.args) indices.push(yield* this.evaluate(arg));
@@ -1033,10 +1126,11 @@ export class Evaluator {
         }
 
         // --- 4. RESOLVE ARRAYS IN ENVIRONMENT ---
-        let val = this.env.variables.get(callee);
-        let currEnv = this.env.parent;
-        while (!val && currEnv) { val = currEnv.variables.get(callee); currEnv = currEnv.parent; }
-        
+        // Flat search replacing the old while(curr) traversal
+        let val = this.env.variables.get(callee) || 
+                  (this.env.staticScope && this.env.staticScope.get(callee)) || 
+                  this.env.sharedEnv.variables.get(callee);
+
         if (val && val.constructor.name === 'QArray') {
             if (args.length === 0) return val;
             return val.get(args); // Uses the factorized 'args' directly!
