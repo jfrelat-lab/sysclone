@@ -4,7 +4,7 @@ import { IO } from './hardware/io.js';
 import { Memory } from './hardware/memory.js';
 import { Environment } from './runtime/environment.js';
 import { Evaluator } from './runtime/evaluator.js';
-import { block } from './parser/controlFlow.js';
+import { block } from './parser/qbasic/controlFlow.js';
 import { autoDecodeSource } from './hardware/encoding.js';
 import { WebUI } from './ui.js';
 

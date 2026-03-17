@@ -8,7 +8,7 @@ import {
     clsStmt, viewPrintStmt, playStmt, soundStmt, exitStmt
 } from './statements.js';
 
-import { test, assertEqual, registerSuite } from '../test_runner.js';
+import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 /**
  * Pure Unit tests for QBasic Statements.

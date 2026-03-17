@@ -1,6 +1,6 @@
 // src/parser/subroutines.test.js
 import { declareStmt, subDef, functionDef, defFnStmt } from './subroutines.js';
-import { test, assertEqual, registerSuite } from '../test_runner.js';
+import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 /**
  * Unit tests for QBasic Subroutines and Functions (AST).

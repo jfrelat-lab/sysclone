@@ -115,6 +115,7 @@ select {
 
 /* Syntax Highlighting (Lightweight) */
 .syn-kw { color: #569cd6; font-weight: bold; } /* Keywords */
+.syn-built { color: #dcdcaa; } /* Built-ins & Functions */
 .syn-str { color: #ce9178; } /* Strings */
 .syn-num { color: #b5cea8; } /* Numbers */
 .syn-com { color: #6a9955; font-style: italic; } /* Comments */

@@ -1,6 +1,6 @@
 // src/parser/declarations.test.js
 import { defintDecl, constDecl, typeDecl, dimDecl, redimDecl } from './declarations.js';
-import { test, assertEqual, registerSuite } from '../test_runner.js';
+import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 /**
  * Unit tests for QBasic Declarations.

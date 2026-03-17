@@ -1,7 +1,7 @@
 // src/runtime/evaluator.js
 import { Environment } from './environment.js';
 import { QArray } from './qarray.js';
-import { BuiltIns } from './builtins.js';
+import { BuiltIns } from './qbasic/builtins.js';
 import { getCharFromCP437, getCP437FromChar, toCP437Array } from '../hardware/encoding.js';
 
 /**

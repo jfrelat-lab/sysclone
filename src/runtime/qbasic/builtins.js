@@ -1,5 +1,5 @@
 // src/runtime/builtins.js
-import { getCharFromCP437, getCP437FromChar } from '../hardware/encoding.js';
+import { getCharFromCP437, getCP437FromChar } from '../../hardware/encoding.js';
 
 /**
  * Sysclone Native Standard Library (STDLIB).

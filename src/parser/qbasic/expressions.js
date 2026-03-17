@@ -1,5 +1,5 @@
 // src/parser/expressions.js
-import { choice, capture, sequenceObj, lazy, chainLeft, sepBy, many, str } from './monad.js';
+import { choice, capture, sequenceObj, lazy, chainLeft, sepBy, many, str } from '../monad.js';
 import { identifier, numberLiteral, stringLiteral, optWs, keyword } from './lexers.js';
 
 /**

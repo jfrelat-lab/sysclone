@@ -4,8 +4,9 @@
 The primary objective is to create a universal execution engine running directly in the browser (via JavaScript and WebAssembly). This engine must be capable of executing programs written in a multitude of historical and modern programming languages, *without any modification* to the original source code, and with high performance.
 
 ## Architecture and Core Principles
-* **Frontend (Lexical and Syntactic Analysis):** * Systematic use of **monadic parsers** implemented in pure JavaScript. 
-  * This allows for building composable, modular, and unit-testable grammars (brick by brick) tailored to handle the specificities of each target language (e.g., line-based for QBasic, bracket-based for C/Java).
+## Architecture and Core Principles
+* **Frontend (Lexical and Syntactic Analysis & UI):** * Systematic use of **monadic parsers** implemented in pure JavaScript. This allows for building composable, modular, and unit-testable grammars (brick by brick) tailored to handle the specificities of each target language (e.g., line-based for QBasic, bracket-based for C/Java).
+  * **Decoupled Presentation:** Implementation of a **Strategy Pattern** for tokenization, allowing the Web IDE to provide lightning-fast, zero-dependency syntax highlighting that is strictly separated from the AST compilation logic.
 * **Backend (Asynchronous Execution Engine):** * Implementation of a **Virtual Processor (CPU Runner)** based on JS Generators (`function*` / `yield*`).
   * This model enables execution paced by instruction cycles (Ticks), guaranteeing a non-blocking loop for the browser (anti-freeze) and a perfectly controlled framerate. 
   * Advanced handling of hardware pauses (like `SLEEP` or audio durations) via `SYS_DELAY` yield interrupts, granting total control over execution pauses without ever blocking the UI thread.
@@ -24,5 +25,5 @@ The primary objective is to create a universal execution engine running directly
 
 ## Milestones
 * **Milestone 1 (Proof of Concept - Completed):** Perfectly parse and execute the original source code of the game *Nibbles.bas* (Microsoft QBasic DOS 5) using basic text-mode VGA and memory-mapped I/O.
-* **Milestone 2 (Advanced Emulation - Completed):** Execute graphically and computationally intensive classics like *Gorillas.bas*, *Reversi.bas*, and *Mandelbrot*. This requires complex geometric algorithms, rigid scope 3-tier architecture, asynchronous hardware interrupts (`SLEEP`), and pure DOM-decoupled VGA injection.
+* **Milestone 2 (Advanced Emulation - Active):** Execute graphically and computationally intensive classics like *Gorillas.bas*, *Reversi.bas*, *Sortdemo.bas* and *Mandelbrot.bas*. This requires complex geometric algorithms, rigid scope 3-tier architecture, asynchronous hardware interrupts (`SLEEP`), and pure DOM-decoupled VGA injection.
 * **Milestone 3 (JIT Compilation - Next):** Translate the AST directly into JavaScript or WebAssembly to achieve near-native performance for heavy computational loops and strict fixed-length memory blocks.

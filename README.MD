@@ -29,9 +29,9 @@ This project is developed using a rigorous **Agentic Workflow**, where multiple 
 1. **Full Context Reprompting**: Every major development cycle begins with a full-context synchronization using a custom reprompting tool. This tool aggregates the entire codebase and all specification files into a single context stream.
 2. **Document-Driven Development (DDD)**: All specifications are formalized in Markdown files (`GOAL.MD`, `ARCHITECTURE.MD`, `ROADMAP.MD`, `PROMPT.MD`) before any code is written. These act as the absolute "Source of Truth" for the agents.
 3. **Cross-Model Reviews**: We utilize a "multi-agent" approach for validation. Architecture designed by one model is audited by another to identify potential edge cases or compatibility issues with MS-DOS legacy behaviors.
-4. **Agentic Audits**: Dedicated `code-reviews/` files are generated to document technical debt, performance bottlenecks, and compatibility gaps, ensuring a continuous improvement loop.
-5. **Quality Harness & CI/CD Ready**: 
-    * **Unit Testing**: A custom test orchestrator (`test_runner.js` & `run_tests.js`) with recursive auto-discovery (`registerSuite`) is used to validate every engine component against expected QBasic behaviors.
+4. **Quality Harness & CI/CD Ready**: 
+    * **Unit Testing**: A custom test orchestrator (`tests/orchestrator.js`) with recursive auto-discovery dynamically loads test suites. It utilizes a lightweight framework (`src/test_runner.js`) to validate every engine component against expected legacy behaviors.
+    * **Agnostic Core**: The core parser and runtime are strictly decoupled from any specific syntax. QBasic is simply the first implemented dialect living in its own isolated module.
     * **Version Control (Git)**: Strict use of atomic semantic commits and co-authoring metadata to track the evolution of the AI-human collaboration.
     * **Static Analysis (Planned)**: Integration of strict linting rules to ensure consistency across all AI-generated modules.
 

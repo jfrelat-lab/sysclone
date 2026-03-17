@@ -104,7 +104,7 @@ export const many = (parser) => new Parser(state => {
 /**
  * Parses a parser at least once.
  */
-export const many1 = (parser) => new Parser(state => {
+export const manyOne = (parser) => new Parser(state => {
     const firstState = parser.parserStateTransformer(state);
     if (firstState.isError) return firstState;
     
@@ -233,3 +233,33 @@ export const chainLeft = (elementParser, operatorParser, reducer) => new Parser(
 
     return { ...currentState, result: leftValue, isError: false };
 });
+
+/**
+ * Creates an optimized, order-independent parser from an array of strings.
+ * Enforces whole-word matching (negative lookahead) to prevent partial matches 
+ * (e.g., matching 'PRINT' inside 'PRINTER').
+ * @param {Array<string>} words - The list of exact words to match.
+ * @returns {Parser} A regex-based monadic parser.
+ */
+export const wordChoice = (words) => {
+    // 1. Sort by descending length to prevent short words from shadowing longer ones
+    // (e.g., 'ELSEIF' must be checked before 'ELSE').
+    const sortedWords = [...words].sort((a, b) => b.length - a.length);
+    
+    // 2. Escape standard regex control characters
+    const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedWords = sortedWords.map(escapeRegExp);
+    
+    // 3. Build the highly optimized regular expression
+    const regexString = `^(?:${escapedWords.join('|')})(?![a-zA-Z0-9_])`;
+    
+    // 4. Return our existing regex monadic parser
+    return regex(new RegExp(regexString, 'i'));
+};
+
+/**
+ * Matches exactly one character of any kind (including newlines).
+ * Acts as an ultimate fallback in parser combinators to prevent infinite loops 
+ * when encountering illegal or unexpected characters.
+ */
+export const anyChar = regex(/^[\s\S]/);

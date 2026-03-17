@@ -1,6 +1,6 @@
 // src/parser/expressions.test.js
 import { expression } from './expressions.js';
-import { test, assertEqual, registerSuite } from '../test_runner.js';
+import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 /**
  * Unit tests for QBasic Expressions and Operator Precedence.

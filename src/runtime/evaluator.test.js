@@ -1,7 +1,7 @@
 // src/runtime/evaluator.test.js
 import { Evaluator } from './evaluator.js';
 import { Environment } from './environment.js';
-import { block } from '../parser/controlFlow.js';
+import { block } from '../parser/qbasic/controlFlow.js';
 import { Memory } from '../hardware/memory.js';
 import { VGA } from '../hardware/vga.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';

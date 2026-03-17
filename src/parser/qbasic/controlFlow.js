@@ -1,5 +1,6 @@
 // src/parser/controlFlow.js
-import { choice, many, regex, optional, capture, sequenceObj, lazy, sequenceOf } from './monad.js';
+import { choice, many, regex, optional, capture, sequenceObj, lazy, sequenceOf } from '../monad.js';
+import { Tokens } from './tokens.js';
 import { identifier, keyword, optWs, ws, eos } from './lexers.js';
 import { expression } from './expressions.js';
 import { 
@@ -52,7 +53,7 @@ const statementList = sequenceObj([
 const caseItem = sequenceObj([
     capture('low', expression),
     capture('highOpt', optional(sequenceObj([
-        ws, keyword('TO'), ws, capture('high', expression)
+        ws, keyword(Tokens.TO), ws, capture('high', expression)
     ]).map(obj => obj.high)))
 ]).map(obj => {
     // If 'TO' was found, return a range node
@@ -67,11 +68,11 @@ const caseItem = sequenceObj([
  * Handles multiple expressions per CASE, ranges (TO), and an optional CASE ELSE.
  */
 export const selectCaseStmt = lazy(() => sequenceObj([
-    keyword('SELECT'), ws, keyword('CASE'), optWs, capture('testExpr', expression), 
+    keyword(Tokens.SELECT), ws, keyword(Tokens.CASE), optWs, capture('testExpr', expression), 
     skipEmpty,
     
     capture('cases', many(sequenceObj([
-        keyword('CASE'), ws, 
+        keyword(Tokens.CASE), ws, 
         // Capture a comma-separated list of caseItems (values or ranges)
         capture('exprs', sequenceOf([
             caseItem,
@@ -83,12 +84,12 @@ export const selectCaseStmt = lazy(() => sequenceObj([
     ]).map(obj => ({ exprs: obj.exprs, body: obj.body })))),
     
     capture('caseElse', optional(sequenceObj([
-        keyword('CASE'), ws, keyword('ELSE'), skipEmpty,
+        keyword(Tokens.CASE), ws, keyword(Tokens.ELSE), skipEmpty,
         capture('body', block), 
         skipEmpty
     ]).map(obj => obj.body))),
     
-    keyword('END'), ws, keyword('SELECT')
+    keyword(Tokens.END), ws, keyword(Tokens.SELECT)
 ]).map(obj => ({
     type: 'SELECT_CASE',
     testExpr: obj.testExpr,
@@ -142,7 +143,7 @@ export const block = lazy(() => sequenceObj([
  * Parses an ELSEIF block.
  */
 const elseIfBlock = sequenceObj([
-    optWs, keyword('ELSEIF'), ws, capture('condition', expression), ws, keyword('THEN'), eos,
+    optWs, keyword(Tokens.ELSEIF), ws, capture('condition', expression), ws, keyword(Tokens.THEN), eos,
     capture('block', lazy(() => block))
 ]).map(obj => ({
     condition: obj.condition,
@@ -153,14 +154,14 @@ const elseIfBlock = sequenceObj([
  * Classic multi-line IF.
  */
 const multiLineIfStmt = sequenceObj([
-    keyword('IF'), ws, capture('condition', expression), ws, keyword('THEN'), eos, 
+    keyword(Tokens.IF), ws, capture('condition', expression), ws, keyword(Tokens.THEN), eos, 
     capture('thenBlock', block), 
     capture('elseIfBlocks', many(elseIfBlock)),
     capture('elseBlockOpt', optional(sequenceObj([
-        optWs, keyword('ELSE'), eos, 
+        optWs, keyword(Tokens.ELSE), eos, 
         capture('elseBlock', block)
     ]).map(obj => obj.elseBlock))),    
-    optWs, keyword('END'), ws, keyword('IF')
+    optWs, keyword(Tokens.END), ws, keyword(Tokens.IF)
 ]).map(obj => ({
     type: 'IF', 
     condition: obj.condition, 
@@ -173,10 +174,10 @@ const multiLineIfStmt = sequenceObj([
  * Single-line IF. Statements follow immediately on the same line.
  */
 const singleLineIfStmt = sequenceObj([
-    keyword('IF'), ws, capture('condition', expression), ws, keyword('THEN'), optWs,
+    keyword(Tokens.IF), ws, capture('condition', expression), ws, keyword(Tokens.THEN), optWs,
     capture('thenBlock', statementList),
     capture('elseBlockOpt', optional(sequenceObj([
-        optWs, keyword('ELSE'), optWs,
+        optWs, keyword(Tokens.ELSE), optWs,
         capture('elseBlock', statementList)
     ]).map(obj => obj.elseBlock)))
 ]).map(obj => ({
@@ -191,13 +192,13 @@ export const ifStmt = choice([multiLineIfStmt, singleLineIfStmt]);
 // --- 2. FOR ... NEXT ---
 
 export const forStmt = sequenceObj([
-    keyword('FOR'), ws, capture('varName', identifier), optWs, regex(/^=/), optWs,
-    capture('start', expression), ws, keyword('TO'), ws, capture('end', expression),
+    keyword(Tokens.FOR), ws, capture('varName', identifier), optWs, regex(/^=/), optWs,
+    capture('start', expression), ws, keyword(Tokens.TO), ws, capture('end', expression),
     capture('stepOpt', optional(sequenceObj([
-        ws, keyword('STEP'), ws, capture('stepExpr', expression)
+        ws, keyword(Tokens.STEP), ws, capture('stepExpr', expression)
     ]))),
     capture('body', block), 
-    keyword('NEXT'), optional(sequenceObj([ws, identifier]))
+    keyword(Tokens.NEXT), optional(sequenceObj([ws, identifier]))
 ]).map(obj => ({
     type: 'FOR', 
     variable: obj.varName.value, 
@@ -210,11 +211,11 @@ export const forStmt = sequenceObj([
 // --- 3A. DO {WHILE | UNTIL} cond ... LOOP (Pre-Condition) ---
 
 export const doPreCondStmt = sequenceObj([
-    keyword('DO'), ws,
-    capture('loopType', choice([keyword('UNTIL'), keyword('WHILE')])), ws,
+    keyword(Tokens.DO), ws,
+    capture('loopType', choice([keyword(Tokens.UNTIL), keyword(Tokens.WHILE)])), ws,
     capture('condition', expression),
     capture('body', block),
-    keyword('LOOP')
+    keyword(Tokens.LOOP)
 ]).map(obj => ({
     type: 'DO_PRE_COND', 
     loopType: obj.loopType.toUpperCase(), 
@@ -225,11 +226,11 @@ export const doPreCondStmt = sequenceObj([
 // --- 3B. DO ... LOOP [{WHILE | UNTIL} cond] (Post-Condition or Infinite) ---
 
 export const doPostCondStmt = sequenceObj([
-    keyword('DO'),
+    keyword(Tokens.DO),
     capture('body', block),
-    keyword('LOOP'),
+    keyword(Tokens.LOOP),
     capture('condOpt', optional(sequenceObj([
-        ws, capture('loopType', choice([keyword('UNTIL'), keyword('WHILE')])), ws, 
+        ws, capture('loopType', choice([keyword(Tokens.UNTIL), keyword(Tokens.WHILE)])), ws, 
         capture('condition', expression)
     ])))
 ]).map(obj => ({
@@ -242,9 +243,9 @@ export const doPostCondStmt = sequenceObj([
 // --- 4. WHILE ... WEND ---
 
 export const whileWendStmt = sequenceObj([
-    keyword('WHILE'), ws, capture('condition', expression),
+    keyword(Tokens.WHILE), ws, capture('condition', expression),
     capture('body', block),
-    keyword('WEND')
+    keyword(Tokens.WEND)
 ]).map(obj => ({
     type: 'WHILE_WEND',
     condition: obj.condition,

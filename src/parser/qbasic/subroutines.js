@@ -1,5 +1,6 @@
 // src/parser/subroutines.js
-import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, lazy } from './monad.js';
+import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, lazy } from '../monad.js';
+import { Tokens } from './tokens.js';
 import { identifier, keyword, ws, optWs, eos } from './lexers.js';
 import { block } from './controlFlow.js';
 import { expression } from './expressions.js';
@@ -12,8 +13,8 @@ const paramParser = sequenceObj([
     capture('id', identifier),
     optional(sequenceOf([optWs, regex(/^\(\)/)])), // Handles array parentheses in signatures
     optional(sequenceObj([
-        optWs, keyword('AS'), optWs, 
-        choice([identifier, keyword('ANY')])
+        optWs, keyword(Tokens.AS), optWs, 
+        choice([identifier, keyword(Tokens.ANY)])
     ]))
 ]).map(obj => obj.id.value); // Currently, we only need the variable name for the AST
 
@@ -36,8 +37,8 @@ const parameterList = optional(sequenceObj([
  * Example: DECLARE SUB InitSnake (length%, speed!)
  */
 export const declareStmt = sequenceObj([
-    keyword('DECLARE'), ws,
-    capture('subType', choice([keyword('SUB'), keyword('FUNCTION')])), ws,
+    keyword(Tokens.DECLARE), ws,
+    capture('subType', choice([keyword(Tokens.SUB), keyword(Tokens.FUNCTION)])), ws,
     capture('name', identifier),
     capture('params', parameterList) // Replaced with DRY parser
 ]).map(obj => ({
@@ -52,12 +53,12 @@ export const declareStmt = sequenceObj([
  * Supports static scope declarations and QBasic syntax quirks.
  */
 export const subDef = lazy(() => sequenceObj([
-    keyword('SUB'), ws, capture('name', identifier),
+    keyword(Tokens.SUB), ws, capture('name', identifier),
     capture('params', parameterList), 
-    capture('isStatic', optional(sequenceOf([optWs, keyword('STATIC')]))),
+    capture('isStatic', optional(sequenceOf([optWs, keyword(Tokens.STATIC)]))),
     eos,
     capture('body', block),
-    keyword('END'), ws, keyword('SUB')
+    keyword(Tokens.END), ws, keyword(Tokens.SUB)
 ]).map(obj => ({
     type: 'SUB_DEF',
     name: obj.name.value,
@@ -71,12 +72,12 @@ export const subDef = lazy(() => sequenceObj([
  * Supports static scope declarations and QBasic syntax quirks.
  */
 export const functionDef = lazy(() => sequenceObj([
-    keyword('FUNCTION'), ws, capture('name', identifier),
+    keyword(Tokens.FUNCTION), ws, capture('name', identifier),
     capture('params', parameterList), 
-    capture('isStatic', optional(sequenceOf([optWs, keyword('STATIC')]))),
+    capture('isStatic', optional(sequenceOf([optWs, keyword(Tokens.STATIC)]))),
     eos,
     capture('body', block),
-    keyword('END'), ws, keyword('FUNCTION')
+    keyword(Tokens.END), ws, keyword(Tokens.FUNCTION)
 ]).map(obj => ({
     type: 'FUNCTION_DEF',
     name: obj.name.value,
@@ -91,7 +92,7 @@ export const functionDef = lazy(() => sequenceObj([
  * Example: DEF FnRan (x) = INT(RND(1) * x) + 1
  */
 export const defFnStmt = sequenceObj([
-    keyword('DEF'), ws, capture('name', identifier),
+    keyword(Tokens.DEF), ws, capture('name', identifier),
     capture('params', parameterList), // Reuse our DRY parameter parser!
     optWs, regex(/^=/), optWs,
     // Evaluate the right side as a standard mathematical/logical expression

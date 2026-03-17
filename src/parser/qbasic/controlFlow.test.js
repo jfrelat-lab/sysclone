@@ -1,6 +1,6 @@
 // src/parser/controlFlow.test.js
 import { forStmt, doPreCondStmt, doPostCondStmt, ifStmt, selectCaseStmt, whileWendStmt } from './controlFlow.js';
-import { test, assertEqual, registerSuite } from '../test_runner.js';
+import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 /**
  * Unit tests for QBasic Control Flow (AST).

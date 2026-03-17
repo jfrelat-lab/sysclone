@@ -1,6 +1,6 @@
 // src/parser/lexers.test.js
-import { numberLiteral, signedNumberLiteral, stringLiteral, identifier, eos, commentLexer, whitespaceLexer, anyKeywordLexer, symbolLexer } from './lexers.js';
-import { test, assertEqual, registerSuite } from '../test_runner.js';
+import { numberLiteral, signedNumberLiteral, stringLiteral, identifier, eos, commentLexer, whitespaceLexer, symbolLexer } from './lexers.js';
+import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 /**
  * Unit tests for QBasic Lexers (Tokens).
@@ -92,16 +92,6 @@ registerSuite('QBasic Lexers (Tokens)', () => {
         const wsRes = whitespaceLexer.run("  \t\n  ");
         assertEqual(wsRes.result.type, 'WHITESPACE');
         assertEqual(wsRes.result.value, "  \t\n  ");
-    });
-
-    test('anyKeywordLexer() should dynamically match any reserved keyword', () => {
-        const kw1 = anyKeywordLexer.run('pRiNt ');
-        assertEqual(kw1.result.type, 'KEYWORD');
-        assertEqual(kw1.result.value, 'pRiNt'); // Preserves original case for UI
-
-        // Should reject normal identifiers
-        const kw2 = anyKeywordLexer.run('myVar');
-        assertEqual(kw2.isError, true);
     });
 
     test('symbolLexer() should capture operators and punctuation', () => {

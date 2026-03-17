@@ -14,6 +14,18 @@ artifacts/
 examples/_*.bas
 examples/lab/
 
+# --- External Compatibility Tests (QB45 / DOSBox) ---
+# Ignore binary and support files extracted from legacy QB45 environments
+examples/*.EXE
+examples/*.exe
+examples/*.COM
+examples/*.LIB
+examples/*.QLB
+examples/*.HLP
+examples/*.INI
+examples/*.PIF
+examples/*.BI
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

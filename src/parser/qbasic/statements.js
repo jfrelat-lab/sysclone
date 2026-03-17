@@ -1,5 +1,6 @@
 // src/parser/statements.js
-import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, sepBy, str } from './monad.js';
+import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, sepBy, str } from '../monad.js';
+import { Tokens } from './tokens.js';
 import { identifier, keyword, ws, optWs, signedNumberLiteral, stringLiteral } from './lexers.js';
 import { expression, variableAccess } from './expressions.js';
 
@@ -18,7 +19,7 @@ const coordParser = sequenceObj([
  * Example: STEP (10, 20) or just (10, 20)
  */
 const stepCoordParser = sequenceObj([
-    capture('stepOpt', optional(sequenceOf([keyword('STEP'), ws]))),
+    capture('stepOpt', optional(sequenceOf([keyword(Tokens.STEP), ws]))),
     capture('coord', coordParser)
 ]).map(obj => ({
     isStep: obj.stepOpt !== null,
@@ -40,10 +41,10 @@ const commaArg = optional(sequenceObj([
  * and trailing separators (semicolons/commas) for line-wrapping control.
  */
 export const printStmt = sequenceObj([
-    keyword('PRINT'),
+    keyword(Tokens.PRINT),
     // Optional USING "format"; block
     capture('usingOpt', optional(sequenceObj([
-        ws, keyword('USING'), ws,
+        ws, keyword(Tokens.USING), ws,
         capture('format', expression), optWs, regex(/^[;,]/) 
     ]).map(obj => obj.format))),
     
@@ -65,7 +66,7 @@ export const printStmt = sequenceObj([
  * Syntax: CLS [method] (0 = all text, 1 = active graphics viewport, 2 = active text viewport)
  */
 export const clsStmt = sequenceObj([
-    keyword('CLS'),
+    keyword(Tokens.CLS),
     capture('methodOpt', optional(sequenceOf([ws, expression]).map(arr => arr[1])))
 ]).map(obj => ({ 
     type: 'CLS', 
@@ -73,7 +74,7 @@ export const clsStmt = sequenceObj([
 }));
 
 export const locateStmt = sequenceObj([
-    keyword('LOCATE'),
+    keyword(Tokens.LOCATE),
     // Row is optional and preceded by spaces (e.g. LOCATE 5)
     capture('rowOpt', optional(sequenceOf([ws, expression]).map(arr => arr[1]))),
     // Column is optional and preceded by a comma. The expression ITSELF is optional to allow empty commas!
@@ -88,7 +89,7 @@ export const locateStmt = sequenceObj([
 }));
 
 export const colorStmt = sequenceObj([
-    keyword('COLOR'), ws,
+    keyword(Tokens.COLOR), ws,
     // The first argument (foreground) is optional in some contexts
     capture('fgOpt', optional(expression)),
     // The second argument (background) is also optional
@@ -103,7 +104,7 @@ export const colorStmt = sequenceObj([
  * Emulates memory segment selection (x86 Real Mode logic).
  */
 export const defSegStmt = sequenceObj([
-    keyword('DEF'), ws, keyword('SEG'),
+    keyword(Tokens.DEF), ws, keyword(Tokens.SEG),
     capture('addressOpt', optional(sequenceObj([
         optWs, str('='), optWs, capture('addr', expression)
     ]).map(obj => obj.addr)))
@@ -113,7 +114,7 @@ export const defSegStmt = sequenceObj([
 }));
 
 export const pokeStmt = sequenceObj([
-    keyword('POKE'), ws, capture('address', expression), optWs, str(','), optWs, capture('value', expression)
+    keyword(Tokens.POKE), ws, capture('address', expression), optWs, str(','), optWs, capture('value', expression)
 ]).map(obj => ({ type: 'POKE', address: obj.address, value: obj.value }));
 
 export const assignStmt = sequenceObj([
@@ -121,7 +122,7 @@ export const assignStmt = sequenceObj([
 ]).map(obj => ({ type: 'ASSIGN', target: obj.target, value: obj.value }));
 
 export const swapStmt = sequenceObj([
-    keyword('SWAP'), ws,
+    keyword(Tokens.SWAP), ws,
     capture('target1', variableAccess), optWs, str(','), optWs,
     capture('target2', variableAccess)
 ]).map(obj => ({ type: 'SWAP', target1: obj.target1, target2: obj.target2 }));
@@ -131,7 +132,7 @@ export const swapStmt = sequenceObj([
  * Syntax: ERASE arrayname [, arrayname]...
  */
 export const eraseStmt = sequenceObj([
-    keyword('ERASE'), ws,
+    keyword(Tokens.ERASE), ws,
     capture('targets', sepBy(identifier, sequenceOf([optWs, str(','), optWs])))
 ]).map(obj => ({ 
     type: 'ERASE', 
@@ -139,14 +140,14 @@ export const eraseStmt = sequenceObj([
 }));
 
 export const outStmt = sequenceObj([
-    keyword('OUT'), ws, capture('port', expression), optWs, str(','), optWs, capture('value', expression)
+    keyword(Tokens.OUT), ws, capture('port', expression), optWs, str(','), optWs, capture('value', expression)
 ]).map(obj => ({ type: 'OUT', port: obj.port, value: obj.value }));
 
 /**
  * Explicit CALL statement for subroutines with parentheses.
  */
 export const callStmt = sequenceObj([
-    keyword('CALL'), ws, capture('callee', identifier),
+    keyword(Tokens.CALL), ws, capture('callee', identifier),
     capture('argsOpt', optional(sequenceObj([
         optWs, str('('), optWs,
         capture('args', optional(sequenceOf([
@@ -161,28 +162,28 @@ export const labelDef = sequenceObj([
 ]).map(obj => ({ type: 'LABEL', name: obj.name.value }));
 
 export const gotoStmt = sequenceObj([
-    keyword('GOTO'), ws, capture('label', identifier)
+    keyword(Tokens.GOTO), ws, capture('label', identifier)
 ]).map(obj => ({ type: 'GOTO', label: obj.label.value }));
 
 export const gosubStmt = sequenceObj([
-    keyword('GOSUB'), ws, capture('label', identifier)
+    keyword(Tokens.GOSUB), ws, capture('label', identifier)
 ]).map(obj => ({ type: 'GOSUB', label: obj.label.value }));
 
-export const returnStmt = keyword('RETURN').map(() => ({ type: 'RETURN' }));
+export const returnStmt = keyword(Tokens.RETURN).map(() => ({ type: 'RETURN' }));
 
 // --- LEGACY EMULATION STATEMENTS (Nibbles Requirements) ---
 
 export const randomizeStmt = sequenceObj([
-    keyword('RANDOMIZE'), 
+    keyword(Tokens.RANDOMIZE), 
     capture('seed', optional(sequenceOf([ws, expression]).map(arr => arr[1])))
 ]).map(obj => ({ type: 'RANDOMIZE', seed: obj.seed || null }));
 
 export const screenStmt = sequenceObj([
-    keyword('SCREEN'), ws, capture('mode', expression)
+    keyword(Tokens.SCREEN), ws, capture('mode', expression)
 ]).map(obj => ({ type: 'SCREEN_STMT', mode: obj.mode }));
 
 export const widthStmt = sequenceObj([
-    keyword('WIDTH'), ws, capture('col', expression),
+    keyword(Tokens.WIDTH), ws, capture('col', expression),
     capture('rowOpt', optional(sequenceOf([optWs, str(','), optWs, expression]).map(arr => arr[3])))
 ]).map(obj => ({ type: 'WIDTH', col: obj.col, row: obj.rowOpt || null }));
 
@@ -221,17 +222,17 @@ const dataItem = choice([
  * Parses DATA statements containing comma-separated values of mixed types.
  */
 export const dataStmt = sequenceObj([
-    keyword('DATA'), ws,
+    keyword(Tokens.DATA), ws,
     capture('values', sepBy(dataItem, sequenceOf([optWs, str(','), optWs])))
 ]).map(obj => ({ type: 'DATA', values: obj.values }));
 
 export const readStmt = sequenceObj([
-    keyword('READ'), ws,
+    keyword(Tokens.READ), ws,
     capture('targets', sepBy(variableAccess, sequenceOf([optWs, str(','), optWs])))
 ]).map(obj => ({ type: 'READ', targets: obj.targets }));
 
 export const restoreStmt = sequenceObj([
-    keyword('RESTORE'), 
+    keyword(Tokens.RESTORE), 
     capture('label', optional(sequenceOf([ws, identifier]).map(arr => arr[1].value)))
 ]).map(obj => ({ 
     type: 'RESTORE', 
@@ -245,9 +246,9 @@ export const restoreStmt = sequenceObj([
  * Example: WINDOW (-2, 1.5)-(2, -1.5)
  */
 export const windowStmt = sequenceObj([
-    keyword('WINDOW'), 
+    keyword(Tokens.WINDOW), 
     // QBasic allows "WINDOW SCREEN" to invert the Y-axis mathematically
-    capture('screenOpt', optional(sequenceOf([ws, keyword('SCREEN')]))),
+    capture('screenOpt', optional(sequenceOf([ws, keyword(Tokens.SCREEN)]))),
     ws,
     capture('coord1', coordParser), optWs, str('-'), optWs,
     capture('coord2', coordParser)
@@ -262,7 +263,7 @@ export const windowStmt = sequenceObj([
  * PSET statement
  */
 export const psetStmt = sequenceObj([
-    keyword('PSET'), ws,
+    keyword(Tokens.PSET), ws,
     capture('coord', stepCoordParser),
     capture('colorOpt', optional(sequenceObj([
         optWs, str(','), optWs, capture('c', expression)
@@ -279,7 +280,7 @@ export const psetStmt = sequenceObj([
  * LINE statement: LINE [STEP] (x1,y1) - [STEP] (x2,y2) [, color] [, B|BF]
  */
 export const lineStmt = sequenceObj([
-    keyword('LINE'), ws,
+    keyword(Tokens.LINE), ws,
     capture('start', stepCoordParser), optWs, str('-'), optWs,
     capture('end', stepCoordParser),
     capture('colorOpt', commaArg),
@@ -304,7 +305,7 @@ export const lineStmt = sequenceObj([
  * CIRCLE statement: CIRCLE [STEP] (x,y), radius [, color] [, start] [, end] [, aspect]
  */
 export const circleStmt = sequenceObj([
-    keyword('CIRCLE'), ws,
+    keyword(Tokens.CIRCLE), ws,
     capture('center', stepCoordParser), optWs, str(','), optWs,
     capture('radius', expression),
     capture('color', commaArg),
@@ -325,7 +326,7 @@ export const circleStmt = sequenceObj([
  * PAINT statement: PAINT [STEP] (x,y) [, paint_color] [, border_color]
  */
 export const paintStmt = sequenceObj([
-    keyword('PAINT'), ws,
+    keyword(Tokens.PAINT), ws,
     capture('start', stepCoordParser),
     capture('paintColor', commaArg),
     capture('borderColor', commaArg)
@@ -367,7 +368,7 @@ export const implicitCallStmt = sequenceObj([
  * Example: ON ERROR GOTO 0
  */
 export const onErrorStmt = sequenceObj([
-    keyword('ON'), ws, keyword('ERROR'), ws, keyword('GOTO'), ws,
+    keyword(Tokens.ON), ws, keyword(Tokens.ERROR), ws, keyword(Tokens.GOTO), ws,
     // Capture either a valid label name or a numeric 0
     capture('target', choice([identifier, signedNumberLiteral]))
 ]).map(obj => {
@@ -383,10 +384,10 @@ export const onErrorStmt = sequenceObj([
  * Syntax: RESUME [NEXT | label]
  */
 export const resumeStmt = sequenceObj([
-    keyword('RESUME'),
+    keyword(Tokens.RESUME),
     // The target is optional. It can be the keyword NEXT, or a label identifier.
     capture('targetOpt', optional(sequenceOf([
-        ws, choice([keyword('NEXT'), identifier])
+        ws, choice([keyword(Tokens.NEXT), identifier])
     ]).map(arr => arr[1])))
 ]).map(obj => {
     let target = null;
@@ -408,7 +409,7 @@ export const resumeStmt = sequenceObj([
  * Example: PALETTE 4, 0
  */
 export const paletteStmt = sequenceObj([
-    keyword('PALETTE'),
+    keyword(Tokens.PALETTE),
     // The entire argument block is optional
     capture('args', optional(sequenceObj([
         ws, capture('attribute', expression),
@@ -428,12 +429,12 @@ export const paletteStmt = sequenceObj([
  * Action verbs: PSET, PRESET, XOR, OR, AND (Default is XOR)
  */
 const putActionParser = choice([
-    keyword('PSET'), keyword('PRESET'), 
-    keyword('XOR'), keyword('OR'), keyword('AND')
+    keyword(Tokens.PSET), keyword(Tokens.PRESET), 
+    keyword(Tokens.XOR), keyword(Tokens.OR), keyword(Tokens.AND)
 ]);
 
 export const putGraphicsStmt = sequenceObj([
-    keyword('PUT'), ws,
+    keyword(Tokens.PUT), ws,
     capture('coord', stepCoordParser), optWs, str(','), optWs,
     // The sprite data array (e.g., LBan& or bananaArray(0))
     capture('target', expression),
@@ -456,7 +457,7 @@ export const putGraphicsStmt = sequenceObj([
  * Syntax: GET [STEP] (x1, y1) - [STEP] (x2, y2), arrayName
  */
 export const getGraphicsStmt = sequenceObj([
-    keyword('GET'), ws,
+    keyword(Tokens.GET), ws,
     capture('start', stepCoordParser), optWs, str('-'), optWs,
     capture('end', stepCoordParser), optWs, str(','), optWs,
     capture('target', expression)
@@ -477,10 +478,10 @@ export const getGraphicsStmt = sequenceObj([
  * Syntax: VIEW PRINT [topLine TO bottomLine]
  */
 export const viewPrintStmt = sequenceObj([
-    keyword('VIEW'), ws, keyword('PRINT'),
+    keyword(Tokens.VIEW), ws, keyword(Tokens.PRINT),
     capture('rangeOpt', optional(sequenceObj([
         ws, capture('top', expression), 
-        ws, keyword('TO'), ws, 
+        ws, keyword(Tokens.TO), ws, 
         capture('bottom', expression)
     ])))
 ]).map(obj => ({
@@ -494,7 +495,7 @@ export const viewPrintStmt = sequenceObj([
  * Syntax: PLAY stringExpression
  */
 export const playStmt = sequenceObj([
-    keyword('PLAY'), ws, capture('music', expression)
+    keyword(Tokens.PLAY), ws, capture('music', expression)
 ]).map(obj => ({
     type: 'PLAY',
     music: obj.music
@@ -504,7 +505,7 @@ export const playStmt = sequenceObj([
  * Parses the BEEP statement used for simple PC Speaker sounds.
  * Syntax: BEEP
  */
-export const beepStmt = keyword('BEEP').map(() => ({ type: 'BEEP' }));
+export const beepStmt = keyword(Tokens.BEEP).map(() => ({ type: 'BEEP' }));
 
 /**
  * Parses the SOUND statement.
@@ -512,7 +513,7 @@ export const beepStmt = keyword('BEEP').map(() => ({ type: 'BEEP' }));
  * Note: duration is in DOS clock ticks (approx 18.2 ticks per second).
  */
 export const soundStmt = sequenceObj([
-    keyword('SOUND'), ws,
+    keyword(Tokens.SOUND), ws,
     capture('freq', expression), optWs, str(','), optWs,
     capture('duration', expression)
 ]).map(obj => ({
@@ -527,7 +528,7 @@ export const soundStmt = sequenceObj([
  * If seconds is omitted, it halts until a key is pressed.
  */
 export const sleepStmt = sequenceObj([
-    keyword('SLEEP'),
+    keyword(Tokens.SLEEP),
     capture('duration', optional(sequenceOf([ws, expression]).map(arr => arr[1])))
 ]).map(obj => ({
     type: 'SLEEP',
@@ -540,7 +541,7 @@ export const sleepStmt = sequenceObj([
  * Syntax: LINE INPUT ["prompt";] stringVariable$
  */
 export const lineInputStmt = sequenceObj([
-    keyword('LINE'), ws, keyword('INPUT'), ws,
+    keyword(Tokens.LINE), ws, keyword(Tokens.INPUT), ws,
     capture('promptOpt', optional(sequenceOf([
         stringLiteral, optWs, regex(/^[;,]/), optWs
     ]).map(arr => arr[0].value))),
@@ -556,7 +557,7 @@ export const lineInputStmt = sequenceObj([
  * Example: INPUT "Enter speed: "; gamespeed$
  */
 export const inputStmt = sequenceObj([
-    keyword('INPUT'), ws,
+    keyword(Tokens.INPUT), ws,
     capture('promptOpt', optional(sequenceOf([
         stringLiteral, optWs, regex(/^[;,]/), optWs
     ]).map(arr => arr[0].value))),
@@ -573,7 +574,7 @@ export const inputStmt = sequenceObj([
  * not part of END IF or END SUB.
  */
 export const endStmt = sequenceObj([
-    keyword('END'),
+    keyword(Tokens.END),
     regex(/^(?![ \t]*(?:IF|SUB|FUNCTION|TYPE|SELECT)\b)/i)
 ]).map(() => ({ type: 'END' }));
 
@@ -582,8 +583,8 @@ export const endStmt = sequenceObj([
  * Syntax: EXIT FOR | EXIT DO | EXIT SUB | EXIT FUNCTION
  */
 export const exitStmt = sequenceObj([
-    keyword('EXIT'), ws,
-    capture('target', choice([keyword('FOR'), keyword('DO'), keyword('SUB'), keyword('FUNCTION')]))
+    keyword(Tokens.EXIT), ws,
+    capture('target', choice([keyword(Tokens.FOR), keyword(Tokens.DO), keyword(Tokens.SUB), keyword(Tokens.FUNCTION)]))
 ]).map(obj => ({
     type: 'EXIT',
     target: obj.target

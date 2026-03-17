@@ -1,6 +1,6 @@
 // src/parser/lexers.js
-import { regex, sequenceObj, capture, Parser, optional, choice } from './monad.js';
-import { BuiltIns } from '../runtime/builtins.js';
+import { regex, sequenceObj, capture, Parser, optional, choice } from '../monad.js';
+import { Tokens, BuiltInTokens } from './tokens.js';
 
 /**
  * STRICT WHITESPACE MANAGEMENT (Horizontal only)
@@ -84,72 +84,7 @@ export const stringLiteral = sequenceObj([
 
 // --- IDENTIFIERS AND KEYWORDS ---
 
-/**
- * Strict list of reserved keywords.
- * Identifiers matching these will be rejected by the identifier parser.
- */
-const RESERVED_KEYWORDS = new Set([
-    // Control Flow
-    'IF', 'THEN', 'ELSE', 'ELSEIF', 'END', 'FOR', 'TO', 'STEP', 'NEXT',
-    'DO', 'LOOP', 'UNTIL', 'WHILE', 'WEND', 'GOTO', 'GOSUB', 'RETURN', 'CALL',
-    'SELECT', 'CASE', 'EXIT', 'SWAP',
-    // Legacy Error Handling & Jumps
-    'ON', 'ERROR', 'RESUME',
-    // Declarations
-    'SUB', 'FUNCTION', 'DECLARE', 'DIM', 'REDIM', 'SHARED', 'AS', 'TYPE', 'CONST', 'DEFINT', 'DEF', 'SEG', 'ANY', 'STATIC', 'ERASE',
-    // System and Hardware Instructions
-    'PRINT', 'USING', 'CLS', 'LOCATE', 'COLOR', 'POKE', 'OUT', 'RANDOMIZE', 'SCREEN', 'WIDTH', 'DATA', 'READ', 'RESTORE', 'INPUT',
-    'WINDOW', 'PSET', 'CIRCLE', 'LINE', 'PAINT', 'PALETTE', 'PRESET', 'PUT', 'GET', 'VIEW', 'PLAY', 'BEEP', 'SLEEP', 'SOUND',
-    // Logical and Mathematical textual operators
-    'AND', 'OR', 'NOT', 'MOD', 'XOR',
-    // Comments
-    'REM'
-]);
-
-/**
- * HARDWARE BUILT-INS
- * These interact with the HAL and are handled directly in the Evaluator loop.
- */
-const HARDWARE_BUILTINS = [
-    'PEEK', 'INP', 'OUT', 'INKEY$', 'TIMER', 'COMMAND$', 'ENVIRON$', 'POINT', 'TAB', 'INPUT$'
-];
-
-/**
- * BUILT-IN FUNCTIONS (Dynamic generation from STDLIB + Hardware stubs)
- */
-const BUILTIN_FUNCTIONS = new Set([
-    ...Object.keys(BuiltIns),
-    ...HARDWARE_BUILTINS
-]);
-
-/**
- * Unified set for the UI Tokenizer.
- */
-const HIGHLIGHT_KEYWORDS = new Set([...RESERVED_KEYWORDS, ...BUILTIN_FUNCTIONS]);
-
-/**
- * anyKeywordLexer (Used by Tokenizer for UI only)
- * Uses the extended set (HIGHLIGHT_KEYWORDS) for rich syntax highlighting.
- */
-export const anyKeywordLexer = new Parser(state => {
-    const { targetString, index } = state;
-    const match = targetString.slice(index).match(/^[a-zA-Z_][a-zA-Z0-9_]*[%&!#$]?/);
-    
-    if (match && match.index === 0) {
-        const word = match[0].toUpperCase();
-        const wordWithoutSuffix = word.replace(/[%&!#$]$/, '');
-        
-        if (HIGHLIGHT_KEYWORDS.has(wordWithoutSuffix) || HIGHLIGHT_KEYWORDS.has(word)) {
-            return {
-                ...state,
-                index: index + match[0].length,
-                result: { type: 'KEYWORD', value: match[0] },
-                isError: false
-            };
-        }
-    }
-    return { ...state, isError: true, error: `Not a keyword at index ${index}` };
-});
+const RESERVED_KEYWORDS = new Set(Object.values(Tokens));
 
 /**
  * Parses variable names or subroutine identifiers.
@@ -167,7 +102,7 @@ export const identifier = new Parser(state => {
         const wordWithoutSuffix = word.replace(/[%&!#$]$/, '');
         
         // Exception: INPUT$ is a valid hardware function, not the INPUT statement.
-        if (word !== 'INPUT$') {
+        if (word !== BuiltInTokens.INPUT$) {
             if (RESERVED_KEYWORDS.has(wordWithoutSuffix) || RESERVED_KEYWORDS.has(word)) {
                 return { ...state, isError: true, error: `'${word}' is a reserved keyword.` };
             }
@@ -185,18 +120,11 @@ export const identifier = new Parser(state => {
 });
 
 /**
- * Utility function to create a case-insensitive keyword parser.
- * Validates that the keyword is officially registered in RESERVED_KEYWORDS.
+ * Creates a case-insensitive keyword parser natively from a Token definition.
+ * Simplified for performance: Assumes the provided token is valid by strict typing.
  */
-export const keyword = (kw) => {
-    const upperKw = kw.toUpperCase();
-    
-    // Architectural safety check
-    if (!RESERVED_KEYWORDS.has(upperKw)) {
-        throw new Error(`Internal Error: '${upperKw}' is not declared in RESERVED_KEYWORDS!`);
-    }
-
+export const keyword = (token) => {
     // Uses negative lookahead to ensure we don't match a prefix of a longer word
-    return regex(new RegExp(`^${upperKw}(?![a-zA-Z0-9_])`, 'i'))
+    return regex(new RegExp(`^${token}(?![a-zA-Z0-9_])`, 'i'))
         .map(res => res.toUpperCase()); 
 };
