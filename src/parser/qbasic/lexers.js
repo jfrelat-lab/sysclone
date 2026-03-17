@@ -1,5 +1,5 @@
 // src/parser/lexers.js
-import { regex, sequenceObj, capture, Parser, optional, choice } from '../monad.js';
+import { regex, sequenceObj, capture, Parser, optional, choice, advancePosition } from '../monad.js';
 import { Tokens, BuiltInTokens } from './tokens.js';
 
 /**
@@ -91,7 +91,8 @@ const RESERVED_KEYWORDS = new Set(Object.values(Tokens));
  * Rejects any word present in the RESERVED_KEYWORDS set.
  */
 export const identifier = new Parser(state => {
-    const { targetString, index } = state;
+    // Extract line and col from the current state
+    const { targetString, index, line, col } = state;
     const rest = targetString.slice(index);
     // QBasic identifiers can end with type suffixes ($, %, &, !, #)
     const match = rest.match(/^[a-zA-Z_][a-zA-Z0-9_]*[%&!#$]?/);
@@ -104,19 +105,24 @@ export const identifier = new Parser(state => {
         // Exception: INPUT$ is a valid hardware function, not the INPUT statement.
         if (word !== BuiltInTokens.INPUT$) {
             if (RESERVED_KEYWORDS.has(wordWithoutSuffix) || RESERVED_KEYWORDS.has(word)) {
-                return { ...state, isError: true, error: `'${word}' is a reserved keyword.` };
+                return { ...state, isError: true, error: `'${word}' is a reserved keyword at line ${line}, col ${col}.` };
             }
         }
         
+        // Calculate the new spatial coordinates
+        const newPos = advancePosition(line, col, match[0]);
+
         return {
             ...state,
             index: index + match[0].length,
+            line: newPos.line,
+            col: newPos.col,
             // Add 'raw' to preserve the user's original casing for UI highlighting
             result: { type: 'IDENTIFIER', value: word, raw: match[0] },
             isError: false
         };
     }
-    return { ...state, isError: true, error: `Invalid identifier at index ${index}` };
+    return { ...state, isError: true, error: `Invalid identifier at line ${line}, col ${col}` };
 });
 
 /**

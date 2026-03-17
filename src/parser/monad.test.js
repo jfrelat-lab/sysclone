@@ -1,7 +1,8 @@
 // src/parser/monad.test.js
 import { 
     str, sequenceOf, choice, many, manyOne, regex, optional, 
-    capture, sequenceObj, lazy, sepBy, chainLeft, wordChoice, anyChar 
+    capture, sequenceObj, lazy, sepBy, chainLeft, wordChoice, anyChar,
+    advancePosition, ParserState
 } from './monad.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
@@ -140,6 +141,57 @@ registerSuite('Core Monadic Combinators', () => {
         assertEqual(anyChar.run('\n').result, '\n'); // Should match newlines
         assertEqual(anyChar.run(' ').result, ' ');
         assertEqual(anyChar.run('').isError, true);  // Fails on EOF
+    });
+
+});
+
+// --- SPATIAL AWARENESS SUITE ---
+
+registerSuite('Monadic Spatial Awareness (Line/Col)', () => {
+
+    test('advancePosition() should correctly calculate lines and columns', () => {
+        let pos = advancePosition(1, 1, 'ABC');
+        assertEqual(pos.line, 1);
+        assertEqual(pos.col, 4);
+
+        pos = advancePosition(1, 1, 'A\nB');
+        assertEqual(pos.line, 2);
+        assertEqual(pos.col, 2);
+
+        pos = advancePosition(5, 10, 'DIM\nSHARED\n  ');
+        assertEqual(pos.line, 7);
+        assertEqual(pos.col, 3);
+    });
+
+    test('str() should update ParserState coordinates', () => {
+        const parser = str('HELLO');
+        const initialState = new ParserState('HELLO WORLD', 0, 10, 5);
+        
+        const success = parser.parserStateTransformer(initialState);
+        assertEqual(success.isError, false);
+        assertEqual(success.line, 10);
+        assertEqual(success.col, 10);
+    });
+
+    test('regex() should track coordinates across multiline matches', () => {
+        const wsParser = regex(/^[ \t\n]+/);
+        const initialState = new ParserState(' \n \n   X', 0, 1, 1);
+        
+        const success = wsParser.parserStateTransformer(initialState);
+        assertEqual(success.isError, false);
+        assertEqual(success.line, 3);
+        assertEqual(success.col, 4);
+    });
+
+    test('Combinators should report exact line and col on failure', () => {
+        const parser = str('EXPECTED');
+        const initialState = new ParserState('WRONG', 0, 42, 15);
+        
+        const fail = parser.parserStateTransformer(initialState);
+        assertEqual(fail.isError, true);
+        
+        const hasCoordinates = fail.error.includes('line 42') && fail.error.includes('col 15');
+        assertEqual(hasCoordinates, true);
     });
 
 });

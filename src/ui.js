@@ -56,36 +56,53 @@ export class WebUI {
     }
 
     /**
-     * Safely injects the source code using the injected Strategy Tokenizer
-     * for zero-dependency, flawless syntax highlighting.
+     * Safely injects the source code using the injected Strategy Tokenizer.
+     * Groups tokens into logical lines to render a VS Code-style gutter.
      */
     setSourceCode(filename, code) {
         if (this.sourceFilename) this.sourceFilename.textContent = filename;
         if (!this.sourceViewer) return;
 
         const tokens = this.tokenizer.tokenize(code);
-        let html = '';
+        
+        let currentLineHtml = '';
+        const linesHtml = [];
 
         for (const token of tokens) {
-            // The value is safely normalized by BaseTokenizer
-            const text = token.value;
-            
-            // Absolute XSS Prevention for each token
-            const safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            // Split token value by newline to handle multiline tokens (like WHITESPACE)
+            const parts = token.value.split(/\r?\n/);
 
-            // Apply syntax classes based on our universal semantic types
-            switch (token.type) {
-                case 'KEYWORD': html += `<span class="syn-kw">${safeText}</span>`; break;
-                case 'BUILTIN': html += `<span class="syn-built">${safeText}</span>`; break;
-                case 'COMMENT': html += `<span class="syn-com">${safeText}</span>`; break;
-                case 'STRING':  html += `<span class="syn-str">${safeText}</span>`; break;
-                case 'NUMBER':  html += `<span class="syn-num">${safeText}</span>`; break;
-                // IDENTIFIER, WHITESPACE, SYMBOL, and UNKNOWN are printed as plain text
-                default: html += safeText; break;
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                
+                if (part.length > 0) {
+                    // Absolute XSS Prevention
+                    const safeText = part.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    
+                    switch (token.type) {
+                        case 'KEYWORD': currentLineHtml += `<span class="syn-kw">${safeText}</span>`; break;
+                        case 'BUILTIN': currentLineHtml += `<span class="syn-built">${safeText}</span>`; break;
+                        case 'COMMENT': currentLineHtml += `<span class="syn-com">${safeText}</span>`; break;
+                        case 'STRING':  currentLineHtml += `<span class="syn-str">${safeText}</span>`; break;
+                        case 'NUMBER':  currentLineHtml += `<span class="syn-num">${safeText}</span>`; break;
+                        default:        currentLineHtml += safeText; break;
+                    }
+                }
+
+                // If this is not the last part, a newline was consumed.
+                // We wrap the accumulated HTML into a line div and start fresh.
+                if (i < parts.length - 1) {
+                    linesHtml.push(`<div class="editor-line">${currentLineHtml}</div>`);
+                    currentLineHtml = '';
+                }
             }
         }
 
-        this.sourceViewer.innerHTML = html;
+        // Push the final line (even if empty, to show the last line number)
+        linesHtml.push(`<div class="editor-line">${currentLineHtml}</div>`);
+
+        // Join everything without extra spaces to preserve pure formatting
+        this.sourceViewer.innerHTML = linesHtml.join('');
     }
 
     _togglePlayPause() {

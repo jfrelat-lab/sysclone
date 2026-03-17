@@ -1,12 +1,37 @@
 // src/parser/monad.js
 
 /**
+ * Pure utility to calculate the new line and column after consuming a string.
+ * @param {number} line - Current line number.
+ * @param {number} col - Current column number.
+ * @param {string} consumedStr - The string that was just parsed.
+ * @returns {{line: number, col: number}}
+ */
+export const advancePosition = (line, col, consumedStr) => {
+    let newLine = line;
+    let newCol = col;
+    
+    for (let i = 0; i < consumedStr.length; i++) {
+        if (consumedStr[i] === '\n') {
+            newLine++;
+            newCol = 1; // Reset column on line break
+        } else {
+            newCol++;
+        }
+    }
+    
+    return { line: newLine, col: newCol };
+};
+
+/**
  * Represents the current state of the parsing process.
  */
 export class ParserState {
-    constructor(targetString, index = 0) {
+    constructor(targetString, index = 0, line = 1, col = 1) {
         this.targetString = targetString;
         this.index = index;
+        this.line = line;
+        this.col = col;
     }
 }
 
@@ -53,11 +78,20 @@ export class Parser {
  * Parses an exact string match.
  */
 export const str = (matchStr) => new Parser(state => {
-    const { targetString, index } = state;
+    const { targetString, index, line, col } = state;
     if (targetString.startsWith(matchStr, index)) {
-        return { targetString, index: index + matchStr.length, result: matchStr, isError: false };
+        const newPos = advancePosition(line, col, matchStr);
+        return { 
+            targetString, 
+            index: index + matchStr.length, 
+            line: newPos.line,
+            col: newPos.col,
+            result: matchStr, 
+            isError: false 
+        };
     }
-    return { ...state, isError: true, error: `Expected: '${matchStr}' at index ${index}` };
+    // Injecting spatial coordinates into the error trace
+    return { ...state, isError: true, error: `Expected: '${matchStr}' at line ${line}, col ${col}` };
 });
 
 /**
@@ -124,19 +158,24 @@ export const manyOne = (parser) => new Parser(state => {
  * Parses using a regular expression.
  */
 export const regex = (re) => new Parser(state => {
-    const { targetString, index } = state;
+    const { targetString, index, line, col } = state;
     const rest = targetString.slice(index);
     const match = rest.match(re);
     
     if (match && match.index === 0) {
+        const matchedStr = match[0];
+        const newPos = advancePosition(line, col, matchedStr);
         return { 
             ...state, 
-            index: index + match[0].length, 
-            result: match[0], 
+            index: index + matchedStr.length, 
+            line: newPos.line,
+            col: newPos.col,
+            result: matchedStr, 
             isError: false 
         };
     }
-    return { ...state, isError: true, error: `Lexical error at index ${index}` };
+    // Injecting spatial coordinates into the error trace
+    return { ...state, isError: true, error: `Lexical error at line ${line}, col ${col}` };
 });
 
 /**

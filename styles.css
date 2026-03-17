@@ -102,15 +102,43 @@ select {
 .editor-content {
     flex: 1;
     overflow-y: auto;
-    padding: 15px;
+    padding: 15px 0;
 }
 
+/* Container initialization */
 #source-viewer {
     margin: 0;
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.9rem;
     line-height: 1.5;
     white-space: pre;
+    counter-reset: editor-line-counter; /* Initialize the CSS counter */
+    padding-bottom: 20px; /* Optional: extra space at the bottom */
+    padding-right: 15px;
+}
+
+/* Individual line wrapper */
+.editor-line {
+    counter-increment: editor-line-counter;
+    display: block;
+}
+
+/* The VS Code style gutter (Line numbers) */
+.editor-line::before {
+    content: counter(editor-line-counter);
+    display: inline-block;
+    width: 35px;
+    padding-left: 15px;
+    padding-right: 25px;
+    text-align: right;
+    color: #858585;
+    user-select: none;
+    
+    /* VS Code Sticky Gutter */
+    position: sticky;
+    left: 0;
+    background-color: #1e1e1e; /* Matches editor bg to hide scrolling text */
+    z-index: 1; /* Keeps the numbers above the sliding text */
 }
 
 /* Syntax Highlighting (Lightweight) */
