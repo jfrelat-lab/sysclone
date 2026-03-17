@@ -1,5 +1,38 @@
 // src/runtime/builtins.js
 import { getCharFromCP437, getCP437FromChar } from '../../hardware/encoding.js';
+import { BuiltInTokens } from '../../parser/qbasic/tokens.js';
+
+// --- Complex Native Functions ---
+
+const executeSTRING$ = (lenArg, charArg) => {
+    const len = Math.max(0, Math.floor(lenArg || 0));
+    let char = "";
+    if (typeof charArg === 'string') {
+        char = charArg.charAt(0); // Take the first character of the string
+    } else {
+        // Treat as an ASCII / CP437 code
+        char = getCharFromCP437(Math.floor(charArg || 0));
+    }
+    return char.repeat(len);
+};
+
+// Find the starting position of a substring (1-indexed)
+const executeINSTR = (arg1, arg2, arg3) => {
+    let start = 1, str1 = "", str2 = "";
+    if (arg3 !== undefined) {
+        start = Math.max(1, arg1);
+        str1 = String(arg2);
+        str2 = String(arg3);
+    } else {
+        str1 = String(arg1);
+        str2 = String(arg2);
+    }
+    if (str1 === "" || str2 === "") return 0;
+    
+    // JavaScript indexOf is 0-indexed, QBasic is 1-indexed.
+    // If not found, indexOf returns -1. Adding 1 conveniently returns 0!
+    return str1.indexOf(str2, start - 1) + 1; 
+};
 
 /**
  * Sysclone Native Standard Library (STDLIB).
@@ -7,60 +40,34 @@ import { getCharFromCP437, getCP437FromChar } from '../../hardware/encoding.js';
  */
 export const BuiltIns = {
     // --- String Manipulation ---
-    'LEN': (args) => String(args[0]).length,
-    'UCASE$': (args) => String(args[0]).toUpperCase(),
-    'LCASE$': (args) => String(args[0]).toLowerCase(),
-    'LTRIM$': (args) => String(args[0]).trimStart(),
-    'RTRIM$': (args) => String(args[0]).trimEnd(),
-    'SPACE$': (args) => " ".repeat(Math.max(0, args[0] || 0)),
-    'SPC': (args) => " ".repeat(Math.max(0, args[0] || 0)),
-    'STRING$': (args) => {
-        const len = Math.max(0, Math.floor(args[0] || 0));
-        let char = "";
-        if (typeof args[1] === 'string') {
-            char = args[1].charAt(0); // Take the first character of the string
-        } else {
-            // Treat as an ASCII / CP437 code
-            char = getCharFromCP437(Math.floor(args[1] || 0));
-        }
-        return char.repeat(len);
-    },
-    'STR$': (args) => args[0] >= 0 ? " " + args[0] : String(args[0]),
-    'RIGHT$': (args) => String(args[0]).slice(-(args[1] || 0)),
-    'LEFT$': (args) => String(args[0]).slice(0, (args[1] || 0)),
-    'MID$': (args) => String(args[0]).substr((args[1] || 1) - 1, args[2]),
-    'CHR$': (args) => getCharFromCP437(args[0] || 0),
-    'ASC': (args) => getCP437FromChar(String(args[0]).charAt(0) || 0),
-    // Find the starting position of a substring (1-indexed)
-    'INSTR': (args) => {
-        let start = 1, str1 = "", str2 = "";
-        if (args.length === 2) {
-            str1 = String(args[0]);
-            str2 = String(args[1]);
-        } else if (args.length === 3) {
-            start = Math.max(1, args[0]);
-            str1 = String(args[1]);
-            str2 = String(args[2]);
-        }
-        if (str1 === "" || str2 === "") return 0;
-        
-        // JavaScript indexOf is 0-indexed, QBasic is 1-indexed.
-        // If not found, indexOf returns -1. Adding 1 conveniently returns 0!
-        return str1.indexOf(str2, start - 1) + 1; 
-    },
-    'VAL': (args) => parseFloat(args[0]) || 0,
+    [BuiltInTokens.LEN]: (str) => String(str).length,
+    [BuiltInTokens.UCASE$]: (str) => String(str).toUpperCase(),
+    [BuiltInTokens.LCASE$]: (str) => String(str).toLowerCase(),
+    [BuiltInTokens.LTRIM$]: (str) => String(str).trimStart(),
+    [BuiltInTokens.RTRIM$]: (str) => String(str).trimEnd(),
+    [BuiltInTokens.SPACE$]: (n) => " ".repeat(Math.max(0, n || 0)),
+    [BuiltInTokens.SPC]: (n) => " ".repeat(Math.max(0, n || 0)),
+    [BuiltInTokens.STRING$]: executeSTRING$,
+    [BuiltInTokens.STR$]: (n) => n >= 0 ? " " + n : String(n),
+    [BuiltInTokens.RIGHT$]: (str, n) => String(str).slice(-(n || 0)),
+    [BuiltInTokens.LEFT$]: (str, n) => String(str).slice(0, (n || 0)),
+    [BuiltInTokens.MID$]: (str, start, len) => String(str).substr((start || 1) - 1, len),
+    [BuiltInTokens.CHR$]: (code) => getCharFromCP437(code || 0),
+    [BuiltInTokens.ASC]: (str) => getCP437FromChar(String(str).charAt(0) || 0),
+    [BuiltInTokens.INSTR]: executeINSTR,
+    [BuiltInTokens.VAL]: (str) => parseFloat(str) || 0,
     
     // --- Mathematics ---
-    'INT': (args) => Math.floor(args[0] || 0),
-    'FIX': (args) => Math.trunc(args[0] || 0), // Truncates towards zero
-    'CINT': (args) => Math.round(args[0] || 0), // Rounds to nearest integer
-    'RND': () => Math.random(),
-    'SIN': (args) => Math.sin(args[0] || 0),
-    'COS': (args) => Math.cos(args[0] || 0),
-    'TAN': (args) => Math.tan(args[0] || 0),
-    'ATN': (args) => Math.atan(args[0] || 0),
-    'ABS': (args) => Math.abs(args[0] || 0),
-    'SQR': (args) => Math.sqrt(args[0] || 0),
-    'EXP': (args) => Math.exp(args[0] || 0),
-    'LOG': (args) => Math.log(args[0] || 0)
+    [BuiltInTokens.INT]: (n) => Math.floor(n || 0),
+    [BuiltInTokens.FIX]: (n) => Math.trunc(n || 0), // Truncates towards zero
+    [BuiltInTokens.CINT]: (n) => Math.round(n || 0), // Rounds to nearest integer
+    [BuiltInTokens.RND]: () => Math.random(),
+    [BuiltInTokens.SIN]: (n) => Math.sin(n || 0),
+    [BuiltInTokens.COS]: (n) => Math.cos(n || 0),
+    [BuiltInTokens.TAN]: (n) => Math.tan(n || 0),
+    [BuiltInTokens.ATN]: (n) => Math.atan(n || 0),
+    [BuiltInTokens.ABS]: (n) => Math.abs(n || 0),
+    [BuiltInTokens.SQR]: (n) => Math.sqrt(n || 0),
+    [BuiltInTokens.EXP]: (n) => Math.exp(n || 0),
+    [BuiltInTokens.LOG]: (n) => Math.log(n || 0)
 };

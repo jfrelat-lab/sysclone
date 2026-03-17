@@ -480,3 +480,97 @@ registerSuite('Evaluator: Purist Scope Isolation (Anti-Bleeding)', () => {
         assertEqual(env.lookup('GlobalCheck'), 1, "Recursive calls MUST allocate a fresh local scope that doesn't bleed");
     });
 });
+
+registerSuite('Evaluator: E2E Native Built-in Functions (STDLIB)', () => {
+
+    test('String basic manipulations (LEN, UCASE$, LCASE$, LTRIM$, RTRIM$)', () => {
+        const code = `
+            L = LEN("HELLO")
+            U$ = UCASE$("hello")
+            C$ = LCASE$("HELLO")
+            LT$ = LTRIM$("  TEXT")
+            RT$ = RTRIM$("TEXT  ")
+        `;
+        const env = executeToEnv(code);
+        assertEqual(env.lookup('L'), 5);
+        assertEqual(env.lookup('U$'), "HELLO");
+        assertEqual(env.lookup('C$'), "hello");
+        assertEqual(env.lookup('LT$'), "TEXT");
+        assertEqual(env.lookup('RT$'), "TEXT");
+    });
+
+    test('String generators (SPACE$, STRING$)', () => {
+        const code = `
+            SP$ = SPACE$(3)
+            ST1$ = STRING$(4, "A")
+            ST2$ = STRING$(3, 65)
+        `;
+        const env = executeToEnv(code);
+        assertEqual(env.lookup('SP$'), "   ");
+        assertEqual(env.lookup('ST1$'), "AAAA");
+        assertEqual(env.lookup('ST2$'), "AAA"); // 65 is 'A' in ASCII/CP437
+    });
+
+    test('Substring slicing (LEFT$, RIGHT$, MID$)', () => {
+        const code = `
+            LE$ = LEFT$("SYSCLONE", 3)
+            RI$ = RIGHT$("SYSCLONE", 5)
+            MI1$ = MID$("SYSCLONE", 4, 2)
+            MI2$ = MID$("SYSCLONE", 4)
+        `;
+        const env = executeToEnv(code);
+        assertEqual(env.lookup('LE$'), "SYS");
+        assertEqual(env.lookup('RI$'), "CLONE");
+        assertEqual(env.lookup('MI1$'), "CL");
+        assertEqual(env.lookup('MI2$'), "CLONE"); // Without length, goes to the end
+    });
+
+    test('Casting and ASCII mapping (STR$, VAL, CHR$, ASC, INSTR)', () => {
+        const code = `
+            S1$ = STR$(42)
+            S2$ = STR$(-15)
+            V = VAL("-80.5")
+            C$ = CHR$(65)
+            A = ASC("A")
+            I1 = INSTR("HELLO WORLD", "WORLD")
+            I2 = INSTR(3, "HELLO WORLD, HELLO", "HELLO")
+        `;
+        const env = executeToEnv(code);
+        assertEqual(env.lookup('S1$'), " 42");
+        assertEqual(env.lookup('S2$'), "-15");
+        assertEqual(env.lookup('V'), -80.5);
+        assertEqual(env.lookup('C$'), "A");
+        assertEqual(env.lookup('A'), 65);
+        assertEqual(env.lookup('I1'), 7);
+        assertEqual(env.lookup('I2'), 14); // Finds the second HELLO
+    });
+
+    test('Math bounding and rounding (INT, FIX, CINT, ABS, SQR)', () => {
+        const code = `
+            I = INT(-2.2)
+            F = FIX(-2.8)
+            C = CINT(2.8)
+            A = ABS(-42)
+            S = SQR(16)
+        `;
+        const env = executeToEnv(code);
+        assertEqual(env.lookup('I'), -3);
+        assertEqual(env.lookup('F'), -2);
+        assertEqual(env.lookup('C'), 3);
+        assertEqual(env.lookup('A'), 42);
+        assertEqual(env.lookup('S'), 4);
+    });
+
+    test('Implicit arguments edge cases (RND without parens)', () => {
+        const code = `
+            R1 = RND
+            R2 = RND(1)
+        `;
+        const env = executeToEnv(code);
+        const r1 = env.lookup('R1');
+        const r2 = env.lookup('R2');
+        
+        assertEqual(r1 >= 0 && r1 < 1, true, "RND without parens must evaluate");
+        assertEqual(r2 >= 0 && r2 < 1, true, "RND with parens must evaluate");
+    });
+});

@@ -2,7 +2,8 @@
 import { Environment } from './environment.js';
 import { QArray } from './qarray.js';
 import { BuiltIns } from './qbasic/builtins.js';
-import { getCharFromCP437, getCP437FromChar, toCP437Array } from '../hardware/encoding.js';
+import { toCP437Array } from '../hardware/encoding.js';
+import { BuiltInTokens } from '../parser/qbasic/tokens.js';
 
 /**
  * The core execution engine of Sysclone.
@@ -250,12 +251,12 @@ export class Evaluator {
                 const varName = node.value.toUpperCase();
                 
                 // 1. Hardware interception (I/O)
-                if (varName === 'INKEY$') return this.hw.io ? this.hw.io.inkey() : "";
-                if (varName === 'TIMER')  return this.hw.io ? this.hw.io.timer() : 0;
+                if (varName === BuiltInTokens.INKEY$) return this.hw.io ? this.hw.io.inkey() : "";
+                if (varName === BuiltInTokens.TIMER)  return this.hw.io ? this.hw.io.timer() : 0;
                 
                 // 2. Pure STDLIB interception (e.g., RND without parentheses)
                 if (BuiltIns[varName]) {
-                    return BuiltIns[varName]([]);
+                    return BuiltIns[varName]();
                 }
 
                 // 3. Implicit user function call (no parentheses)
@@ -1089,25 +1090,25 @@ export class Evaluator {
 
         // --- 2. NATIVE BUILT-INS (STDLIB) ---
         if (BuiltIns[callee]) {
-            return BuiltIns[callee](args);
+            return BuiltIns[callee](...args);
         }
 
         // --- 3. HARDWARE-DEPENDENT BUILT-INS ---
-        if (callee === 'PEEK') {
+        if (callee === BuiltInTokens.PEEK) {
             return this.hw.memory ? this.hw.memory.peek(args[0]) : 0;
         }
-        if (callee === 'POINT') {
+        if (callee === BuiltInTokens.POINT) {
             // QBasic POINT(x, y) needs to read directly from the VRAM
             if (this.hw.vga && typeof this.hw.vga.point === 'function') {
                 return this.hw.vga.point(args[0], args[1]);
             }
             return 0; // Fallback to background color (0) if no VGA hardware is attached
         }
-        if (callee === 'TAB') {
+        if (callee === BuiltInTokens.TAB) {
             // Return a special token for the PRINT statement hardware interceptor
             return { _special: 'TAB', col: args[0] || 1 };
         }
-        if (callee === 'INPUT$') {
+        if (callee === BuiltInTokens.INPUT$) {
             const charCount = Math.max(1, args[0] || 1);
             let resultStr = "";
             
