@@ -2,6 +2,7 @@
 import { Mode0Text } from './video/mode0_text.js';
 import { Mode13Linear } from './video/mode13_linear.js';
 import { Mode9EGA } from './video/mode9_ega.js';
+import { Mode12VGA } from './video/mode12_vga.js';
 
 const VGA_PORT_DAC_INDEX = 0x3C8; // Palette Address Register
 const VGA_PORT_DAC_DATA  = 0x3C9; // Palette Data Register
@@ -23,6 +24,7 @@ export class VGA {
         this.drivers = {
             0: new Mode0Text(this.memory),
             9: new Mode9EGA(this.memory),
+            12: new Mode12VGA(this.memory),
             13: new Mode13Linear(this.memory)
         };
         

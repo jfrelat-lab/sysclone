@@ -1,6 +1,7 @@
 // src/hardware/video/graphics_geometry.test.js
 import { Mode13Linear } from './mode13_linear.js';
 import { Mode9EGA } from './mode9_ega.js';
+import { Mode12VGA } from './mode12_vga.js';
 import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 class MockMemory {
@@ -231,3 +232,4 @@ function registerGeometrySuite(modeName, DriverClass) {
 // Run the full geometry suite against ALL our graphics drivers!
 registerGeometrySuite('Mode 13h Linear', Mode13Linear);
 registerGeometrySuite('Mode 9 EGA', Mode9EGA);
+registerGeometrySuite('Mode 12 VGA', Mode12VGA);

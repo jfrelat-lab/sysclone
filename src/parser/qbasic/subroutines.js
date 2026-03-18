@@ -1,5 +1,5 @@
 // src/parser/subroutines.js
-import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, lazy } from '../monad.js';
+import { choice, sequenceObj, sequenceOf, capture, optional, many, regex, lazy, str } from '../monad.js';
 import { Tokens } from './tokens.js';
 import { identifier, keyword, ws, optWs, eos } from './lexers.js';
 import { block } from './controlFlow.js';
@@ -8,15 +8,27 @@ import { expression } from './expressions.js';
 /**
  * Robust parameter parser.
  * Handles signatures like "sammy() AS snaketype" or "snake() AS ANY".
+ * Returns a uniform AST node shape perfectly matching singleDim (DIM/STATIC/SHARED).
  */
 const paramParser = sequenceObj([
     capture('id', identifier),
-    optional(sequenceOf([optWs, regex(/^\(\)/)])), // Handles array parentheses in signatures
-    optional(sequenceObj([
-        optWs, keyword(Tokens.AS), optWs, 
-        choice([identifier, keyword(Tokens.ANY)])
-    ]))
-]).map(obj => obj.id.value); // Currently, we only need the variable name for the AST
+    capture('boundsOpt', optional(sequenceOf([optWs, str('()')]))), 
+    capture('typeOpt', optional(
+        sequenceOf([
+            optWs, keyword(Tokens.AS), optWs, 
+            choice([
+                identifier.map(id => id.value),
+                keyword(Tokens.ANY).map(() => 'ANY')
+            ])
+        ]).map(arr => arr[3]) // Extract the evaluated type string directly
+    ))
+]).map(obj => ({
+    name: obj.id.value,
+    isArray: obj.boundsOpt !== null,
+    bounds: [], // Uniformity: Parameters never specify bounds, but the Evaluator expects this array
+    varType: obj.typeOpt ? obj.typeOpt : 'VARIANT', // Uniformity: Strict fallback to 'VARIANT'
+    length: null // Uniformity: Parameters don't specify fixed string lengths
+}));
 
 /**
  * Parses the optional parameter list for declarations and definitions.

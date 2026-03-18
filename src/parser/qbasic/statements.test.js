@@ -2,10 +2,11 @@
 import { 
     implicitCallStmt, inputStmt, locateStmt, colorStmt, pokeStmt, 
     assignStmt, swapStmt, eraseStmt, labelDef, gotoStmt, gosubStmt, returnStmt, 
-    printStmt, dataStmt, restoreStmt, windowStmt, psetStmt, 
+    printStmt, dataStmt, restoreStmt, windowStmt, psetStmt, presetStmt,
     lineStmt, circleStmt, paintStmt, onErrorStmt, resumeStmt,
     paletteStmt, putGraphicsStmt, getGraphicsStmt, lineInputStmt,
-    clsStmt, viewPrintStmt, playStmt, soundStmt, exitStmt
+    clsStmt, viewPrintStmt, playStmt, soundStmt, exitStmt,
+    screenStmt
 } from './statements.js';
 
 import { test, assertEqual, registerSuite } from '../../test_runner.js';
@@ -39,33 +40,47 @@ registerSuite('QBasic Instructions (Statements)', () => {
         assertEqual(input2.result.targets[0].value, 'GAMESPEED$');
     });
 
-    test('locateStmt() should parse LOCATE with missing row, col, or cursor arguments', () => {
+    test('locateStmt() should parse LOCATE with up to 5 arguments and ghost commas', () => {
+        // 1. One argument (Row only)
         const loc1 = locateStmt.run('LOCATE 10');
         assertEqual(loc1.result.type, 'LOCATE');
         assertEqual(loc1.result.row.value, 10);
         assertEqual(loc1.result.col, null);
         assertEqual(loc1.result.cursor, null);
+        assertEqual(loc1.result.start, null);
+        assertEqual(loc1.result.stop, null);
 
+        // 2. Two arguments (Row and Col)
         const loc2 = locateStmt.run('LOCATE 5, 20');
         assertEqual(loc2.result.row.value, 5);
         assertEqual(loc2.result.col.value, 20);
-        assertEqual(loc2.result.cursor, null);
         
-        // The critical sortdemo.bas format!
+        // 3. Omitted Row (Ghost comma) - Critical for MS-DOS menus
         const loc3 = locateStmt.run('LOCATE , 30');
         assertEqual(loc3.result.row, null);
         assertEqual(loc3.result.col.value, 30);
-        assertEqual(loc3.result.cursor, null);
 
-        // Three parameters (Visibility)
-        const loc4 = locateStmt.run('LOCATE 5, 20, 1');
-        assertEqual(loc4.result.cursor.value, 1);
+        // 4. Cursor visibility toggle only
+        const loc4 = locateStmt.run('LOCATE , , 0');
+        assertEqual(loc4.result.row, null);
+        assertEqual(loc4.result.col, null);
+        assertEqual(loc4.result.cursor.value, 0);
 
-        // Just the cursor! (Hide cursor without moving it)
-        const loc5 = locateStmt.run('LOCATE , , 0');
-        assertEqual(loc5.result.row, null);
-        assertEqual(loc5.result.col, null);
-        assertEqual(loc5.result.cursor.value, 0);
+        // 5. The Torus.bas Final Boss: All 5 arguments! (Row, Col, Cursor, Start, Stop)
+        const loc5 = locateStmt.run('LOCATE 9, 20, 1, 1, 12');
+        assertEqual(loc5.result.row.value, 9);
+        assertEqual(loc5.result.col.value, 20);
+        assertEqual(loc5.result.cursor.value, 1);
+        assertEqual(loc5.result.start.value, 1);
+        assertEqual(loc5.result.stop.value, 12);
+
+        // 6. Extreme Ghosting (Omitting middle parameters)
+        const loc6 = locateStmt.run('LOCATE 10, , , , 15');
+        assertEqual(loc6.result.row.value, 10);
+        assertEqual(loc6.result.col, null);
+        assertEqual(loc6.result.cursor, null);
+        assertEqual(loc6.result.start, null);
+        assertEqual(loc6.result.stop.value, 15);
     });
 
     test('colorStmt() should parse COLOR with foreground, background, or missing arguments', () => {
@@ -198,6 +213,26 @@ registerSuite('QBasic Instructions (Statements)', () => {
         assertEqual(psetNoColor.result.color, null);
     });
 
+    test('stepCoordParser should handle STEP with or without trailing whitespace', () => {
+        // 1. Standard MS-DOS formatting (with space)
+        const psetWithSpace = psetStmt.run('PSET STEP (10, 20), 15');
+        assertEqual(psetWithSpace.isError, false);
+        assertEqual(psetWithSpace.result.isStep, true);
+        assertEqual(psetWithSpace.result.x.value, 10);
+
+        // 2. The Torus.bas Edge Case (no space between STEP and parenthesis)
+        const psetNoSpace = psetStmt.run('PSET STEP(30, 40)');
+        assertEqual(psetNoSpace.isError, false);
+        assertEqual(psetNoSpace.result.isStep, true);
+        assertEqual(psetNoSpace.result.x.value, 30);
+
+        // 3. Gorillas.bas Edge Case (Relative line drawing with mixed spaces)
+        const lineStep = lineStmt.run('LINE STEP (5, 5)-STEP(15, 15)');
+        assertEqual(lineStep.isError, false);
+        assertEqual(lineStep.result.startIsStep, true);
+        assertEqual(lineStep.result.endIsStep, true);
+    });
+
     test('Gorillas Geometry should parse LINE, CIRCLE, and PAINT', () => {
         // 1. LINE with missing color and BF flag
         const line = lineStmt.run('LINE (10, 10)-(20, 20), , BF');
@@ -219,6 +254,22 @@ registerSuite('QBasic Instructions (Statements)', () => {
         assertEqual(paint.result.type, 'PAINT');
         assertEqual(paint.result.paintColor.value, 'SUNATTR');
         assertEqual(paint.result.borderColor, null);
+    });
+
+    test('lineStmt() should parse LINE without starting coordinates (LINE -)', () => {
+        const line = lineStmt.run('LINE -(T.x3, T.y3), T.TColor');
+        assertEqual(line.isError, false);
+        assertEqual(line.result.startX, null);
+        assertEqual(line.result.startY, null);
+        assertEqual(line.result.endX.property, 'X3');
+        assertEqual(line.result.color.property, 'TCOLOR');
+    });
+
+    test('presetStmt() should parse PRESET commands', () => {
+        const preset = presetStmt.run('PRESET (T.xc, T.yc)');
+        assertEqual(preset.isError, false);
+        assertEqual(preset.result.type, 'PRESET');
+        assertEqual(preset.result.color, null);
     });
 
     test('Legacy Hardware should parse ON ERROR, PALETTE and RESUME', () => {
@@ -323,6 +374,31 @@ registerSuite('QBasic Instructions (Statements)', () => {
         assertEqual(lineInp2.result.type, 'LINE_INPUT');
         assertEqual(lineInp2.result.prompt, '');
         assertEqual(lineInp2.result.target.value, 'BUFFER$');
+    });
+
+    test('screenStmt() should parse SCREEN with missing arguments (ghost commas)', () => {
+        // 1. Standard full declaration
+        const scr1 = screenStmt.run('SCREEN 7, 0, 1, 0');
+        assertEqual(scr1.isError, false);
+        assertEqual(scr1.result.type, 'SCREEN_STMT');
+        assertEqual(scr1.result.mode.value, 7);
+        assertEqual(scr1.result.colorSwitch.value, 0);
+        assertEqual(scr1.result.activePage.value, 1);
+        assertEqual(scr1.result.visualPage.value, 0);
+
+        // 2. The infamous Torus.bas ghost comma
+        const scr2 = screenStmt.run('SCREEN 8, , 1');
+        assertEqual(scr2.isError, false);
+        assertEqual(scr2.result.mode.value, 8);
+        assertEqual(scr2.result.colorSwitch, null); // Ghost comma swallowed!
+        assertEqual(scr2.result.activePage.value, 1);
+        assertEqual(scr2.result.visualPage, null);
+
+        // 3. Just the mode
+        const scr3 = screenStmt.run('SCREEN 13');
+        assertEqual(scr3.isError, false);
+        assertEqual(scr3.result.mode.value, 13);
+        assertEqual(scr3.result.colorSwitch, null);
     });
 
     test('clsStmt() should parse CLS with or without arguments', () => {

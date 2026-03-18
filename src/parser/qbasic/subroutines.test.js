@@ -22,8 +22,8 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         assertEqual(dec2.isError, false);
         assertEqual(dec2.result.name.toUpperCase(), 'LEVEL');
         assertEqual(dec2.result.params.length, 2);
-        assertEqual(dec2.result.params[0].toUpperCase(), 'WHATTODO'); // Map resolves to uppercase string
-        assertEqual(dec2.result.params[1].toUpperCase(), 'SAMMY');
+        assertEqual(dec2.result.params[0].name.toUpperCase(), 'WHATTODO');
+        assertEqual(dec2.result.params[1].name.toUpperCase(), 'SAMMY');
     });
 
     // --- SUBROUTINES (SUB) ---
@@ -37,7 +37,7 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         assertEqual(success.isError, false);
         assertEqual(success.result.name.toUpperCase(), 'CENTER');
         assertEqual(success.result.params.length, 2);
-        assertEqual(success.result.params[1].toUpperCase(), 'TEXT$'); 
+        assertEqual(success.result.params[1].name.toUpperCase(), 'TEXT$');
         
         // Verifying that the body correctly contains the inner statement
         assertEqual(success.result.body[0].type, 'PRINT');
@@ -72,9 +72,16 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         
         assertEqual(success.isError, false);
         assertEqual(success.result.params.length, 4);
-        assertEqual(success.result.params[0].toUpperCase(), 'X');
-        assertEqual(success.result.params[2].toUpperCase(), 'COL');
-        assertEqual(success.result.params[3].toUpperCase(), 'SNAKE');
+        
+        assertEqual(success.result.params[0].name.toUpperCase(), 'X');
+        assertEqual(success.result.params[0].varType, 'VARIANT');
+        
+        assertEqual(success.result.params[2].name.toUpperCase(), 'COL');
+        assertEqual(success.result.params[2].varType.toUpperCase(), 'INTEGER');
+        
+        assertEqual(success.result.params[3].name.toUpperCase(), 'SNAKE');
+        assertEqual(success.result.params[3].isArray, true);
+        assertEqual(success.result.params[3].varType.toUpperCase(), 'ANY');
     });
 
     test('subDef() should parse no-params with STATIC keyword', () => {
@@ -97,7 +104,7 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         assertEqual(success.result.type, 'FUNCTION_DEF');
         assertEqual(success.result.name.toUpperCase(), 'FNRAN');
         assertEqual(success.result.params.length, 1);
-        assertEqual(success.result.params[0].toUpperCase(), 'X');
+        assertEqual(success.result.params[0].name.toUpperCase(), 'X');
         
         // Ensure the body captured the assignment
         assertEqual(success.result.body[0].type, 'ASSIGN');
@@ -123,7 +130,7 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         assertEqual(success.result.name.toUpperCase(), 'CALCSCORE');
         assertEqual(success.result.isStatic, true);
         assertEqual(success.result.params.length, 1);
-        assertEqual(success.result.params[0].toUpperCase(), 'HITS');
+        assertEqual(success.result.params[0].name.toUpperCase(), 'HITS');
     });
 
     // --- MACRO FUNCTIONS (DEF FN) ---
@@ -140,7 +147,7 @@ registerSuite('QBasic Subroutines and Functions (AST)', () => {
         
         // Verifying the parameter signature
         assertEqual(success.result.params.length, 1);
-        assertEqual(success.result.params[0].toUpperCase(), 'X');
+        assertEqual(success.result.params[0].name.toUpperCase(), 'X');
         
         // Verifying the right-side expression (Should be a BINARY_OP '+')
         assertEqual(success.result.expression.type, 'BINARY_OP');

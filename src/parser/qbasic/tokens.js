@@ -19,7 +19,7 @@ export const Tokens = {
     // Declarations & Types
     SUB: 'SUB', FUNCTION: 'FUNCTION', DECLARE: 'DECLARE', DIM: 'DIM', 
     REDIM: 'REDIM', SHARED: 'SHARED', AS: 'AS', TYPE: 'TYPE', 
-    CONST: 'CONST', DEFINT: 'DEFINT', DEF: 'DEF', SEG: 'SEG', 
+    CONST: 'CONST', DEFINT: 'DEFINT', DEFSNG: 'DEFSNG', DEF: 'DEF', SEG: 'SEG', 
     ANY: 'ANY', STATIC: 'STATIC', ERASE: 'ERASE',
     
     // System and Hardware Instructions
@@ -46,7 +46,7 @@ export const BuiltInTokens = {
     // String Manipulation
     LEN: 'LEN', UCASE$: 'UCASE$', LCASE$: 'LCASE$', LTRIM$: 'LTRIM$', 
     RTRIM$: 'RTRIM$', SPACE$: 'SPACE$', SPC: 'SPC', STRING$: 'STRING$', 
-    STR$: 'STR$', RIGHT$: 'RIGHT$', LEFT$: 'LEFT$', MID$: 'MID$', 
+    STR$: 'STR$', HEX$: 'HEX$', RIGHT$: 'RIGHT$', LEFT$: 'LEFT$', MID$: 'MID$', 
     CHR$: 'CHR$', ASC: 'ASC', INSTR: 'INSTR', VAL: 'VAL',
     
     // Mathematics

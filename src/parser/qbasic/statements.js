@@ -16,10 +16,10 @@ const coordParser = sequenceObj([
 
 /**
  * Parses a coordinate, optionally preceded by the STEP keyword for relative positioning.
- * Example: STEP (10, 20) or just (10, 20)
+ * Example: STEP (10, 20) or just (10, 20) or even STEP(10, 20)
  */
 const stepCoordParser = sequenceObj([
-    capture('stepOpt', optional(sequenceOf([keyword(Tokens.STEP), ws]))),
+    capture('stepOpt', optional(sequenceOf([keyword(Tokens.STEP), optWs]))),
     capture('coord', coordParser)
 ]).map(obj => ({
     isStep: obj.stepOpt !== null,
@@ -73,19 +73,25 @@ export const clsStmt = sequenceObj([
     method: obj.methodOpt || null 
 }));
 
+/**
+ * LOCATE statement
+ * Syntax: LOCATE [row] [, [col]] [, [cursor]] [, [start]] [, [stop]]
+ */
 export const locateStmt = sequenceObj([
     keyword(Tokens.LOCATE),
     // Row is optional and preceded by spaces (e.g. LOCATE 5)
     capture('rowOpt', optional(sequenceOf([ws, expression]).map(arr => arr[1]))),
-    // Column is optional and preceded by a comma. The expression ITSELF is optional to allow empty commas!
-    capture('colOpt', optional(sequenceOf([optWs, str(','), optWs, optional(expression)]).map(arr => arr[3]))),
-    // Cursor visibility is optional, same logic
-    capture('cursorOpt', optional(sequenceOf([optWs, str(','), optWs, optional(expression)]).map(arr => arr[3])))
+    capture('colOpt', commaArg),
+    capture('cursorOpt', commaArg),
+    capture('startOpt', commaArg),
+    capture('stopOpt', commaArg)
 ]).map(obj => ({ 
     type: 'LOCATE', 
     row: obj.rowOpt || null, 
     col: obj.colOpt || null,
-    cursor: obj.cursorOpt || null
+    cursor: obj.cursorOpt || null,
+    start: obj.startOpt || null,
+    stop: obj.stopOpt || null
 }));
 
 export const colorStmt = sequenceObj([
@@ -178,9 +184,25 @@ export const randomizeStmt = sequenceObj([
     capture('seed', optional(sequenceOf([ws, expression]).map(arr => arr[1])))
 ]).map(obj => ({ type: 'RANDOMIZE', seed: obj.seed || null }));
 
+/**
+ * SCREEN statement
+ * Syntax: SCREEN [mode] [, [colorswitch]] [, [apage]] [, [vpage]]
+ */
 export const screenStmt = sequenceObj([
-    keyword(Tokens.SCREEN), ws, capture('mode', expression)
-]).map(obj => ({ type: 'SCREEN_STMT', mode: obj.mode }));
+    keyword(Tokens.SCREEN),
+    // Mode is optional, preceded by whitespace
+    capture('mode', optional(sequenceOf([ws, expression]).map(arr => arr[1]))),
+    // Use the existing commaArg helper for all optional trailing parameters
+    capture('colorSwitch', commaArg),
+    capture('activePage', commaArg),
+    capture('visualPage', commaArg)
+]).map(obj => ({ 
+    type: 'SCREEN_STMT', 
+    mode: obj.mode || null,
+    colorSwitch: obj.colorSwitch || null,
+    activePage: obj.activePage || null,
+    visualPage: obj.visualPage || null
+}));
 
 export const widthStmt = sequenceObj([
     keyword(Tokens.WIDTH), ws, capture('col', expression),
@@ -260,14 +282,12 @@ export const windowStmt = sequenceObj([
 }));
 
 /**
- * PSET statement
+ * PSET statement: PSET [STEP] (x,y) [, color]
  */
 export const psetStmt = sequenceObj([
     keyword(Tokens.PSET), ws,
     capture('coord', stepCoordParser),
-    capture('colorOpt', optional(sequenceObj([
-        optWs, str(','), optWs, capture('c', expression)
-    ]).map(obj => obj.c)))
+    capture('colorOpt', commaArg)
 ]).map(obj => ({
     type: 'PSET',
     isStep: obj.coord.isStep,
@@ -277,25 +297,45 @@ export const psetStmt = sequenceObj([
 }));
 
 /**
- * LINE statement: LINE [STEP] (x1,y1) - [STEP] (x2,y2) [, color] [, B|BF]
+ * PRESET statement: PRESET [STEP] (x,y) [, color]
+ * PSET's twin: Draws a pixel, defaulting to the background color if none is provided.
+ */
+export const presetStmt = sequenceObj([
+    keyword(Tokens.PRESET), ws,
+    capture('coord', stepCoordParser),
+    capture('colorOpt', commaArg)
+]).map(obj => ({
+    type: 'PRESET',
+    isStep: obj.coord.isStep,
+    x: obj.coord.x,
+    y: obj.coord.y,
+    color: obj.colorOpt || null
+}));
+
+/**
+ * LINE statement: LINE [[STEP] (x1,y1)] - [STEP] (x2,y2) [, color] [, B|BF]
+ * Supports relative drawing from the last graphic cursor position (omitted start coordinate).
  */
 export const lineStmt = sequenceObj([
     keyword(Tokens.LINE), ws,
-    capture('start', stepCoordParser), optWs, str('-'), optWs,
+    capture('start', optional(stepCoordParser)), optWs, str('-'), optWs,
     capture('end', stepCoordParser),
     capture('colorOpt', commaArg),
     capture('boxOpt', commaArg)
 ]).map(obj => {
     let box = null;
-    // Safely check if the second optional argument is the identifier B or BF
     if (obj.boxOpt && obj.boxOpt.type === 'IDENTIFIER') {
         const flag = obj.boxOpt.value.toUpperCase();
         if (flag === 'B' || flag === 'BF') box = flag;
     }
     return {
         type: 'LINE',
-        startX: obj.start.x, startY: obj.start.y, startIsStep: obj.start.isStep,
-        endX: obj.end.x, endY: obj.end.y, endIsStep: obj.end.isStep,
+        startX: obj.start ? obj.start.x : null, 
+        startY: obj.start ? obj.start.y : null, 
+        startIsStep: obj.start ? obj.start.isStep : false,
+        endX: obj.end.x, 
+        endY: obj.end.y, 
+        endIsStep: obj.end.isStep,
         color: obj.colorOpt || null,
         box: box
     };

@@ -3,6 +3,42 @@
 import { QFixedString } from './qfixedstring.js';
 
 /**
+ * A specialized Map that transparently handles MS-DOS variable aliasing.
+ * Maps explicit declarations (e.g., DIM Foo AS STRING) to their suffixed names (FOO$).
+ * Internalizes the dual-name resolution so the Environment's scope traversal remains pure.
+ */
+class VariableVault {
+    constructor() {
+        this.data = new Map();
+        this.aliases = new Map();
+    }
+
+    registerAlias(baseName, typeName) {
+        if (!typeName) return;
+        const upperBase = baseName.toUpperCase();
+        const typeToSuffix = {
+            'INTEGER': '%', 'LONG': '&', 'SINGLE': '!', 'DOUBLE': '#', 'STRING': '$'
+        };
+        const suffix = typeToSuffix[typeName.toUpperCase()];
+        if (suffix) {
+            this.aliases.set(upperBase, upperBase + suffix);
+        }
+    }
+
+    resolve(key) {
+        const upper = key.toUpperCase();
+        // If it already has a suffix, it's absolute
+        if (/[%\&!\#\$]$/.test(upper)) return upper;
+        // Otherwise, resolve the alias locally within this specific vault
+        return this.aliases.get(upper) || upper;
+    }
+
+    has(key) { return this.data.has(this.resolve(key)); }
+    get(key) { return this.data.get(this.resolve(key)); }
+    set(key, value) { this.data.set(this.resolve(key), value); }
+}
+
+/**
  * Manages variables, types, subroutines, and scoping for the Sysclone engine.
  * Handles the hierarchical relationship between local and global execution contexts.
  */
@@ -13,7 +49,7 @@ export class Environment {
 
         // The vault for persistent local variables across calls
         this.staticScope = staticScope; 
-        this.variables = new Map();
+        this.variables = new VariableVault();
         
         this.types = new Map(); 
         this.subs = new Map();
@@ -53,14 +89,26 @@ export class Environment {
     }
 
     // --- SUBROUTINE MANAGEMENT (SUB / FUNCTION) ---
+
+    /**
+     * Strips QBasic type suffixes (%, &, !, #, $) to resolve the true base name of a routine.
+     * Example: "DEGTORAD!" becomes "DEGTORAD"
+     */
+    getBaseRoutineName(name) {
+        return name.replace(/[%\&!\#\$]$/, '');
+    }
+
     defineSub(name, params, body, type = 'SUB_DEF', isStatic = false) {
-        this.sharedEnv.subs.set(name.toUpperCase(), { 
+        const baseName = this.getBaseRoutineName(name.toUpperCase());
+        this.sharedEnv.subs.set(baseName, { 
+            name: name.toUpperCase(), // Store the original name (with suffix) for the return value lookup!
             params, body, type, isStatic,
-            persistentVars: new Map() // Creates the persistent vault
+            persistentVars: new VariableVault() // Persistent vault is also a smart vault
         });
     }
     getSub(name) {
-        return this.sharedEnv.subs.get(name.toUpperCase()) || null;
+        const baseName = this.getBaseRoutineName(name.toUpperCase());
+        return this.sharedEnv.subs.get(baseName) || null;
     }
 
     // --- STRUCTURE MANAGEMENT (TYPE) ---
@@ -106,7 +154,8 @@ export class Environment {
     // --- VARIABLE MANAGEMENT ---
 
     define(name, value) {
-        this.variables.set(name.toUpperCase(), value);
+        // Direct assignment, the vault handles the alias under the hood
+        this.variables.set(name, value);
     }
 
     /**
@@ -119,10 +168,10 @@ export class Environment {
             value = Math.round(value); 
         }
 
-        const writeToMem = (map) => {
-            const current = map.get(upperName);
+        const writeToMem = (vault) => {
+            const current = vault.get(upperName);
             if (current && current.isFixedString) current.update(value); 
-            else map.set(upperName, value); 
+            else vault.set(upperName, value); 
         };
 
         // 1. Tier 3: Persistent static scope

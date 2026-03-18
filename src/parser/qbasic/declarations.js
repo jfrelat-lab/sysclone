@@ -17,6 +17,18 @@ export const defintDecl = sequenceObj([
     range: obj.range.toUpperCase()
 }));
 
+/**
+ * Parses implicit single-precision type definitions.
+ * Example: DEFSNG A-Z
+ */
+export const defsngDecl = sequenceObj([
+    keyword(Tokens.DEFSNG), ws,
+    capture('range', regex(/^[A-Z]-[A-Z]/i))
+]).map(obj => ({
+    type: 'DEFSNG',
+    range: obj.range.toUpperCase()
+}));
+
 const singleConst = sequenceObj([
     capture('name', identifier), optWs, regex(/^=/), optWs,
     capture('value', expression)
@@ -76,15 +88,17 @@ const arrayBound = choice([
 
 /**
  * Parses the list of dimensions for an array within parentheses.
+ * Supports empty parentheses '()' for dynamic or shared arrays.
  */
 const boundsList = sequenceObj([
     str('('), optWs,
-    capture('bounds', sequenceOf([
+    // The bounds capture is now optional to allow '()'
+    capture('bounds', optional(sequenceOf([
         arrayBound, 
         many(sequenceOf([optWs, str(','), optWs, arrayBound]).map(arr => arr[3])) 
-    ]).map(arr => [arr[0], ...arr[1]])),
+    ]).map(arr => [arr[0], ...arr[1]]))),
     optWs, str(')')
-]).map(obj => obj.bounds);
+]).map(obj => obj.bounds || []); // Fallback to an empty array if no bounds were provided
 
 /**
  * Parses a single variable or array declaration within a DIM statement.
@@ -159,5 +173,21 @@ export const staticDecl = sequenceObj([
     ]).map(arr => [arr[0], ...arr[1]]))
 ]).map(obj => ({
     type: 'STATIC',
+    declarations: obj.declarations 
+}));
+
+/**
+ * Parses SHARED variable declarations used inside subroutines to import globals.
+ * Syntax is identical to STATIC and DIM.
+ * Example: SHARED InitRows AS INTEGER, BestMode AS INTEGER
+ */
+export const sharedDecl = sequenceObj([
+    keyword(Tokens.SHARED), ws,
+    capture('declarations', sequenceOf([
+        singleDim,
+        many(sequenceOf([optWs, str(','), optWs, singleDim]).map(arr => arr[3]))
+    ]).map(arr => [arr[0], ...arr[1]]))
+]).map(obj => ({
+    type: 'SHARED_IMPORT',
     declarations: obj.declarations 
 }));

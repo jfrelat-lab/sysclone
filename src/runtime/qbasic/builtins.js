@@ -35,6 +35,47 @@ const executeINSTR = (arg1, arg2, arg3) => {
 };
 
 /**
+ * Converts a numeric expression to a hexadecimal string.
+ * Accurately emulates QBasic's specific conversion quirks:
+ * 1. Automatically rounds floating-point numbers to the nearest integer.
+ * 2. Handles negative numbers by casting them to their 32-bit unsigned two's complement.
+ * 3. Enforces an uppercase string output.
+ */
+const executeHEX$ = (val) => {
+    let n = Math.round(Number(val) || 0);
+    
+    // Convert negative numbers to 32-bit unsigned integer (MS-DOS memory behavior)
+    if (n < 0) {
+        n = (n >>> 0); 
+    }
+    
+    return n.toString(16).toUpperCase();
+};
+
+/**
+ * Converts a string representation of a number to a numeric value.
+ * Accurately parses QBasic's hexadecimal (&H) and octal (&O) prefixes.
+ */
+const executeVAL = (valArg) => {
+    let str = String(valArg).trim().toUpperCase();
+    
+    // MS-DOS Hexadecimal parsing
+    if (str.startsWith('&H')) {
+        const parsed = parseInt(str.substring(2), 16);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    // MS-DOS Octal parsing (just in case!)
+    if (str.startsWith('&O')) {
+        const parsed = parseInt(str.substring(2), 8);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    // Standard decimal parsing
+    return parseFloat(str) || 0;
+};
+
+/**
  * Sysclone Native Standard Library (STDLIB).
  * Contains pure functions that do not require access to hardware state.
  */
@@ -49,13 +90,14 @@ export const BuiltIns = {
     [BuiltInTokens.SPC]: (n) => " ".repeat(Math.max(0, n || 0)),
     [BuiltInTokens.STRING$]: executeSTRING$,
     [BuiltInTokens.STR$]: (n) => n >= 0 ? " " + n : String(n),
+    [BuiltInTokens.HEX$]: executeHEX$,
     [BuiltInTokens.RIGHT$]: (str, n) => String(str).slice(-(n || 0)),
     [BuiltInTokens.LEFT$]: (str, n) => String(str).slice(0, (n || 0)),
     [BuiltInTokens.MID$]: (str, start, len) => String(str).substr((start || 1) - 1, len),
     [BuiltInTokens.CHR$]: (code) => getCharFromCP437(code || 0),
     [BuiltInTokens.ASC]: (str) => getCP437FromChar(String(str).charAt(0) || 0),
     [BuiltInTokens.INSTR]: executeINSTR,
-    [BuiltInTokens.VAL]: (str) => parseFloat(str) || 0,
+    [BuiltInTokens.VAL]: executeVAL,
     
     // --- Mathematics ---
     [BuiltInTokens.INT]: (n) => Math.floor(n || 0),

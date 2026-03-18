@@ -162,4 +162,30 @@ registerSuite('VGA Hardware Controller (Multi-Mode & Strategy Pattern)', () => {
         assertEqual(vga.display.pixelBuffer32[0], 0xFF55FF55);
     });
 
+    // --- MODE 12 (VGA 640x480) TESTS ---
+
+    test('Mode 12: setMode(12) should switch to 640x480 high-res graphics', () => {
+        const vga = createMockVGA();
+        
+        vga.setMode(12); // Switch hardware to VGA 16-color High-Res
+        
+        assertEqual(vga.display.width, 640, "Mode 12 must be 640 pixels wide");
+        assertEqual(vga.display.height, 480, "Mode 12 must be 480 pixels high");
+        
+        vga.pset(0, 0, 10); // Draw at top-left
+        assertEqual(vga.memory.ram[0xA0000], 10, "Mode 12 must map to 0xA0000");
+    });
+
+    test('Mode 12: pset() should enforce strict 16-color masking', () => {
+        const vga = createMockVGA();
+        vga.setMode(12);
+        
+        // Try to draw with color 25 (which is out of bounds for a 16-color mode)
+        // 25 in binary is 11001. Masked with 15 (01111), it becomes 9.
+        vga.pset(10, 10, 25); 
+        
+        // Address calculation for Mode 12: 0xA0000 + (Y * 640) + X
+        const expectedAddr = 0xA0000 + (10 * 640) + 10;
+        assertEqual(vga.memory.ram[expectedAddr], 9, "Mode 12 must strictly mask colors to 4-bit (0-15)");
+    });
 });

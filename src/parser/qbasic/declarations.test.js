@@ -1,5 +1,5 @@
 // src/parser/declarations.test.js
-import { defintDecl, constDecl, typeDecl, dimDecl, redimDecl } from './declarations.js';
+import { defintDecl, defsngDecl, constDecl, typeDecl, dimDecl, redimDecl, staticDecl, sharedDecl } from './declarations.js';
 import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 /**
@@ -11,6 +11,12 @@ registerSuite('QBasic Declarations (AST)', () => {
     test('defintDecl() should parse DEFINT A-Z', () => {
         const ast = defintDecl.run('DEFINT A-Z').result;
         assertEqual(ast.type, 'DEFINT');
+        assertEqual(ast.range, 'A-Z');
+    });
+
+    test('defsngDecl() should parse DEFSNG A-Z', () => {
+        const ast = defsngDecl.run('DEFSNG A-Z').result;
+        assertEqual(ast.type, 'DEFSNG');
         assertEqual(ast.range, 'A-Z');
     });
 
@@ -115,5 +121,41 @@ registerSuite('QBasic Declarations (AST)', () => {
         // Verify second declaration
         assertEqual(ast.declarations[1].name, 'RBAN&');
         assertEqual(ast.declarations[1].isArray, true);
+    });
+
+    test('staticDecl() should parse STATIC variable declarations', () => {
+        const ast = staticDecl.run('STATIC counter AS INTEGER, lastTime').result;
+        
+        assertEqual(ast.type, 'STATIC');
+        assertEqual(ast.declarations.length, 2);
+        
+        assertEqual(ast.declarations[0].name, 'COUNTER');
+        assertEqual(ast.declarations[0].varType, 'INTEGER');
+        assertEqual(ast.declarations[0].isArray, false);
+        
+        assertEqual(ast.declarations[1].name, 'LASTTIME');
+        assertEqual(ast.declarations[1].varType, 'VARIANT'); // Implicit default type
+    });
+
+    test('sharedDecl() should parse SHARED imports with dynamic arrays (empty parentheses)', () => {
+        // The exact signature from Torus.bas that caused the boundsList crash
+        const code = `SHARED VC AS Config, Pal() AS LONG`;
+        const ast = sharedDecl.run(code).result;
+        
+        assertEqual(ast.type, 'SHARED_IMPORT');
+        assertEqual(ast.declarations.length, 2);
+        
+        // Assert first declaration (Scalar UDT)
+        const decl1 = ast.declarations[0];
+        assertEqual(decl1.name, 'VC');
+        assertEqual(decl1.varType, 'CONFIG');
+        assertEqual(decl1.isArray, false);
+        
+        // Assert second declaration (Dynamic Array)
+        const decl2 = ast.declarations[1];
+        assertEqual(decl2.name, 'PAL');
+        assertEqual(decl2.varType, 'LONG');
+        assertEqual(decl2.isArray, true); // The empty parens MUST flag it as an array
+        assertEqual(decl2.bounds.length, 0); // The bounds array MUST be empty
     });
 });

@@ -145,6 +145,10 @@
   - [X] Refactor `lexers.js` to explicitly yield `COMMENT` and `WHITESPACE` tokens instead of silently swallowing them in `eos`. (Included strict regex exclusion of `\r\n` in comments to fix UI line break rendering).
   - [X] Build a lightweight `Tokenizer` that processes the loaded source code through our Monadic Lexers.
   - [X] Render the token stream as colored HTML in the UI without external dependencies.
+- [ ] **7.6.7. Source File Injection:**
+  - [ ] Allow users to import or drag-and-drop local `.BAS` files directly into the WebVM for instant execution.
+- [ ] **7.6.8. Execution Context Tracking:**
+  - [ ] Implement a visual tracker in the IDE that highlights the exact line of code currently being executed when the VM is paused.
 
 ---
 
@@ -166,18 +170,27 @@
   - [x] Handle unquoted strings and empty entries in `DATA`.
 - [ ] **9.2. Exception Handling:**
   - [ ] Implement `ON ERROR GOTO`, `RESUME`, and `RESUME NEXT` to catch runtime hardware/software faults.
-- [ ] **9.3. Implicit Typing & Macros:**
-  - [ ] Support `DEFINT`, `DEFSNG`, etc., for default variable typing.
+- [x] **9.3. Implicit Typing & Macros:**
+  - [x] Support `DEFINT`, `DEFSNG`, etc., for default variable typing.
   - [x] Parse and evaluate single-line macros: `DEF FNname(args) = expr`.
   - [x] Support multiple `CONST` declarations and `STATIC` subroutine scoping.
   - [x] Support fixed-length string allocation (`AS STRING * N`).
+  - [x] Support implicit function calls strictly by base name (without type suffix).
+  - [x] Implement memory aliasing (`VariableVault`) to natively link explicitly typed variables (e.g., `AS STRING`) to their MS-DOS suffixed counterparts (`$`).
+  - [x] Support empty parentheses `()` in array declarations for dynamic or shared arrays.
+  - [x] Unify AST generation between `DIM`/`SHARED` statements and Subroutine parameter lists.
 - [x] **9.4. Math, Strings & Built-ins:**
   - [x] Abstract all pure native functions into a `builtins.js` standard library.
   - [x] Implement strict `PRINT USING` formatting engine (variable-length string interception `&` and decimal precision `###.###`).
   - [x] Implement math: `INT`, `FIX`, `ABS`, `SQR`, `RND`, `SIN`, `COS`, `TAN`, `ATN`, `EXP`, `LOG`, `CINT`.
-  - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `VAL`, `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `INSTR`, `STRING$`, `SPC`.
+  - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `HEX$`, `VAL` (including Hex `&H` and Octal `&O` prefixes), `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `INSTR`, `STRING$`, `SPC`.
   - [x] Add memory/variable utilities: `SWAP`, `ERASE`.
   - [x] Add hardware intercepts: `TAB`, `INPUT$`.
+- [ ] **9.5. The "Truth Vector" Compatibility Framework:**
+  - [ ] Design a language-agnostic format (e.g., JSON/YAML) to strictly document QBasic/MS-DOS quirks and edge cases (the "Truth Vectors").
+  - [ ] Build a generator that compiles these vectors into a native `.BAS` self-testing suite, runnable in DOSBox to prove hardware-accurate behavior.
+  - [ ] Build a companion generator that translates these verified vectors into JavaScript unit tests for the Sysclone engine.
+  - [ ] Generate comprehensive Markdown documentation automatically from the Truth Vectors to serve as a definitive guide to QBasic behavior.
 
 ## Phase 10: Advanced Graphics Engine (Gorillas & Mandelbrot)
 *Expand the engine capabilities to support computationally and graphically intensive classics.*
@@ -188,12 +201,14 @@
   - [ ] Support `VIEW PRINT` to restrict text rendering and scrolling to specific screen rows.
 - [ ] **10.2. Palettes & Screen Modes:**
   - [x] Implement generic `setPalette` and default hardware palettes (CGA, EGA, MCGA/VGA).
-  - [x] Implement high-resolution simplified `SCREEN 9` (EGA 640x350) alongside `SCREEN 13` (VGA 320x200).
+  - [x] Implement high-resolution simplified `SCREEN 9` (EGA 640x350), `SCREEN 12` (VGA 640x480), alongside `SCREEN 13` (VGA 320x200).
   - [x] Load mode-specific, dynamic hardware typography (DOSBox 8x8 font for VGA, authentic 8x14 font for EGA block alignment).
+  - [ ] Implement elegant, dynamic viewport resizing and CSS scaling to seamlessly transition between native hardware resolutions (e.g., SCREEN 0 Text Mode, SCREEN 12 VGA 640x480, SCREEN 13 VGA 320x200) without breaking the DOM layout or pixel aspect ratio.
   - [ ] Add `PALETTE` and `PALETTE USING` dynamic mapping support.
 - [ ] **10.3. Geometry Primitives (SCREEN 7, 8, 9, 13):**
-  - [x] Implement `PSET` and `POINT` (Pixel Write/Read).
-  - [x] Add geometry rendering: `LINE` (Bresenham, Box, Box Fill).
+- [x] Implement `PSET`, `PRESET`, and `POINT` (Pixel Write/Read).
+  - [x] Add geometry rendering: `LINE` (Bresenham, Box, Box Fill), including relative origin support `LINE - (x, y)`.
+  - [x] Support `STEP` (Relative coordinates) dynamically across all geometric primitives.
   - [x] Implement advanced `CIRCLE` logic: accurately emulating QBasic's default screen aspect ratios, undocumented negative aspect inversions, arc drawing, and 4-connected Midpoint anti-aliasing to prevent Moire holes in concentric loops.
   - [x] Add algorithmic drawing: `PAINT` (Iterative Stack-based Flood Fill algorithm).
 - [ ] **10.4. Hardware Blitting (`GET` / `PUT`):**
@@ -248,3 +263,6 @@
   - [ ] Implement `NodeIO`: A headless input driver mapping `INKEY$` and `INPUT` to `process.stdin`.
 - [ ] **14.3. Backend Math & Logic:**
   - [ ] Validate the execution of heavy computational scripts (e.g., algorithmic math, text-based data processing) without browser overhead.
+- [ ] **14.4. Universal Syntax Linter:**
+  - [ ] Leverage the decoupled front-end to create `tools/lint.js`.
+  - [ ] Provide a strict, headless diagnostic tool capable of parsing any legacy `.bas` file and reporting syntax errors, unmatched blocks, or unhoisted labels directly to the terminal.

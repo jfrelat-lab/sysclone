@@ -79,6 +79,8 @@ export class Evaluator {
                         }
                     } else if (node[i].type === 'DEFINT') {
                         if (!insideSub) this.env.defineDefInt(node[i].range);
+                    } else if (node[i].type === 'DEFSNG') {
+                        // QBasic defaults to Single precision natively, so we safely absorb this statement.
                     } else if (node[i].type === 'TYPE_DECL') {
                         if (!insideSub) this.env.defineType(node[i].name, node[i].fields);
                     } else if (node[i].type === 'DATA') {
@@ -312,10 +314,13 @@ export class Evaluator {
                         initValue = creator();
                     }
    
-                    // Route to Tier 1 if SHARED, otherwise stay in local scope
+                    // ALIASING: Register the explicit declaration to its suffixed name within the target vault.
+                    // Route to Tier 1 if SHARED, otherwise stay in local scope.
                     if (node.shared) {
-                        this.env.sharedEnv.define(decl.name.toUpperCase(), initValue);
+                        this.env.sharedEnv.variables.registerAlias(decl.name, typeName);
+                        this.env.sharedEnv.define(decl.name, initValue);
                     } else {
+                        this.env.variables.registerAlias(decl.name, typeName);
                         this.env.define(decl.name, initValue);
                     }
                 }
@@ -324,11 +329,46 @@ export class Evaluator {
 
             case 'STATIC':
                 for (let decl of node.declarations) {
-                    const upperName = decl.name.toUpperCase();
-                    // Initialize ONLY ONCE: if it's already in the vault, we skip!
-                    if (this.env.staticScope && !this.env.staticScope.has(upperName)) {
+                    if (this.env.staticScope) {
                         const typeName = decl.varType || decl.type || 'SINGLE'; 
-                        const creator = () => this.env.createDefaultValue(typeName);
+                        
+                        // ALIASING: Register the alias in the persistent vault before checking for existence!
+                        this.env.staticScope.registerAlias(decl.name, typeName);
+
+                        // Initialize ONLY ONCE: if the vault already has the resolved name, we skip!
+                        if (!this.env.staticScope.has(decl.name)) {
+                            const creator = () => this.env.createDefaultValue(typeName);
+                            let initValue;
+                            if (decl.isArray) {
+                                const bounds = [];
+                                for (let b of decl.bounds) {
+                                    bounds.push({ min: yield* this.evaluate(b.min), max: yield* this.evaluate(b.max) });
+                                }
+                                initValue = new QArray(bounds, creator);
+                            } else {
+                                initValue = creator();
+                            }
+                            this.env.staticScope.set(decl.name, initValue);
+                        }
+                    }
+                }
+                return null;
+
+            case 'SHARED_IMPORT':
+                for (let decl of node.declarations) {
+                    const typeName = decl.varType || decl.type || 'SINGLE'; 
+                    
+                    // ALIASING: Register the import alias in the global vault before checking for existence!
+                    this.env.sharedEnv.variables.registerAlias(decl.name, typeName);
+                    
+                    // 3-TIER ARCHITECTURE:
+                    // We MUST NOT use this.env.define() here, otherwise JS creates a local pass-by-value copy (Shadowing).
+                    // We simply ensure the variable exists in Tier 1 (sharedEnv).
+                    // The Environment's assign() and lookup() methods will handle the reference resolution dynamically.
+                    
+                    if (!this.env.sharedEnv.variables.has(decl.name)) {
+                        const creator = () => this.env.createDefaultValue(typeName, decl.length);
+                        
                         let initValue;
                         if (decl.isArray) {
                             const bounds = [];
@@ -339,7 +379,7 @@ export class Evaluator {
                         } else {
                             initValue = creator();
                         }
-                        this.env.staticScope.set(upperName, initValue);
+                        this.env.sharedEnv.define(decl.name, initValue);
                     }
                 }
                 return null;
@@ -667,6 +707,8 @@ export class Evaluator {
                 const row = yield* this.evaluate(node.row);
                 const col = yield* this.evaluate(node.col);
                 const cur = yield* this.evaluate(node.cursor);
+                const start = yield* this.evaluate(node.start);
+                const stop  = yield* this.evaluate(node.stop);
                 
                 if (this.hw.vga) {
                     this.hw.vga.locate(row, col);
@@ -675,6 +717,8 @@ export class Evaluator {
                         if (cur === 0) this.hw.vga.hideCursor();
                         else this.hw.vga.showCursor();
                     }
+                    // Note: 'start' and 'stop' scanlines for cursor thickness 
+                    // are parsed and evaluated, but hardware emulation is stubbed for now.
                 }
                 return null;
 
@@ -855,9 +899,18 @@ export class Evaluator {
                 if (this.hw.vga) this.hw.vga.pset(pX, pY, pCol, node.isStep);
                 return null;
 
+            case 'PRESET':
+                const prX = yield* this.evaluate(node.x);
+                const prY = yield* this.evaluate(node.y);
+                // PRESET defaults to the background color, whereas PSET defaults to the foreground color
+                const prCol = node.color !== null ? yield* this.evaluate(node.color) : (this.hw.vga ? this.hw.vga.currentBg : 0);
+                if (this.hw.vga) this.hw.vga.pset(prX, prY, prCol, node.isStep);
+                return null;
+
             case 'LINE':
-                const lX1 = yield* this.evaluate(node.startX);
-                const lY1 = yield* this.evaluate(node.startY);
+                // Use the current hardware graphic cursor if the start coordinate was omitted (e.g., LINE - (x, y))
+                const lX1 = node.startX !== null ? yield* this.evaluate(node.startX) : (this.hw.vga ? this.hw.vga.lastX : 0);
+                const lY1 = node.startY !== null ? yield* this.evaluate(node.startY) : (this.hw.vga ? this.hw.vga.lastY : 0);
                 const lX2 = yield* this.evaluate(node.endX);
                 const lY2 = yield* this.evaluate(node.endY);
                 const lCol = node.color !== null ? yield* this.evaluate(node.color) : null;
@@ -968,7 +1021,7 @@ export class Evaluator {
             }
 
             // --- DOS / HARDWARE STUBS ---
-            case 'DATA': case 'DECLARE': case 'DEFINT':
+            case 'DATA': case 'DECLARE': case 'DEFINT': case 'DEFSNG':
             case 'RANDOMIZE': case 'WIDTH':
                 // Gracefully ignore these specific DOS hardware commands
                 return null;
@@ -997,12 +1050,21 @@ export class Evaluator {
         else if (node.type === 'CALL') {
             const callee = node.callee.value.toUpperCase();
             
+            // PROTECT R-VALUES: Prevent assignment to STDLIB or User functions!
+            // A function returns an R-Value (a temporary computed result), which cannot act as a memory target.
+            if (BuiltIns[callee] || this.env.getSub(callee)) {
+                throw new Error(`Cannot assign to function: ${callee}`);
+            }
+            
             // Flat search replacing the old while(curr) traversal
             let val = this.env.variables.get(callee) || 
                       (this.env.staticScope && this.env.staticScope.get(callee)) || 
                       this.env.sharedEnv.variables.get(callee);
 
-            if (!val || val.constructor.name !== 'QArray') throw new Error(`${callee} is not an array.`);
+            if (!val || val.constructor.name !== 'QArray') {
+                console.log(node);
+                throw new Error(`${callee} is not an array.`);
+            }
             const indices = [];
             for (let arg of node.args) indices.push(yield* this.evaluate(arg));
             return { type: 'ARRAY', array: val, indices: indices };
@@ -1034,19 +1096,38 @@ export class Evaluator {
 
             const argRefs = [];
             const argValues = [];
-            
+
             for (let arg of node.args) {
                 argValues.push(yield* this.evaluate(arg));
-                // Pass-by-reference capture
-                if (arg.type === 'IDENTIFIER' || arg.type === 'MEMBER_ACCESS' || (arg.type === 'CALL' && arg.args.length > 0)) {
+                
+                // Pass-by-reference memory capture
+                if (arg.type === 'IDENTIFIER' || arg.type === 'MEMBER_ACCESS') {
                     argRefs.push(yield* this.evaluateLValue(arg));
+                } else if (arg.type === 'CALL' && arg.args.length > 0) {
+                    const calleeName = arg.callee.value.toUpperCase();
+                    
+                    // R-VALUE CHECK: If the CALL is a function, it yields a temporary value.
+                    // Pass it by value (null reference) to prevent the Copy-Out phase from overwriting it.
+                    if (BuiltIns[calleeName] || this.env.getSub(calleeName)) {
+                        argRefs.push(null);
+                    } else {
+                        // Otherwise, it represents an array access. Capture its memory address (L-Value) for pass-by-reference!
+                        argRefs.push(yield* this.evaluateLValue(arg));
+                    }
                 } else {
                     argRefs.push(null);
                 }
             }
             
             for (let i = 0; i < subDef.params.length; i++) {
-                const pName = subDef.params[i].name || subDef.params[i]; 
+                const paramDecl = subDef.params[i];
+                const pName = paramDecl.name || paramDecl; 
+                
+                // ALIASING: Register parameter aliases in the local child environment.
+                if (paramDecl.varType) {
+                    childEnv.variables.registerAlias(pName, paramDecl.varType);
+                }
+                
                 childEnv.define(pName, argValues[i] !== undefined ? argValues[i] : 0);
             }
             
@@ -1066,7 +1147,8 @@ export class Evaluator {
             // 'EXIT SUB' and 'EXIT FUNCTION' signals are implicitly caught here.
             // The subroutine aborts early and proceeds to the COPY-OUT phase.
             
-            let returnValue = (subDef.type === 'FUNCTION_DEF') ? childEnv.lookup(callee) : null;
+            // The function assigns its return value to its declared name (which includes the suffix!)
+            let returnValue = (subDef.type === 'FUNCTION_DEF') ? childEnv.lookup(subDef.name) : null;
 
             // COPY-OUT: Update original variables if they were passed as refs
             for (let i = 0; i < subDef.params.length; i++) {
