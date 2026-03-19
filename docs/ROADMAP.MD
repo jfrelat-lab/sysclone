@@ -149,7 +149,8 @@
   - [ ] Allow users to import or drag-and-drop local `.BAS` files directly into the WebVM for instant execution.
 - [ ] **7.6.8. Execution Context Tracking:**
   - [ ] Implement a visual tracker in the IDE that highlights the exact line of code currently being executed when the VM is paused.
-
+- [x] **7.6.9. Zero-Backend Media Studio:**
+  - [x] Implement a Web Worker-based 24FPS GIF recorder to capture pixel-perfect XOR graphics without blocking the CPU loop.
 ---
 
 # Roadmap: Sysclone - Milestone 2 (Gorillas & Mandelbrot)
@@ -186,11 +187,55 @@
   - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `HEX$`, `VAL` (including Hex `&H` and Octal `&O` prefixes), `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `INSTR`, `STRING$`, `SPC`.
   - [x] Add memory/variable utilities: `SWAP`, `ERASE`.
   - [x] Add hardware intercepts: `TAB`, `INPUT$`.
-- [ ] **9.5. The "Truth Vector" Compatibility Framework:**
-  - [ ] Design a language-agnostic format (e.g., JSON/YAML) to strictly document QBasic/MS-DOS quirks and edge cases (the "Truth Vectors").
-  - [ ] Build a generator that compiles these vectors into a native `.BAS` self-testing suite, runnable in DOSBox to prove hardware-accurate behavior.
-  - [ ] Build a companion generator that translates these verified vectors into JavaScript unit tests for the Sysclone engine.
-  - [ ] Generate comprehensive Markdown documentation automatically from the Truth Vectors to serve as a definitive guide to QBasic behavior.
+- [x] **9.5. The "Truth Vector" Compatibility Framework:**
+  - [x] Design a language-agnostic format (e.g., JSON/YAML) to strictly document QBasic/MS-DOS quirks and edge cases (the "Truth Vectors").
+  - [x] Build a generator that compiles these vectors into a native `.BAS` self-testing suite, runnable in DOSBox to prove hardware-accurate behavior.
+  - [x] Build a companion generator that translates these verified vectors into JavaScript unit tests for the Sysclone engine.
+  - [x] Generate comprehensive Markdown documentation automatically from the Truth Vectors to serve as a definitive guide to QBasic behavior.
+- [ ] **9.6. Exhaustive Truth Vector Implementation (Instruction by Instruction):**
+  *Systematically port and document every QBasic instruction and built-in function to the Truth Vector JSON format. Each entry must detail standard behavior (Black Box) and historical MS-DOS quirks (White Box).*
+  - [x] **Suite 1: Strings & Type Casting (`builtins_string.json`):**
+    - [x] `STR$`: Standard padding vs negative signs.
+    - [x] `HEX$`: 32-bit two's complement and floating-point Banker's rounding.
+    - [x] `VAL`: Hexadecimal (`&H`) and Octal (`&O`) radix prefixes.
+    - [x] `MID$`, `LEFT$`, `RIGHT$`: Out-of-bounds slicing and omitted length arguments.
+    - [x] `LEN`, `UCASE$`, `LCASE$`, `LTRIM$`, `RTRIM$`, `SPACE$`, `STRING$`.
+    - [x] `CHR$`, `ASC`: Handling of control characters (e.g., `CR`, `LF`, `ESC`) vs graphical CP437 mapping.
+    - [x] `INSTR`: 1-based indexing, start offset, and empty substring fallbacks.
+  - [x] **Suite 2: Math & Floating-Point Unit (`builtins_math.json`):**
+    - [x] `INT`, `FIX`, `CINT`: Downward floor vs zero-truncation vs Banker's rounding.
+    - [x] `\` (Integer Division) vs `/` (Float Division): Pre-truncation of operands vs result truncation.
+    - [x] `MOD`: Operand rounding and sign inheritance rules.
+    - [x] `ABS`, `SQR`, `EXP`, `LOG`, `RND`.
+    - [x] Trigonometry (`SIN`, `COS`, `TAN`, `ATN`): Precision normalization for cross-platform assertion.
+  - [x] **Suite 3: Memory, Scoping, & Structures (`memory_scoping.json`):**
+    - [x] Explicit Aliasing (`DIM X AS STRING` to `X$` mapping).
+    - [x] Implicit Typing (`DEFINT`, `DEFSNG`): First-letter routing.
+    - [x] Fixed-Length Strings (`AS STRING * N`): Space auto-padding and strict truncation.
+    - [x] `STATIC`: Vault persistence across subroutine calls vs global isolation.
+    - [x] `SHARED`: Tier 1 global routing vs localized shadowing.
+    - [x] Pass-by-Reference: Array indices and variables mutating via `CALL`.
+    - [x] `SWAP`, `ERASE`: Deep copying UDTs and static array zeroing.
+  - [ ] **Suite 4: Control Flow & Jumps (`control_flow.json`):**
+    - [ ] `FOR ... NEXT`: Iterator mutation and terminal value leakage (Step overshoot).
+    - [ ] `DO WHILE/UNTIL`: Truthiness evaluation (any non-zero integer is TRUE).
+    - [ ] `SELECT CASE`: Execution of `TO` ranges and cascading conditions.
+    - [ ] Single-Line `IF`: Statement chaining via colons (`:`) and `ELSE` binding.
+    - [ ] `GOSUB ... RETURN`: Mini-callstack integrity within localized scopes.
+  - [ ] **Suite 5: Data & Error Handling (`data_errors.json`):**
+    - [ ] `DATA`, `READ`, `RESTORE`: Global data pointer manipulation and unquoted string parsing.
+    - [ ] `ON ERROR GOTO`, `RESUME [NEXT]`: Hardware stubbing verification.
+  - [ ] **Suite 6: I/O, Formatting & Terminal (`io_terminal.json`):**
+    - [ ] `PRINT`: Spacing rules for positive/negative numbers and ghost commas.
+    - [ ] `PRINT USING`: Variable-length string interception (`&`) and decimal precision (`###.##`).
+    - [ ] `LOCATE`: Ghost parameter handling (`LOCATE ,,0`) and out-of-bounds protection.
+  - [ ] **Suite 7: Graphics & VRAM - Silent Probing (`graphics_vram.json`):**
+    - [ ] `WINDOW`: Cartesian inversion and viewport clipping logic.
+    - [ ] `PSET`, `PRESET`: Bounds checking and default background fallback.
+    - [ ] `LINE`: Bresenham accuracy, `B`/`BF` flags, and `STEP` relativity.
+    - [ ] `CIRCLE`: Aspect ratio normalization, negative aspect ellipses, and 0-crossing arcs.
+    - [ ] `PAINT`: Boundary collision tracking.
+    - [ ] `GET`, `PUT`: Little-Endian header packing, `XOR` blending, and EGA/VGA translation.
 
 ## Phase 10: Advanced Graphics Engine (Gorillas & Mandelbrot)
 *Expand the engine capabilities to support computationally and graphically intensive classics.*

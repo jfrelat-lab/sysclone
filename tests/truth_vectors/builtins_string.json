@@ -1,0 +1,368 @@
+{
+  "suite": "STDLIB: Strings & Type Casting",
+  "vectors": [
+    {
+      "name": "STR$ Function",
+      "syntax": "STR$(numeric_expression)",
+      "description": "Returns a string representation of the value of a numeric expression.",
+      "example": {
+        "code": [
+          "PRINT STR$(42)"
+        ],
+        "output": " 42"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: Positive numbers and zero are strictly prefixed with a leading space (acting as an implicit '+' sign). Negative numbers are prefixed by '-' without a leading space.",
+        "setup": [
+          "PosStr$ = STR$(42)",
+          "ZeroStr$ = STR$(0)",
+          "NegStr$ = STR$(-15)"
+        ],
+        "assertions": [
+          { "var": "PosStr$", "val": " 42", "type": "string" },
+          { "var": "ZeroStr$", "val": " 0", "type": "string" },
+          { "var": "NegStr$", "val": "-15", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "HEX$ Function",
+      "syntax": "HEX$(numeric_expression)",
+      "description": "Returns a string that represents the hexadecimal value of the decimal argument.",
+      "example": {
+        "code": [
+          "PRINT HEX$(255)"
+        ],
+        "output": "FF"
+      },
+      "quirks_and_tests": {
+        "description": "QBasic rounds floats to the nearest integer before conversion (Banker's rounding). Standard numbers are treated as 16-bit integers (FFFF for -1), while Long integers (&) or values exceeding -32768 fallback to 32-bit two's complement. Output is always uppercase.",
+        "setup": [
+          "NormHex$ = HEX$(255)",
+          "RoundDownHex$ = HEX$(12.4)",
+          "RoundUpHex$ = HEX$(12.6)",
+          "NegTwosComp$ = HEX$(-1)",
+          "LargeNegTwosComp$ = HEX$(-100000)",
+          "ZeroHex$ = HEX$(0)"
+        ],
+        "assertions": [
+          { "var": "NormHex$", "val": "FF", "type": "string" },
+          { "var": "RoundDownHex$", "val": "C", "type": "string" },
+          { "var": "RoundUpHex$", "val": "D", "type": "string" },
+          { "var": "NegTwosComp$", "val": "FFFF", "type": "string" },
+          { "var": "LargeNegTwosComp$", "val": "FFFE7960", "type": "string" },
+          { "var": "ZeroHex$", "val": "0", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "VAL Function",
+      "syntax": "VAL(stringexpression$)",
+      "description": "Returns the numeric value of a string of characters.",
+      "example": {
+        "code": [
+          "PRINT VAL(\"123.45\")"
+        ],
+        "output": "123.45"
+      },
+      "quirks_and_tests": {
+        "description": "Accurately parses MS-DOS legacy radix prefixes: Hexadecimal (&H) and Octal (&O). Invalid input gracefully falls back to 0 without throwing an exception.",
+        "setup": [
+          "NormVal! = VAL(\"123.45\")",
+          "HexVal = VAL(\"&H10\")",
+          "HexLowVal = VAL(\"&hc\")",
+          "OctVal = VAL(\"&O10\")",
+          "GarbageVal = VAL(\"NOTANUMBER\")"
+        ],
+        "assertions": [
+          { "var": "NormVal!", "val": 123.45, "type": "number" },
+          { "var": "HexVal", "val": 16, "type": "number" },
+          { "var": "HexLowVal", "val": 12, "type": "number" },
+          { "var": "OctVal", "val": 8, "type": "number" },
+          { "var": "GarbageVal", "val": 0, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "LEFT$ Function",
+      "syntax": "LEFT$(stringexpression$, n%)",
+      "description": "Returns a string consisting of the leftmost n% characters of a string.",
+      "example": {
+        "code": [
+          "PRINT LEFT$(\"SYSCLONE\", 3)"
+        ],
+        "output": "SYS"
+      },
+      "quirks_and_tests": {
+        "description": "If N exceeds the string length, the entire string is safely returned without throwing an out-of-bounds error.",
+        "setup": [
+          "BaseStr$ = \"SYSCLONE\"",
+          "NormLeft$ = LEFT$(BaseStr$, 3)",
+          "OverLeft$ = LEFT$(BaseStr$, 50)"
+        ],
+        "assertions": [
+          { "var": "NormLeft$", "val": "SYS", "type": "string" },
+          { "var": "OverLeft$", "val": "SYSCLONE", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "RIGHT$ Function",
+      "syntax": "RIGHT$(stringexpression$, n%)",
+      "description": "Returns a string consisting of the rightmost n% characters of a string.",
+      "example": {
+        "code": [
+          "PRINT RIGHT$(\"SYSCLONE\", 5)"
+        ],
+        "output": "CLONE"
+      },
+      "quirks_and_tests": {
+        "description": "Similar to LEFT$, an oversized N returns the whole string safely.",
+        "setup": [
+          "BaseStr$ = \"SYSCLONE\"",
+          "NormRight$ = RIGHT$(BaseStr$, 5)",
+          "OverRight$ = RIGHT$(BaseStr$, 50)"
+        ],
+        "assertions": [
+          { "var": "NormRight$", "val": "CLONE", "type": "string" },
+          { "var": "OverRight$", "val": "SYSCLONE", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "MID$ Function",
+      "syntax": "MID$(stringexpr$, start%[, length%])",
+      "description": "Returns a substring of a specified length starting at a 1-based index.",
+      "example": {
+        "code": [
+          "PRINT MID$(\"SYSCLONE\", 4, 2)"
+        ],
+        "output": "CL"
+      },
+      "quirks_and_tests": {
+        "description": "If the length parameter is omitted, it returns the remainder of the string. Out-of-bounds start indices yield an empty string without throwing an error.",
+        "setup": [
+          "BaseStr$ = \"SYSCLONE\"",
+          "NormMid$ = MID$(BaseStr$, 4, 2)",
+          "NoLenMid$ = MID$(BaseStr$, 4)",
+          "OutBoundsMid$ = MID$(BaseStr$, 99, 2)"
+        ],
+        "assertions": [
+          { "var": "NormMid$", "val": "CL", "type": "string" },
+          { "var": "NoLenMid$", "val": "CLONE", "type": "string" },
+          { "var": "OutBoundsMid$", "val": "", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "SPACE$ Function",
+      "syntax": "SPACE$(n%)",
+      "description": "Returns a string of n% spaces.",
+      "example": {
+        "code": [
+          "PRINT \"A\" + SPACE$(3) + \"B\""
+        ],
+        "output": "A   B"
+      },
+      "quirks_and_tests": {
+        "description": "Negative or zero lengths safely return an empty string.",
+        "setup": [
+          "SpcStr$ = SPACE$(3)"
+        ],
+        "assertions": [
+          { "var": "SpcStr$", "val": "   ", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "STRING$ Function",
+      "syntax": "STRING$(n%, {stringexpression$ | ascii_code%})",
+      "description": "Returns a string of characters, n% long, consisting of a single character.",
+      "example": {
+        "code": [
+          "PRINT STRING$(4, \"A\")"
+        ],
+        "output": "AAAA"
+      },
+      "quirks_and_tests": {
+        "description": "The character can be specified either as a numeric ASCII/CP437 code, or as a string (in which case only the first character is used).",
+        "setup": [
+          "StrChar$ = STRING$(4, \"A\")",
+          "StrLong$ = STRING$(3, \"XYZ\")",
+          "StrCode$ = STRING$(3, 65)"
+        ],
+        "assertions": [
+          { "var": "StrChar$", "val": "AAAA", "type": "string" },
+          { "var": "StrLong$", "val": "XXX", "type": "string" },
+          { "var": "StrCode$", "val": "AAA", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "LEN Function",
+      "syntax": "LEN(stringexpression$)",
+      "description": "Returns the number of characters in a string.",
+      "example": {
+        "code": [
+          "PRINT LEN(\"HELLO\")"
+        ],
+        "output": "5"
+      },
+      "quirks_and_tests": {
+        "description": "Standard length calculation.",
+        "setup": [
+          "StrLen = LEN(\"HELLO\")"
+        ],
+        "assertions": [
+          { "var": "StrLen", "val": 5, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "UCASE$ Function",
+      "syntax": "UCASE$(stringexpression$)",
+      "description": "Returns a string expression with all letters converted to uppercase.",
+      "example": {
+        "code": [
+          "PRINT UCASE$(\"hello\")"
+        ],
+        "output": "HELLO"
+      },
+      "quirks_and_tests": {
+        "description": "Transforms lowercase ASCII characters to uppercase without affecting symbols or numbers.",
+        "setup": [
+          "UpStr$ = UCASE$(\"hello\")"
+        ],
+        "assertions": [
+          { "var": "UpStr$", "val": "HELLO", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "LCASE$ Function",
+      "syntax": "LCASE$(stringexpression$)",
+      "description": "Returns a string expression with all letters converted to lowercase.",
+      "example": {
+        "code": [
+          "PRINT LCASE$(\"HELLO\")"
+        ],
+        "output": "hello"
+      },
+      "quirks_and_tests": {
+        "description": "Transforms uppercase ASCII characters to lowercase without affecting symbols or numbers.",
+        "setup": [
+          "LowStr$ = LCASE$(\"HELLO\")"
+        ],
+        "assertions": [
+          { "var": "LowStr$", "val": "hello", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "LTRIM$ Function",
+      "syntax": "LTRIM$(stringexpression$)",
+      "description": "Returns a copy of a string with leading (leftmost) spaces removed.",
+      "example": {
+        "code": [
+          "PRINT LTRIM$(\"  TEXT\")"
+        ],
+        "output": "TEXT"
+      },
+      "quirks_and_tests": {
+        "description": "Crucial for cleaning up STR$ outputs which naturally contain leading spaces for positive numbers.",
+        "setup": [
+          "LTrimStr$ = LTRIM$(\"  TEXT\")"
+        ],
+        "assertions": [
+          { "var": "LTrimStr$", "val": "TEXT", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "RTRIM$ Function",
+      "syntax": "RTRIM$(stringexpression$)",
+      "description": "Returns a copy of a string with trailing (rightmost) spaces removed.",
+      "example": {
+        "code": [
+          "PRINT RTRIM$(\"TEXT  \")"
+        ],
+        "output": "TEXT"
+      },
+      "quirks_and_tests": {
+        "description": "Often used to trim fixed-length strings (STRING * N) that are padded with spaces on the right.",
+        "setup": [
+          "RTrimStr$ = RTRIM$(\"TEXT  \")"
+        ],
+        "assertions": [
+          { "var": "RTrimStr$", "val": "TEXT", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "CHR$ Function",
+      "syntax": "CHR$(ascii_code%)",
+      "description": "Returns a one-character string whose ASCII/CP437 code is the argument.",
+      "example": {
+        "code": [
+          "PRINT CHR$(65)"
+        ],
+        "output": "A"
+      },
+      "quirks_and_tests": {
+        "description": "Sysclone maps these directly to the MS-DOS Code Page 437 (CP437) for graphical block character fidelity.",
+        "setup": [
+          "Char$ = CHR$(65)"
+        ],
+        "assertions": [
+          { "var": "Char$", "val": "A", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "ASC Function",
+      "syntax": "ASC(stringexpression$)",
+      "description": "Returns the ASCII/CP437 character code corresponding to the first letter in a string.",
+      "example": {
+        "code": [
+          "PRINT ASC(\"A\")"
+        ],
+        "output": "65"
+      },
+      "quirks_and_tests": {
+        "description": "If the string is empty, true QBasic throws an 'Illegal function call' error.",
+        "setup": [
+          "AscVal = ASC(\"A\")"
+        ],
+        "assertions": [
+          { "var": "AscVal", "val": 65, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "INSTR Function",
+      "syntax": "INSTR([start%,] string1$, string2$)",
+      "description": "Returns the character position of the first occurrence of a string in another.",
+      "example": {
+        "code": [
+          "PRINT INSTR(\"HELLO WORLD\", \"WORLD\")"
+        ],
+        "output": "7"
+      },
+      "quirks_and_tests": {
+        "description": "Uses 1-based indexing. If an optional start index is provided, the search begins there. Returns 0 if the substring is not found or if the start index is out of bounds.",
+        "setup": [
+          "FoundIdx = INSTR(\"HELLO WORLD\", \"WORLD\")",
+          "OffsetIdx = INSTR(3, \"HELLO WORLD, HELLO\", \"HELLO\")",
+          "NotFoundIdx = INSTR(\"HELLO\", \"Z\")",
+          "OutBoundsIdx = INSTR(100, \"HELLO\", \"L\")"
+        ],
+        "assertions": [
+          { "var": "FoundIdx", "val": 7, "type": "number" },
+          { "var": "OffsetIdx", "val": 14, "type": "number" },
+          { "var": "NotFoundIdx", "val": 0, "type": "number" },
+          { "var": "OutBoundsIdx", "val": 0, "type": "number" }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,198 @@
+{
+  "suite": "STDLIB: Memory, Types & Structures",
+  "vectors": [
+    {
+      "name": "DEFINT Statement",
+      "syntax": "DEFINT letter[-letter]",
+      "description": "Sets the default data type for variables to Integer.",
+      "example": {
+        "code": [
+          "DEFINT A-Z",
+          "Score = 10.8",
+          "PRINT Score"
+        ],
+        "output": " 11 "
+      },
+      "quirks_and_tests": {
+        "description": "Forces all untyped variables starting with specified letters to automatically become integers. Floating-point assignments to these variables are mathematically rounded (Banker's rounding).",
+        "setup": [
+          "DEFINT A-Z",
+          "ImplicitIntA = 2.5",
+          "ImplicitIntB = 2.6"
+        ],
+        "assertions": [
+          { "var": "ImplicitIntA", "val": 2, "type": "number" },
+          { "var": "ImplicitIntB", "val": 3, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "DEFSNG Statement",
+      "syntax": "DEFSNG letter[-letter]",
+      "description": "Sets the default data type for variables to Single-precision float.",
+      "example": {
+        "code": [
+          "DEFSNG A-Z",
+          "Score = 10.8",
+          "PRINT Score"
+        ],
+        "output": " 10.8 "
+      },
+      "quirks_and_tests": {
+        "description": "Forces untyped variables to default to Single-precision. This preserves fractional values without mathematical rounding. While QBasic defaults to Single precision natively, DEFSNG is used to explicitly override a previous DEFINT.",
+        "setup": [
+          "DEFSNG A-Z",
+          "ImplicitSng = 5.8"
+        ],
+        "assertions": [
+          { "var": "ImplicitSng", "val": 5.8, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "Explicit Type Suffix Override",
+      "syntax": "Variable[%, &, !, #, $]",
+      "description": "Explicit type declaration suffixes.",
+      "example": {
+        "code": [
+          "DEFINT A-Z",
+          "PRINT 5.5!"
+        ],
+        "output": " 5.5 "
+      },
+      "quirks_and_tests": {
+        "description": "Even if DEFINT is active, appending a specific type suffix (like ! for Single Precision Float) overrides the implicit rule and preserves the fractional value.",
+        "setup": [
+          "DEFINT A-Z",
+          "OverrideFloat! = 3.14"
+        ],
+        "assertions": [
+          { "var": "OverrideFloat!", "val": 3.14, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "Memory Aliasing (DIM AS STRING)",
+      "syntax": "DIM variable AS type",
+      "description": "Declares a variable and allocates memory space.",
+      "example": {
+        "code": [
+          "DIM Name AS STRING",
+          "Name = \"NIBBLES\"",
+          "PRINT Name$"
+        ],
+        "output": "NIBBLES"
+      },
+      "quirks_and_tests": {
+        "description": "Declaring a variable with an explicit type (e.g., AS STRING) internally links it to its MS-DOS suffixed counterpart. Writing to the base name updates the suffixed name, as they share the exact same memory pointer.",
+        "setup": [
+          "DIM AliasTest AS STRING",
+          "AliasTest = \"NIBBLES\"",
+          "Extracted$ = AliasTest$"
+        ],
+        "assertions": [
+          { "var": "Extracted$", "val": "NIBBLES", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Fixed-Length String Padding",
+      "syntax": "DIM variable AS STRING * length",
+      "description": "Declares a string with a fixed memory length.",
+      "example": {
+        "code": [
+          "DIM S AS STRING * 5",
+          "S = \"HI\"",
+          "PRINT S; \"THERE\""
+        ],
+        "output": "HI   THERE"
+      },
+      "quirks_and_tests": {
+        "description": "Allocating a Fixed-Length String locks a specific memory block. If a shorter string is assigned, it is automatically padded with spaces on the right to fill the block.",
+        "setup": [
+          "DIM PadStr AS STRING * 5",
+          "PadStr = \"HI\"",
+          "PadLen = LEN(PadStr)"
+        ],
+        "assertions": [
+          { "var": "PadStr", "val": "HI   ", "type": "string" },
+          { "var": "PadLen", "val": 5, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "Fixed-Length String Truncation",
+      "syntax": "DIM variable AS STRING * length",
+      "description": "Prevents memory overflow during assignment.",
+      "example": {
+        "code": [
+          "DIM S AS STRING * 3",
+          "S = \"123456\"",
+          "PRINT S"
+        ],
+        "output": "123"
+      },
+      "quirks_and_tests": {
+        "description": "If a string longer than the locked memory block is assigned, MS-DOS silently truncates the overflow without throwing an error.",
+        "setup": [
+          "DIM TruncStr AS STRING * 3",
+          "TruncStr = \"123456\""
+        ],
+        "assertions": [
+          { "var": "TruncStr", "val": "123", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "SWAP Statement",
+      "syntax": "SWAP variable1, variable2",
+      "description": "Exchanges the values of two variables.",
+      "example": {
+        "code": [
+          "A = 1 : B = 2",
+          "SWAP A, B",
+          "PRINT A; B"
+        ],
+        "output": " 2  1 "
+      },
+      "quirks_and_tests": {
+        "description": "Both variables must be of the same data type. Sysclone enforces deep cloning to ensure JavaScript object references don't bleed during the swap.",
+        "setup": [
+          "SwapA = 99",
+          "SwapB = 42",
+          "SWAP SwapA, SwapB"
+        ],
+        "assertions": [
+          { "var": "SwapA", "val": 42, "type": "number" },
+          { "var": "SwapB", "val": 99, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "ERASE Statement (Static Arrays)",
+      "syntax": "ERASE arrayname [, arrayname]...",
+      "description": "Reinitializes elements of static arrays or deallocates dynamic arrays.",
+      "example": {
+        "code": [
+          "DIM Arr(1)",
+          "Arr(1) = 99",
+          "ERASE Arr",
+          "PRINT Arr(1)"
+        ],
+        "output": " 0 "
+      },
+      "quirks_and_tests": {
+        "description": "For static (non-dynamic) arrays, it does not destroy the array structure but soft-resets its elements: numbers revert to 0 and strings to empty.",
+        "setup": [
+          "DIM EraseArr(1 TO 3)",
+          "EraseArr(2) = 777",
+          "ERASE EraseArr",
+          "ClearedVal = EraseArr(2)"
+        ],
+        "assertions": [
+          { "var": "ClearedVal", "val": 0, "type": "number" }
+        ]
+      }
+    }
+  ]
+}

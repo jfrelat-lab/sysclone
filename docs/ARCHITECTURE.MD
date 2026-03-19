@@ -69,3 +69,19 @@ Old DOS games use `POKE` to write directly into system RAM.
 ### 3.6. Keyboard and Audio Engine
 * **Anti-Ghosting Keyboard:** Implements an authentic 16-byte FIFO BIOS buffer that strictly filters browser `e.repeat` events, preventing fast-paced games from consuming trailing inputs.
 * **PC Speaker:** Maps `SOUND` and `PLAY` commands to the native **Web Audio API** via a scheduled macro-language parser.
+
+## 4. WebVM Shell & Tooling Architecture
+
+### 4.1. URL Hash as State (Deep Linking)
+To maintain a purist, backend-free architecture, the WebVM uses the browser's `window.location.hash` for the application state. Changing the hash automatically triggers the Virtual CPU to halt, flush VRAM, and load the corresponding interpreted program, enabling instant stateless sharing.
+
+### 4.2. Zero-Dependency Media Encoding
+Screen capturing and GIF recording (at 24 FPS to catch MS-DOS stroboscopic XOR sprites) are offloaded to a dedicated Web Worker. This ensures the heavy LZW compression algorithms do not block the Virtual CPU's `requestAnimationFrame` loop.
+
+### 4.3. Truth-Driven Validation Pipeline (Zero Hallucination)
+To guarantee absolute historical fidelity and prevent AI Agent hallucinations during development, Sysclone employs a "Truth Vectors" pipeline:
+* **JSON Vectors:** Atomic definitions of legacy behaviors (inputs, outputs, memory states).
+* **Code Generation:** A custom tool (`build_truth.js`) parses these vectors to simultaneously generate:
+  1. A native QBasic auto-test framework (`compat.bas`) to verify behavior on real MS-DOS hardware.
+  2. The JavaScript integration test suites for the JIT engine.
+  3. The `QBASIC_REFERENCE.MD` documentation.

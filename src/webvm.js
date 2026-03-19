@@ -18,6 +18,15 @@ let io, memory, screen, env, evaluator, currentAnimationFrame;
 let currentProcess = null;
 let isPaused = false;
 
+// --- GIF RECORDING STATE ---
+let gifEncoder = null;
+let lastCaptureTime = 0;
+
+// 24 FPS : The cinematic sweet spot. 
+// Fast enough to catch XOR sprites, slow enough to save file size.
+const GIF_FPS = 24; 
+const GIF_DELAY_MS = 1000 / GIF_FPS;
+
 function resetHardware() {
     if (currentAnimationFrame) {
         cancelAnimationFrame(currentAnimationFrame);
@@ -64,6 +73,23 @@ function resetHardware() {
     evaluator = new Evaluator(env, { vga: screen, io: io, memory: memory });
     
     ui.forcePlayState(); // Ensure UI reflects the running state
+}
+
+/**
+ * Captures a frame natively from the VGA Canvas.
+ * No spatial downscaling to preserve crisp MS-DOS pixel art fonts.
+ */
+function captureGifFrame() {
+    if (!ui.isRecording || !gifEncoder) return;
+    
+    const now = performance.now();
+    if (now - lastCaptureTime >= GIF_DELAY_MS) {
+        const sourceCanvas = document.getElementById('vga-display');
+        if (sourceCanvas) {
+            gifEncoder.addFrame(sourceCanvas, { delay: GIF_DELAY_MS, copy: true });
+            lastCaptureTime = now;
+        }
+    }
 }
 
 /**
@@ -116,7 +142,10 @@ function cpuLoop() {
     }
     
     // Render graphics at the end of the time slice
-    if (screen) screen.render();
+    if (screen) {
+        screen.render();
+        captureGifFrame(); // Push frame to the GIF encoder if active
+    }
     currentAnimationFrame = requestAnimationFrame(cpuLoop);
 }
 
@@ -128,7 +157,10 @@ function cpuLoop() {
 function handleSysDelay(ms) {
     // Force an immediate render before sleeping to display pending graphics/text.
     // Without this, the screen would remain blank during the sleep duration.
-    if (screen) screen.render();
+    if (screen) {
+        screen.render();
+        captureGifFrame(); // Ensure visual feedback is captured before pausing
+    }
 
     if (ms > 0) {
         // Timed delay (e.g., SLEEP n, PLAY, SOUND)
@@ -156,7 +188,10 @@ function handleSysDelay(ms) {
 function finalizeExecution() {
     console.log("🏁 Program terminated normally.");
     currentProcess = null;
-    if (screen) screen.render();
+    if (screen) {
+        screen.render();
+        captureGifFrame(); // Capture the final state
+    }
 }
 
 async function boot(filename) {
@@ -182,9 +217,23 @@ async function boot(filename) {
     }
 }
 
-// --- UI LIFECYCLE HOOKS ---
+// --- DYNAMIC GIF SCRIPT LOADER ---
+async function loadGifLibrary() {
+    if (window.GIF) return true; // Already loaded
+    
+    return new Promise((resolve, reject) => {
+        console.log("⏳ [WebVM] Injecting gif.js library from CDN...");
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js';
+        
+        script.onload = () => resolve(true);
+        script.onerror = () => reject(new Error("Failed to load gif.js from CDN. Check your network."));
+        
+        document.head.appendChild(script);
+    });
+}
 
-ui.onRomLoadRequested = (filename) => boot(filename);
+// --- UI LIFECYCLE HOOKS ---
 
 ui.onActionRequested = (action) => {
     if (action === 'pause') {
@@ -199,14 +248,81 @@ ui.onActionRequested = (action) => {
     }
     else if (action === 'restart') {
         // Hard reboot of the current ROM
-        boot(ui.romSelector.value);
+        boot(getFilenameFromHash());
     }
 };
 
+ui.onRecordRequested = async (startRecording) => {
+    if (startRecording) {
+        try {
+            ui.setRecordButtonState('loading');
+            await loadGifLibrary();
+            
+            console.log("🔴 [WebVM] Starting GIF recording...");
+            ui.setRecordButtonState('recording');
+            
+            // Fetch Web Worker to bypass CORS
+            const workerResponse = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+            if (!workerResponse.ok) throw new Error("Failed to fetch Web Worker script");
+            const workerCode = await workerResponse.text();
+            const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+            const workerUrl = URL.createObjectURL(workerBlob);
+
+            // Instantiate at native 1:1 scale
+            gifEncoder = new window.GIF({
+                workers: 2,
+                quality: 10, // NeuQuant neural-net color quantization
+                workerScript: workerUrl
+            });
+
+            gifEncoder.on('finished', (blob) => {
+                console.log("✅ [WebVM] GIF processed successfully.");
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const romName = getFilenameFromHash().replace(/\.bas$/i, '');
+                a.download = `sysclone_${romName}_recording.gif`;
+                a.href = url;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                URL.revokeObjectURL(workerUrl); 
+                
+                ui.setRecordButtonState('idle'); 
+                gifEncoder = null;
+            });
+            
+        } catch (error) {
+            console.error(error);
+            ui.setRecordButtonState('idle'); 
+            alert("Could not load the GIF encoder.");
+        }
+    } else {
+        if (gifEncoder) {
+            console.log("⏹️ [WebVM] Stopping capture, encoding GIF...");
+            ui.setRecordButtonState('encoding');
+            gifEncoder.render();
+        }
+    }
+};
+
+// --- ROUTING & DEEP LINKING ---
+
+function getFilenameFromHash() {
+    const hash = window.location.hash.substring(1);
+    return hash ? `${hash}.bas` : 'nibbles.bas'; 
+}
+
+window.addEventListener('hashchange', () => {
+    const filename = getFilenameFromHash();
+    ui.setRomSelection(filename); 
+    boot(filename);
+});
+
 // --- SYSTEM IGNITION ---
 async function start() {
-    await ui.loadCatalog('nibbles.bas');
-    boot(ui.romSelector.value || 'nibbles.bas');
+    const initialRom = getFilenameFromHash();
+    await ui.loadCatalog(initialRom); 
+    boot(initialRom);
 }
 
 start();

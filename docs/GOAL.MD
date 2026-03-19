@@ -14,6 +14,8 @@ The primary objective is to create a universal execution engine running directly
 * **Hardware Abstraction Layer (HAL):** * Purist emulation of original hardware subsystems using modern Web APIs (Canvas, Web Audio).
   * Implementation of isolated components: addressable RAM, VGA/CGA/EGA rendering (bitmap ROMs, hardware palettes, Bitplane/Linear memory decoding), Keyboard I/O with rigid anti-ghosting buffers, and system clock.
   * **Robust I/O Translation:** An intelligent, heuristic decoding layer that automatically bridges 1990s MS-DOS binary files (CP437) and modern UTF-8 environments. It actively detects and repairs corrupted text (e.g., GitHub Mojibake) on the fly, ensuring absolute visual fidelity for legacy text-graphics.
+* **Zero-Hallucination Fidelity (Truth Vectors):** * Use of a strict JSON-based documentation system to capture unit behaviors and hardware quirks of the 1990s.
+  * This Single Source of Truth (SSOT) automatically generates native MS-DOS test ROMs, JavaScript integration tests, and reference documentation, permanently securing legacy knowledge and preventing AI architectural drift.
 
 ## Key Objectives & Target Languages
 * **Multi-Language Support:**

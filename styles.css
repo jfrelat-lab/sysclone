@@ -209,3 +209,26 @@ select {
     .ide-workspace { flex-direction: column; }
     .editor-panel { border-right: none; border-bottom: 1px solid #444; height: 40vh; flex: none; }
 }
+
+/* Icon Record Button States */
+.btn-record-icon {
+    transition: color 0.3s, opacity 0.3s;
+}
+
+/* Orange state during CDN load or GIF encoding */
+.btn-record-icon.is-loading {
+    color: #ff9800; 
+    opacity: 0.5;
+    cursor: wait;
+}
+
+/* Red blinking state during capture */
+.btn-record-icon.is-recording {
+    color: #ff3333; 
+    animation: rec-blink 1s infinite;
+}
+
+@keyframes rec-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}

@@ -1,0 +1,299 @@
+{
+  "suite": "STDLIB: Math & Floating-Point Unit",
+  "vectors": [
+    {
+      "name": "INT Function",
+      "syntax": "INT(numeric_expression)",
+      "description": "Returns the largest integer less than or equal to a numeric expression.",
+      "example": {
+        "code": [
+          "PRINT INT(2.8)"
+        ],
+        "output": " 2 "
+      },
+      "quirks_and_tests": {
+        "description": "For negative numbers, it mathematically floors downwards (e.g., -2.2 becomes -3).",
+        "setup": [
+          "IntPos = INT(2.8)",
+          "IntNeg = INT(-2.2)"
+        ],
+        "assertions": [
+          { "var": "IntPos", "val": 2, "type": "number" },
+          { "var": "IntNeg", "val": -3, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "FIX Function",
+      "syntax": "FIX(numeric_expression)",
+      "description": "Returns the truncated integer part of a numeric expression.",
+      "example": {
+        "code": [
+          "PRINT FIX(-2.8)"
+        ],
+        "output": "-2 "
+      },
+      "quirks_and_tests": {
+        "description": "Unlike INT, it strictly removes the fractional part towards zero without flooring downwards.",
+        "setup": [
+          "FixPos = FIX(2.8)",
+          "FixNeg = FIX(-2.8)"
+        ],
+        "assertions": [
+          { "var": "FixPos", "val": 2, "type": "number" },
+          { "var": "FixNeg", "val": -2, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "CINT Function",
+      "syntax": "CINT(numeric_expression)",
+      "description": "Rounds a numeric expression to the nearest integer.",
+      "example": {
+        "code": [
+          "PRINT CINT(2.6)"
+        ],
+        "output": " 3 "
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: QBasic employs 'Banker\\'s Rounding'. If the fractional part is exactly .5, it rounds to the nearest EVEN integer.",
+        "setup": [
+          "CintUp = CINT(2.6)",
+          "CintHalfEven = CINT(2.5)",
+          "CintHalfOdd = CINT(3.5)"
+        ],
+        "assertions": [
+          { "var": "CintUp", "val": 3, "type": "number" },
+          { "var": "CintHalfEven", "val": 2, "type": "number" },
+          { "var": "CintHalfOdd", "val": 4, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "/ (Floating-Point Division)",
+      "syntax": "expression1 / expression2",
+      "description": "Divides two numbers and returns a floating-point result.",
+      "example": {
+        "code": [
+          "PRINT 5 / 2"
+        ],
+        "output": " 2.5 "
+      },
+      "quirks_and_tests": {
+        "description": "Operands are not rounded before the operation, and the result retains fractional precision.",
+        "setup": [
+          "FloatDiv! = 5 / 2"
+        ],
+        "assertions": [
+          { "var": "FloatDiv!", "val": 2.5, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "\\ (Integer Division)",
+      "syntax": "expression1 \\ expression2",
+      "description": "Divides two numbers and returns an integer result.",
+      "example": {
+        "code": [
+          "PRINT 5 \\ 2"
+        ],
+        "output": " 2 "
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: Both operands are rounded to integers BEFORE the division occurs. The final result is then truncated to an integer.",
+        "setup": [
+          "IntDiv = 5 \\ 2",
+          "IntDivRound = 5.6 \\ 1.9"
+        ],
+        "assertions": [
+          { "var": "IntDiv", "val": 2, "type": "number" },
+          { "var": "IntDivRound", "val": 3, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "MOD Operator",
+      "syntax": "expression1 MOD expression2",
+      "description": "Divides two numbers and returns the integer remainder.",
+      "example": {
+        "code": [
+          "PRINT 10 MOD 3"
+        ],
+        "output": " 1 "
+      },
+      "quirks_and_tests": {
+        "description": "Like the backslash operator, MOD rounds its operands to integers BEFORE performing the operation. The result inherits the sign of the first operand.",
+        "setup": [
+          "ModNorm = 10 MOD 3",
+          "ModNeg = -10 MOD 3",
+          "ModRound = 10.6 MOD 3"
+        ],
+        "assertions": [
+          { "var": "ModNorm", "val": 1, "type": "number" },
+          { "var": "ModNeg", "val": -1, "type": "number" },
+          { "var": "ModRound", "val": 2, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "ABS Function",
+      "syntax": "ABS(numeric_expression)",
+      "description": "Returns the absolute value of a numeric expression.",
+      "example": {
+        "code": [
+          "PRINT ABS(-42)"
+        ],
+        "output": " 42 "
+      },
+      "quirks_and_tests": {
+        "description": "Standard arithmetic absolute conversion.",
+        "setup": [
+          "AbsVal = ABS(-42)"
+        ],
+        "assertions": [
+          { "var": "AbsVal", "val": 42, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "SQR Function",
+      "syntax": "SQR(numeric_expression)",
+      "description": "Returns the square root of a numeric expression.",
+      "example": {
+        "code": [
+          "PRINT SQR(16)"
+        ],
+        "output": " 4 "
+      },
+      "quirks_and_tests": {
+        "description": "Passing a negative number natively throws an 'Illegal function call' exception.",
+        "setup": [
+          "SqrVal = SQR(16)"
+        ],
+        "assertions": [
+          { "var": "SqrVal", "val": 4, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "SIN Function",
+      "syntax": "SIN(angle)",
+      "description": "Returns the trigonometric sine of an angle (in radians).",
+      "example": {
+        "code": [
+          "PRINT SIN(0)"
+        ],
+        "output": " 0 "
+      },
+      "quirks_and_tests": {
+        "description": "To avoid floating-point precision mismatch assertions between MS-DOS x87 architecture and modern V8 IEEE-754, the test result is multiplied by 1000 and clamped to an integer.",
+        "setup": [
+          "SinZero = CINT(SIN(0) * 1000)"
+        ],
+        "assertions": [
+          { "var": "SinZero", "val": 0, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "COS Function",
+      "syntax": "COS(angle)",
+      "description": "Returns the trigonometric cosine of an angle (in radians).",
+      "example": {
+        "code": [
+          "PRINT COS(0)"
+        ],
+        "output": " 1 "
+      },
+      "quirks_and_tests": {
+        "description": "To avoid floating-point precision mismatch assertions between MS-DOS x87 architecture and modern V8 IEEE-754, the test result is multiplied by 1000 and clamped to an integer.",
+        "setup": [
+          "CosZero = CINT(COS(0) * 1000)"
+        ],
+        "assertions": [
+          { "var": "CosZero", "val": 1000, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "TAN Function",
+      "syntax": "TAN(angle)",
+      "description": "Returns the trigonometric tangent of an angle (in radians).",
+      "example": {
+        "code": [
+          "PRINT TAN(0)"
+        ],
+        "output": " 0 "
+      },
+      "quirks_and_tests": {
+        "description": "To avoid floating-point precision mismatch assertions between MS-DOS x87 architecture and modern V8 IEEE-754, the test result is multiplied by 1000 and clamped to an integer.",
+        "setup": [
+          "TanZero = CINT(TAN(0) * 1000)"
+        ],
+        "assertions": [
+          { "var": "TanZero", "val": 0, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "ATN Function",
+      "syntax": "ATN(numeric_expression)",
+      "description": "Returns the arctangent of a numeric expression (in radians).",
+      "example": {
+        "code": [
+          "PRINT ATN(0)"
+        ],
+        "output": " 0 "
+      },
+      "quirks_and_tests": {
+        "description": "To avoid floating-point precision mismatch assertions between MS-DOS x87 architecture and modern V8 IEEE-754, the test result is multiplied by 1000 and clamped to an integer.",
+        "setup": [
+          "AtnZero = CINT(ATN(0) * 1000)"
+        ],
+        "assertions": [
+          { "var": "AtnZero", "val": 0, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "EXP Function",
+      "syntax": "EXP(numeric_expression)",
+      "description": "Returns 'e' (the base of natural logarithms) raised to the power of the specified expression.",
+      "example": {
+        "code": [
+          "PRINT EXP(0)"
+        ],
+        "output": " 1 "
+      },
+      "quirks_and_tests": {
+        "description": "To avoid floating-point precision mismatch assertions between MS-DOS x87 architecture and modern V8 IEEE-754, the test result is multiplied by 1000 and clamped to an integer.",
+        "setup": [
+          "ExpZero = CINT(EXP(0) * 1000)"
+        ],
+        "assertions": [
+          { "var": "ExpZero", "val": 1000, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "LOG Function",
+      "syntax": "LOG(numeric_expression)",
+      "description": "Returns the natural logarithm of a numeric expression.",
+      "example": {
+        "code": [
+          "PRINT LOG(1)"
+        ],
+        "output": " 0 "
+      },
+      "quirks_and_tests": {
+        "description": "To avoid floating-point precision mismatch assertions between MS-DOS x87 architecture and modern V8 IEEE-754, the test result is multiplied by 1000 and clamped to an integer.",
+        "setup": [
+          "LogOne = CINT(LOG(1) * 1000)"
+        ],
+        "assertions": [
+          { "var": "LogOne", "val": 0, "type": "number" }
+        ]
+      }
+    }
+  ]
+}

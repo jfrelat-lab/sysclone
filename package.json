@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "build:catalog": "node tools/build_catalog.js",
-    "start": "npm run build:catalog && node server.js",
-    "test": "node tests/orchestrator.js"
+    "build:truth": "node tools/build_truth.js",
+    "start": "npm run build:truth && npm run build:catalog && node server.js",
+    "test": "npm run build:truth && node tests/orchestrator.js"
   },
   "repository": {
     "type": "git",
