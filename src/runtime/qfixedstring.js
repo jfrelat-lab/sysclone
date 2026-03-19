@@ -43,4 +43,7 @@ export class QFixedString {
     // JS Engine overrides for natural string concatenation and logic evaluation
     toString() { return this.value; }
     valueOf() { return this.value; }
+
+    // Native JSON serialization override for the Test Runner (assertEqual)
+    toJSON() { return this.value; }
 }

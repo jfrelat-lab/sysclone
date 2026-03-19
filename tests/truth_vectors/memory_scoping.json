@@ -2,6 +2,27 @@
   "suite": "STDLIB: Memory, Types & Structures",
   "vectors": [
     {
+      "name": "Default Implicit Typing (SINGLE)",
+      "syntax": "Variable = value",
+      "description": "By default, QBasic treats all undeclared variables without a type suffix as Single-precision floats (!). They retain fractional values without rounding.",
+      "example": {
+        "code": [
+          "DefaultFloat = 3.14",
+          "PRINT DefaultFloat"
+        ],
+        "output": " 3.14 "
+      },
+      "quirks_and_tests": {
+        "description": "Ensures the engine natively defaults to Single precision when no DEF type or suffix is active.",
+        "setup": [
+          "DefaultFloat = 3.14"
+        ],
+        "assertions": [
+          { "var": "DefaultFloat", "val": 3.14, "type": "number" }
+        ]
+      }
+    },
+    {
       "name": "DEFINT Statement",
       "syntax": "DEFINT letter[-letter]",
       "description": "Sets the default data type for variables to Integer.",
@@ -41,6 +62,7 @@
       "quirks_and_tests": {
         "description": "Forces untyped variables to default to Single-precision. This preserves fractional values without mathematical rounding. While QBasic defaults to Single precision natively, DEFSNG is used to explicitly override a previous DEFINT.",
         "setup": [
+          "DEFINT A-Z",
           "DEFSNG A-Z",
           "ImplicitSng = 5.8"
         ],

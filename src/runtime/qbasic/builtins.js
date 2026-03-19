@@ -2,6 +2,16 @@
 import { getCharFromCP437, getCP437FromChar } from '../../hardware/encoding.js';
 import { BuiltInTokens } from '../../parser/qbasic/tokens.js';
 
+/**
+ * MS-DOS "Banker's Rounding" (Round half to even).
+ * Optimized for V8: relies on native Math.round (+infinity bias) 
+ * and corrects the odd halves with a simple decrement.
+ */
+export function bankersRound(n) {
+    const r = Math.round(n);
+    return (Math.abs(n % 1) === 0.5 && r % 2 !== 0) ? r - 1 : r;
+}
+
 // --- Complex Native Functions ---
 
 const executeSTRING$ = (lenArg, charArg) => {
@@ -38,15 +48,20 @@ const executeINSTR = (arg1, arg2, arg3) => {
  * Converts a numeric expression to a hexadecimal string.
  * Accurately emulates QBasic's specific conversion quirks:
  * 1. Automatically rounds floating-point numbers to the nearest integer.
- * 2. Handles negative numbers by casting them to their 32-bit unsigned two's complement.
+ * 2. Handles negative numbers by casting them to their 16-bit or 32-bit unsigned two's complement.
  * 3. Enforces an uppercase string output.
  */
 const executeHEX$ = (val) => {
     let n = Math.round(Number(val) || 0);
     
-    // Convert negative numbers to 32-bit unsigned integer (MS-DOS memory behavior)
     if (n < 0) {
-        n = (n >>> 0); 
+        // Emulate MS-DOS architecture: Default to 16-bit boundaries.
+        // If the number exceeds the 16-bit signed minimum, cast to 32-bit.
+        if (n >= -32768) {
+            n = (n >>> 0) & 0xFFFF; // 16-bit two's complement mask
+        } else {
+            n = (n >>> 0); // 32-bit two's complement mask
+        }
     }
     
     return n.toString(16).toUpperCase();
@@ -102,7 +117,7 @@ export const BuiltIns = {
     // --- Mathematics ---
     [BuiltInTokens.INT]: (n) => Math.floor(n || 0),
     [BuiltInTokens.FIX]: (n) => Math.trunc(n || 0), // Truncates towards zero
-    [BuiltInTokens.CINT]: (n) => Math.round(n || 0), // Rounds to nearest integer
+    [BuiltInTokens.CINT]: (n) => bankersRound(n || 0), // Rounds to nearest integer with Banker's rounding
     [BuiltInTokens.RND]: () => Math.random(),
     [BuiltInTokens.SIN]: (n) => Math.sin(n || 0),
     [BuiltInTokens.COS]: (n) => Math.cos(n || 0),

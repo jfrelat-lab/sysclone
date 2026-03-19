@@ -100,14 +100,18 @@
         "output": " 2 "
       },
       "quirks_and_tests": {
-        "description": "CRITICAL QUIRK: Both operands are rounded to integers BEFORE the division occurs. The final result is then truncated to an integer.",
+        "description": "CRITICAL QUIRK: Both operands are rounded to integers (Banker's Rounding) BEFORE the division occurs. Using float suffix (!) prevents DEFINT masking during tests. Evaluates rounding of .5 to the nearest even integer.",
         "setup": [
-          "IntDiv = 5 \\ 2",
-          "IntDivRound = 5.6 \\ 1.9"
+          "IntDiv! = 5 \\ 2",
+          "IntDivRound! = 5.6 \\ 1.9",
+          "IntDivBankerEven! = 2.5 \\ 1",
+          "IntDivBankerOdd! = 3.5 \\ 1"
         ],
         "assertions": [
-          { "var": "IntDiv", "val": 2, "type": "number" },
-          { "var": "IntDivRound", "val": 3, "type": "number" }
+          { "var": "IntDiv!", "val": 2, "type": "number" },
+          { "var": "IntDivRound!", "val": 3, "type": "number" },
+          { "var": "IntDivBankerEven!", "val": 2, "type": "number" },
+          { "var": "IntDivBankerOdd!", "val": 4, "type": "number" }
         ]
       }
     },
@@ -122,16 +126,16 @@
         "output": " 1 "
       },
       "quirks_and_tests": {
-        "description": "Like the backslash operator, MOD rounds its operands to integers BEFORE performing the operation. The result inherits the sign of the first operand.",
+        "description": "Like the backslash operator, MOD rounds its operands to integers BEFORE performing the operation. The result inherits the sign of the first operand. Using float suffix (!) prevents DEFINT masking during tests.",
         "setup": [
-          "ModNorm = 10 MOD 3",
-          "ModNeg = -10 MOD 3",
-          "ModRound = 10.6 MOD 3"
+          "ModNorm! = 10 MOD 3",
+          "ModNeg! = -10 MOD 3",
+          "ModRound! = 10.6 MOD 3"
         ],
         "assertions": [
-          { "var": "ModNorm", "val": 1, "type": "number" },
-          { "var": "ModNeg", "val": -1, "type": "number" },
-          { "var": "ModRound", "val": 2, "type": "number" }
+          { "var": "ModNorm!", "val": 1, "type": "number" },
+          { "var": "ModNeg!", "val": -1, "type": "number" },
+          { "var": "ModRound!", "val": 2, "type": "number" }
         ]
       }
     },

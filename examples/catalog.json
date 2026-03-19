@@ -1,4 +1,5 @@
 [
+  "compat.bas",
   "gorilla.bas",
   "graphics_test.bas",
   "mandelbrot.bas",

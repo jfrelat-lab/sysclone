@@ -1,6 +1,6 @@
 // src/runtime/environment.js
-
 import { QFixedString } from './qfixedstring.js';
+import { bankersRound } from './qbasic/builtins.js';
 
 /**
  * A specialized Map that transparently handles MS-DOS variable aliasing.
@@ -53,7 +53,10 @@ export class Environment {
         
         this.types = new Map(); 
         this.subs = new Map();
-        this.defIntRanges = []; 
+
+        // 26-slot array for A-Z implicit typing (Defaults to SINGLE in QBasic)
+        this.defaultTypes = new Array(26).fill('SINGLE');
+
         this.dataBank = [];
         this.dataPointer = 0;
     }
@@ -73,17 +76,27 @@ export class Environment {
         return this.sharedEnv.dataBank.length;
     }
 
-    // --- IMPLICIT TYPING MANAGEMENT (DEFINT) ---
-    defineDefInt(range) {
-        this.sharedEnv.defIntRanges.push(range.toUpperCase());
+    // --- IMPLICIT TYPING MANAGEMENT (DEFINT / DEFSNG) ---
+
+    /**
+     * Sets the default type for a range of starting letters (e.g., 'A-Z').
+     */
+    setDefaultType(range, type) {
+        const startCode = range.toUpperCase().charCodeAt(0);
+        const endCode = range.toUpperCase().charCodeAt(2);
+        for (let i = startCode; i <= endCode; i++) {
+            this.sharedEnv.defaultTypes[i - 65] = type;
+        }
     }
+
     isImplicitInteger(name) {
         if (name.endsWith('%') || name.endsWith('&')) return true;
         if (name.endsWith('$') || name.endsWith('!') || name.endsWith('#')) return false;
 
-        const first = name.charAt(0).toUpperCase();
-        for (let range of this.sharedEnv.defIntRanges) {
-            if (first >= range.charAt(0) && first <= range.charAt(2)) return true;
+        const firstCode = name.toUpperCase().charCodeAt(0);
+        // Check if the starting letter falls within standard A-Z bounds
+        if (firstCode >= 65 && firstCode <= 90) {
+            return this.sharedEnv.defaultTypes[firstCode - 65] === 'INTEGER';
         }
         return false;
     }
@@ -165,7 +178,7 @@ export class Environment {
     assign(name, value) {
         const upperName = name.toUpperCase();
         if (this.isImplicitInteger(name) && typeof value === 'number') {
-            value = Math.round(value); 
+            value = bankersRound(value); // Apply MS-DOS Banker's Rounding!
         }
 
         const writeToMem = (vault) => {

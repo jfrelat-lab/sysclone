@@ -1,7 +1,8 @@
 // src/runtime/evaluator.js
 import { Environment } from './environment.js';
 import { QArray } from './qarray.js';
-import { BuiltIns } from './qbasic/builtins.js';
+import { QFixedString } from './qfixedstring.js';
+import { BuiltIns, bankersRound } from './qbasic/builtins.js';
 import { toCP437Array } from '../hardware/encoding.js';
 import { BuiltInTokens } from '../parser/qbasic/tokens.js';
 
@@ -77,10 +78,6 @@ export class Evaluator {
                             // Recurse to hoist DATA, but lock the scope so local labels don't leak globally!
                             this.scanLabels(node[i].body, true);
                         }
-                    } else if (node[i].type === 'DEFINT') {
-                        if (!insideSub) this.env.defineDefInt(node[i].range);
-                    } else if (node[i].type === 'DEFSNG') {
-                        // QBasic defaults to Single precision natively, so we safely absorb this statement.
                     } else if (node[i].type === 'TYPE_DECL') {
                         if (!insideSub) this.env.defineType(node[i].name, node[i].fields);
                     } else if (node[i].type === 'DATA') {
@@ -1021,7 +1018,15 @@ export class Evaluator {
             }
 
             // --- DOS / HARDWARE STUBS ---
-            case 'DATA': case 'DECLARE': case 'DEFINT': case 'DEFSNG':
+            case 'DEFINT':
+                this.env.setDefaultType(node.range, 'INTEGER');
+                return null;
+            
+            case 'DEFSNG':
+                this.env.setDefaultType(node.range, 'SINGLE');
+                return null;
+
+            case 'DATA': case 'DECLARE':
             case 'RANDOMIZE': case 'WIDTH':
                 // Gracefully ignore these specific DOS hardware commands
                 return null;
@@ -1223,14 +1228,20 @@ export class Evaluator {
     }
 
     *evaluateBinaryOp(node) {
-        const left = yield* this.evaluate(node.left);
-        const right = yield* this.evaluate(node.right);
+        let left = yield* this.evaluate(node.left);
+        let right = yield* this.evaluate(node.right);
+
+        // Strict primitive extraction for VM Memory Classes
+        // Ensures operators like '=' compare primitive values, not object references.
+        if (left instanceof QFixedString) left = left.value;
+        if (right instanceof QFixedString) right = right.value;
+
         switch (node.operator) {
             case '^': return left ** right;
             case '+': return left + right; case '-': return left - right;
             case '*': return left * right; case '/': return left / right;
-            case '\\': return Math.trunc(Math.round(left) / Math.round(right)); // Pure QBasic Integer Division
-            case 'MOD': return left % right;
+            case '\\': return Math.trunc(bankersRound(left) / bankersRound(right));
+            case 'MOD': return bankersRound(left) % bankersRound(right);
             case '=': return left === right ? -1 : 0; case '<>': return left !== right ? -1 : 0;
             case '>': return left > right ? -1 : 0; case '<': return left < right ? -1 : 0;
             case '>=': return left >= right ? -1 : 0; case '<=': return left <= right ? -1 : 0;

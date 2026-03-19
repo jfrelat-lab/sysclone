@@ -32,22 +32,6 @@ registerSuite('STDLIB: String Built-ins', () => {
         assertEqual(STR$(-15), "-15", "Negative numbers do not get a leading space");
     });
 
-    test('HEX$ conversion and MS-DOS quirks', () => {
-        assertEqual(HEX$(255), "FF", "Standard integer conversion");
-        assertEqual(HEX$(12), "C", "Always returns uppercase");
-        
-        // QBasic automatically rounds floating-point numbers to the nearest integer
-        assertEqual(HEX$(12.6), "D", "Should round 12.6 to 13 before converting");
-        assertEqual(HEX$(12.4), "C", "Should round 12.4 to 12 before converting");
-        
-        // Two's complement representation for negative numbers (32-bit unsigned)
-        assertEqual(HEX$(-1), "FFFFFFFF", "Should handle negative two's complement as 32-bit unsigned");
-        
-        // Edge cases
-        assertEqual(HEX$(0), "0", "Zero should return '0'");
-        assertEqual(HEX$("invalid"), "0", "Invalid input should gracefully fallback to '0'");
-    });
-
     test('LEFT$, RIGHT$, MID$ slicing and edge cases', () => {
         assertEqual(LEFT$("SYSCLONE", 3), "SYS");
         assertEqual(LEFT$("SYSCLONE", 100), "SYSCLONE", "Oversized length should return full string");

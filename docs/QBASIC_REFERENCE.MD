@@ -4,7 +4,7 @@
 
 ## 🔠 Alphabetical Index
 
-[/ (Floating-Point Division)](#-floating-point-division-) • [\ (Integer Division)](#-integer-division-) • [ABS Function](#abs-function) • [ASC Function](#asc-function) • [ATN Function](#atn-function) • [CHR$ Function](#chr-function) • [CINT Function](#cint-function) • [COS Function](#cos-function) • [DEFINT Statement](#defint-statement) • [DEFSNG Statement](#defsng-statement) • [ERASE Statement (Static Arrays)](#erase-statement-static-arrays-) • [EXP Function](#exp-function) • [Explicit Type Suffix Override](#explicit-type-suffix-override) • [FIX Function](#fix-function) • [Fixed-Length String Padding](#fixed-length-string-padding) • [Fixed-Length String Truncation](#fixed-length-string-truncation) • [HEX$ Function](#hex-function) • [INSTR Function](#instr-function) • [INT Function](#int-function) • [LCASE$ Function](#lcase-function) • [LEFT$ Function](#left-function) • [LEN Function](#len-function) • [LOG Function](#log-function) • [LTRIM$ Function](#ltrim-function) • [Memory Aliasing (DIM AS STRING)](#memory-aliasing-dim-as-string-) • [MID$ Function](#mid-function) • [MOD Operator](#mod-operator) • [RIGHT$ Function](#right-function) • [RTRIM$ Function](#rtrim-function) • [SIN Function](#sin-function) • [SPACE$ Function](#space-function) • [SQR Function](#sqr-function) • [STR$ Function](#str-function) • [STRING$ Function](#string-function) • [SWAP Statement](#swap-statement) • [TAN Function](#tan-function) • [UCASE$ Function](#ucase-function) • [VAL Function](#val-function)
+[/ (Floating-Point Division)](#-floating-point-division-) • [\ (Integer Division)](#-integer-division-) • [ABS Function](#abs-function) • [ASC Function](#asc-function) • [ATN Function](#atn-function) • [CHR$ Function](#chr-function) • [CINT Function](#cint-function) • [COS Function](#cos-function) • [Default Implicit Typing (SINGLE)](#default-implicit-typing-single-) • [DEFINT Statement](#defint-statement) • [DEFSNG Statement](#defsng-statement) • [ERASE Statement (Static Arrays)](#erase-statement-static-arrays-) • [EXP Function](#exp-function) • [Explicit Type Suffix Override](#explicit-type-suffix-override) • [FIX Function](#fix-function) • [Fixed-Length String Padding](#fixed-length-string-padding) • [Fixed-Length String Truncation](#fixed-length-string-truncation) • [HEX$ Function](#hex-function) • [INSTR Function](#instr-function) • [INT Function](#int-function) • [LCASE$ Function](#lcase-function) • [LEFT$ Function](#left-function) • [LEN Function](#len-function) • [LOG Function](#log-function) • [LTRIM$ Function](#ltrim-function) • [Memory Aliasing (DIM AS STRING)](#memory-aliasing-dim-as-string-) • [MID$ Function](#mid-function) • [MOD Operator](#mod-operator) • [RIGHT$ Function](#right-function) • [RTRIM$ Function](#rtrim-function) • [SIN Function](#sin-function) • [SPACE$ Function](#space-function) • [SQR Function](#sqr-function) • [STR$ Function](#str-function) • [STRING$ Function](#string-function) • [SWAP Statement](#swap-statement) • [TAN Function](#tan-function) • [UCASE$ Function](#ucase-function) • [VAL Function](#val-function)
 
 ---
 
@@ -43,6 +43,7 @@
   - [ASC Function](#asc-function)
   - [INSTR Function](#instr-function)
 - **STDLIB: Memory, Types & Structures**
+  - [Default Implicit Typing (SINGLE)](#default-implicit-typing-single-)
   - [DEFINT Statement](#defint-statement)
   - [DEFSNG Statement](#defsng-statement)
   - [Explicit Type Suffix Override](#explicit-type-suffix-override)
@@ -197,16 +198,20 @@ PRINT 5 \ 2
 
 #### 🔬 Hardware Quirks & Edge Cases
 
-CRITICAL QUIRK: Both operands are rounded to integers BEFORE the division occurs. The final result is then truncated to an integer.
+CRITICAL QUIRK: Both operands are rounded to integers (Banker's Rounding) BEFORE the division occurs. Using float suffix (!) prevents DEFINT masking during tests. Evaluates rounding of .5 to the nearest even integer.
 
 ```basic
-IntDiv = 5 \ 2
-IntDivRound = 5.6 \ 1.9
+IntDiv! = 5 \ 2
+IntDivRound! = 5.6 \ 1.9
+IntDivBankerEven! = 2.5 \ 1
+IntDivBankerOdd! = 3.5 \ 1
 ```
 **Memory State (End of Execution):**
 ```text
-IntDiv      = 2            (number)
-IntDivRound = 3            (number)
+IntDiv!           = 2            (number)
+IntDivRound!      = 3            (number)
+IntDivBankerEven! = 2            (number)
+IntDivBankerOdd!  = 4            (number)
 ```
 
 ---
@@ -228,18 +233,18 @@ PRINT 10 MOD 3
 
 #### 🔬 Hardware Quirks & Edge Cases
 
-Like the backslash operator, MOD rounds its operands to integers BEFORE performing the operation. The result inherits the sign of the first operand.
+Like the backslash operator, MOD rounds its operands to integers BEFORE performing the operation. The result inherits the sign of the first operand. Using float suffix (!) prevents DEFINT masking during tests.
 
 ```basic
-ModNorm = 10 MOD 3
-ModNeg = -10 MOD 3
-ModRound = 10.6 MOD 3
+ModNorm! = 10 MOD 3
+ModNeg! = -10 MOD 3
+ModRound! = 10.6 MOD 3
 ```
 **Memory State (End of Execution):**
 ```text
-ModNorm  = 1            (number)
-ModNeg   = -1           (number)
-ModRound = 2            (number)
+ModNorm!  = 1            (number)
+ModNeg!   = -1           (number)
+ModRound! = 2            (number)
 ```
 
 ---
@@ -987,6 +992,36 @@ OutBoundsIdx = 0            (number)
 
 ## STDLIB: Memory, Types & Structures
 
+### Default Implicit Typing (SINGLE)
+
+**Syntax:** `Variable = value`
+
+By default, QBasic treats all undeclared variables without a type suffix as Single-precision floats (!). They retain fractional values without rounding.
+
+**Example:**
+```basic
+DefaultFloat = 3.14
+PRINT DefaultFloat
+```
+**Output:**
+```text
+ 3.14 
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Ensures the engine natively defaults to Single precision when no DEF type or suffix is active.
+
+```basic
+DefaultFloat = 3.14
+```
+**Memory State (End of Execution):**
+```text
+DefaultFloat = 3.14         (number)
+```
+
+---
+
 ### DEFINT Statement
 
 **Syntax:** `DEFINT letter[-letter]`
@@ -1043,6 +1078,7 @@ PRINT Score
 Forces untyped variables to default to Single-precision. This preserves fractional values without mathematical rounding. While QBasic defaults to Single precision natively, DEFSNG is used to explicitly override a previous DEFINT.
 
 ```basic
+DEFINT A-Z
 DEFSNG A-Z
 ImplicitSng = 5.8
 ```
