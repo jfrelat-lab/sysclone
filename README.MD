@@ -24,7 +24,7 @@ The ultimate goal of this project is to execute historical and modern programmin
 These classic MS-DOS applications are currently running purely on our JavaScript Universal Interpreter engine. 
 Try them live in the WebVM: 
 
-[🦍 Gorilla](#gorilla) | [🐍 Nibbles](#nibbles) | [📊 Sortdemo](#sortdemo)
+[🦍 Gorilla](https://jfrelat-lab.github.io/sysclone/#gorilla) | [🐍 Nibbles](https://jfrelat-lab.github.io/sysclone/#nibbles) | [📊 Sortdemo](https://jfrelat-lab.github.io/sysclone/#sortdemo)
 
 | Gorilla.bas | Nibbles.bas | Sortdemo.bas |
 | :---: | :---: | :---: |
