@@ -7,7 +7,9 @@
     "build:catalog": "node tools/build_catalog.js",
     "build:truth": "node tools/build_truth.js",
     "start": "npm run build:truth && npm run build:catalog && node server.js",
-    "test": "npm run build:truth && node tests/orchestrator.js"
+    "test": "npm run build:truth && node tests/orchestrator.js",
+    "test:qbasic": "npm run build:truth && node tests/orchestrator.js qbasic",
+    "test:hardware": "node tests/orchestrator.js hardware"
   },
   "repository": {
     "type": "git",

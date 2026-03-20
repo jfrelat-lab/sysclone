@@ -7,6 +7,7 @@ import { pathToFileURL, fileURLToPath } from 'url';
 /**
  * Sysclone Test Orchestrator
  * Automatically discovers and executes all .test.js files within the src directory.
+ * Supports optional substring filtering via CLI argument.
  */
 
 // --- Absolute Path Resolution ---
@@ -14,6 +15,8 @@ import { pathToFileURL, fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SRC_DIR = path.resolve(__dirname, '../src');
+
+const FILTER = process.argv[2] ? process.argv[2].toLowerCase() : '';
 
 /**
  * Recursively scans a directory for test files and imports them.
@@ -30,6 +33,10 @@ async function discoverAndImportTests(dir) {
             // Recursive call for subdirectories
             await discoverAndImportTests(fullPath);
         } else if (entry.name.endsWith('.test.js')) {
+            if (FILTER && !fullPath.toLowerCase().includes(FILTER)) {
+                continue;
+            }
+
             const fileURL = pathToFileURL(fullPath).href;
             
             try {
@@ -58,7 +65,7 @@ async function discoverAndImportTests(dir) {
 
 async function main() {
     try {
-        console.log(`🔍 Scanning for test suites in: ${SRC_DIR}`);
+        console.log(`🔍 Scanning for test suites in: ${SRC_DIR}${FILTER ? ` (Filter: '${FILTER}')` : ''}`);
         
         // 1. Scan the src directory for all test suites using the absolute path
         await discoverAndImportTests(SRC_DIR);
