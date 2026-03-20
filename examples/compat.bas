@@ -548,7 +548,166 @@ ELSE
   PRINT "FAIL: [INSTR Function] OutBoundsIdx expected "; 0; " but got "; OutBoundsIdx
 END IF
 
-' --- SUITE: STDLIB: Memory, Types & Structures ---
+' --- SUITE: CORE: Control Flow & Jumps ---
+
+' Vector: FOR...NEXT Statement
+' 1. Terminal Overshoot (Positive & Negative)
+CountA = 0: FOR I = 1 TO 5: CountA = CountA + 1: NEXT
+CountB = 0: FOR J = 5 TO 1 STEP -1: CountB = CountB + 1: NEXT
+
+' 2. Bound Immutability
+Limit = 3: Inc = 1: Runs = 0
+FOR K = 1 TO Limit STEP Inc
+  Runs = Runs + 1
+  Limit = 10
+  Inc = 5
+NEXT
+
+' 3. Iterator Mutation
+MutRuns = 0
+FOR M = 1 TO 5
+  MutRuns = MutRuns + 1
+  M = M + 1
+NEXT
+TotalTests% = TotalTests% + 1
+IF CountA = 5 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] CountA expected "; 5; " but got "; CountA
+END IF
+TotalTests% = TotalTests% + 1
+IF I = 6 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] I expected "; 6; " but got "; I
+END IF
+TotalTests% = TotalTests% + 1
+IF CountB = 5 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] CountB expected "; 5; " but got "; CountB
+END IF
+TotalTests% = TotalTests% + 1
+IF J = 0 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] J expected "; 0; " but got "; J
+END IF
+TotalTests% = TotalTests% + 1
+IF Runs = 3 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] Runs expected "; 3; " but got "; Runs
+END IF
+TotalTests% = TotalTests% + 1
+IF K = 4 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] K expected "; 4; " but got "; K
+END IF
+TotalTests% = TotalTests% + 1
+IF Limit = 10 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] Limit expected "; 10; " but got "; Limit
+END IF
+TotalTests% = TotalTests% + 1
+IF Inc = 5 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] Inc expected "; 5; " but got "; Inc
+END IF
+TotalTests% = TotalTests% + 1
+IF MutRuns = 3 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] MutRuns expected "; 3; " but got "; MutRuns
+END IF
+TotalTests% = TotalTests% + 1
+IF M = 7 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [FOR...NEXT Statement] M expected "; 7; " but got "; M
+END IF
+
+' Vector: DO WHILE / UNTIL (Pre-test Loop)
+' 1. WHILE False -> 0 runs
+RunsPreWhile = 0
+DO WHILE 0
+  RunsPreWhile = RunsPreWhile + 1
+LOOP
+
+' 2. UNTIL True -> 0 runs
+RunsPreUntil = 0
+DO UNTIL -1
+  RunsPreUntil = RunsPreUntil + 1
+LOOP
+
+' 3. WHILE Arbitrary Float (True) -> 1 run
+RunsFloat = 0
+CondF = 42.5
+DO WHILE CondF
+  RunsFloat = RunsFloat + 1
+  CondF = 0
+LOOP
+TotalTests% = TotalTests% + 1
+IF RunsPreWhile = 0 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [DO WHILE / UNTIL (Pre-test Loop)] RunsPreWhile expected "; 0; " but got "; RunsPreWhile
+END IF
+TotalTests% = TotalTests% + 1
+IF RunsPreUntil = 0 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [DO WHILE / UNTIL (Pre-test Loop)] RunsPreUntil expected "; 0; " but got "; RunsPreUntil
+END IF
+TotalTests% = TotalTests% + 1
+IF RunsFloat = 1 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [DO WHILE / UNTIL (Pre-test Loop)] RunsFloat expected "; 1; " but got "; RunsFloat
+END IF
+
+' Vector: DO ... LOOP WHILE / UNTIL (Post-test Loop)
+RunsPostA = 0
+DO
+  RunsPostA = RunsPostA + 1
+LOOP WHILE 0
+
+RunsPostB = 0
+DO
+  RunsPostB = RunsPostB + 1
+LOOP UNTIL -1
+TotalTests% = TotalTests% + 1
+IF RunsPostA = 1 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [DO ... LOOP WHILE / UNTIL (Post-test Loop)] RunsPostA expected "; 1; " but got "; RunsPostA
+END IF
+TotalTests% = TotalTests% + 1
+IF RunsPostB = 1 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [DO ... LOOP WHILE / UNTIL (Post-test Loop)] RunsPostB expected "; 1; " but got "; RunsPostB
+END IF
+
+' --- SUITE: CORE: Memory, Types & Structures ---
 
 ' Vector: Default Implicit Typing (SINGLE)
 DefaultFloat = 3.14

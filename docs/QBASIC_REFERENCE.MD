@@ -4,7 +4,7 @@
 
 ## 🔠 Alphabetical Index
 
-[/ (Floating-Point Division)](#-floating-point-division-) • [\ (Integer Division)](#-integer-division-) • [ABS Function](#abs-function) • [ASC Function](#asc-function) • [ATN Function](#atn-function) • [CHR$ Function](#chr-function) • [CINT Function](#cint-function) • [COS Function](#cos-function) • [Default Implicit Typing (SINGLE)](#default-implicit-typing-single-) • [DEFINT Statement](#defint-statement) • [DEFSNG Statement](#defsng-statement) • [ERASE Statement (Static Arrays)](#erase-statement-static-arrays-) • [EXP Function](#exp-function) • [Explicit Type Suffix Override](#explicit-type-suffix-override) • [FIX Function](#fix-function) • [Fixed-Length String Padding](#fixed-length-string-padding) • [Fixed-Length String Truncation](#fixed-length-string-truncation) • [HEX$ Function](#hex-function) • [INSTR Function](#instr-function) • [INT Function](#int-function) • [LCASE$ Function](#lcase-function) • [LEFT$ Function](#left-function) • [LEN Function](#len-function) • [LOG Function](#log-function) • [LTRIM$ Function](#ltrim-function) • [Memory Aliasing (DIM AS STRING)](#memory-aliasing-dim-as-string-) • [MID$ Function](#mid-function) • [MOD Operator](#mod-operator) • [RIGHT$ Function](#right-function) • [RTRIM$ Function](#rtrim-function) • [SIN Function](#sin-function) • [SPACE$ Function](#space-function) • [SQR Function](#sqr-function) • [STR$ Function](#str-function) • [STRING$ Function](#string-function) • [SWAP Statement](#swap-statement) • [TAN Function](#tan-function) • [UCASE$ Function](#ucase-function) • [VAL Function](#val-function)
+[/ (Floating-Point Division)](#-floating-point-division-) • [\ (Integer Division)](#-integer-division-) • [ABS Function](#abs-function) • [ASC Function](#asc-function) • [ATN Function](#atn-function) • [CHR$ Function](#chr-function) • [CINT Function](#cint-function) • [COS Function](#cos-function) • [Default Implicit Typing (SINGLE)](#default-implicit-typing-single-) • [DEFINT Statement](#defint-statement) • [DEFSNG Statement](#defsng-statement) • [DO ... LOOP WHILE / UNTIL (Post-test Loop)](#do-loop-while-until-post-test-loop-) • [DO WHILE / UNTIL (Pre-test Loop)](#do-while-until-pre-test-loop-) • [ERASE Statement (Static Arrays)](#erase-statement-static-arrays-) • [EXP Function](#exp-function) • [Explicit Type Suffix Override](#explicit-type-suffix-override) • [FIX Function](#fix-function) • [Fixed-Length String Padding](#fixed-length-string-padding) • [Fixed-Length String Truncation](#fixed-length-string-truncation) • [FOR...NEXT Statement](#for-next-statement) • [HEX$ Function](#hex-function) • [INSTR Function](#instr-function) • [INT Function](#int-function) • [LCASE$ Function](#lcase-function) • [LEFT$ Function](#left-function) • [LEN Function](#len-function) • [LOG Function](#log-function) • [LTRIM$ Function](#ltrim-function) • [Memory Aliasing (DIM AS STRING)](#memory-aliasing-dim-as-string-) • [MID$ Function](#mid-function) • [MOD Operator](#mod-operator) • [RIGHT$ Function](#right-function) • [RTRIM$ Function](#rtrim-function) • [SIN Function](#sin-function) • [SPACE$ Function](#space-function) • [SQR Function](#sqr-function) • [STR$ Function](#str-function) • [STRING$ Function](#string-function) • [SWAP Statement](#swap-statement) • [TAN Function](#tan-function) • [UCASE$ Function](#ucase-function) • [VAL Function](#val-function)
 
 ---
 
@@ -42,7 +42,11 @@
   - [CHR$ Function](#chr-function)
   - [ASC Function](#asc-function)
   - [INSTR Function](#instr-function)
-- **STDLIB: Memory, Types & Structures**
+- **CORE: Control Flow & Jumps**
+  - [FOR...NEXT Statement](#for-next-statement)
+  - [DO WHILE / UNTIL (Pre-test Loop)](#do-while-until-pre-test-loop-)
+  - [DO ... LOOP WHILE / UNTIL (Post-test Loop)](#do-loop-while-until-post-test-loop-)
+- **CORE: Memory, Types & Structures**
   - [Default Implicit Typing (SINGLE)](#default-implicit-typing-single-)
   - [DEFINT Statement](#defint-statement)
   - [DEFSNG Statement](#defsng-statement)
@@ -990,7 +994,162 @@ OutBoundsIdx = 0            (number)
 
 ---
 
-## STDLIB: Memory, Types & Structures
+## CORE: Control Flow & Jumps
+
+### FOR...NEXT Statement
+
+**Syntax:** `FOR counter = start TO end [STEP increment] ... NEXT [counter]`
+
+Iterates a block of code based on a counter variable. The loop continues until the counter passes the terminal value.
+
+**Example:**
+```basic
+FOR I = 1 TO 3
+  PRINT I;
+NEXT
+```
+**Output:**
+```text
+ 1  2  3 
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL QUIRKS:
+1. **Terminal Overshoot**: The loop iterator always increments past the limit, leaving the leaked value in memory.
+2. **Bound Immutability**: The TO and STEP expressions are evaluated exactly ONCE upon entering the loop. Mutating their source variables inside the loop has no effect.
+3. **Iterator Mutation**: Modifying the counter explicitly inside the loop directly affects the remaining cycles.
+
+```basic
+' 1. Terminal Overshoot (Positive & Negative)
+CountA = 0: FOR I = 1 TO 5: CountA = CountA + 1: NEXT
+CountB = 0: FOR J = 5 TO 1 STEP -1: CountB = CountB + 1: NEXT
+
+' 2. Bound Immutability
+Limit = 3: Inc = 1: Runs = 0
+FOR K = 1 TO Limit STEP Inc
+  Runs = Runs + 1
+  Limit = 10
+  Inc = 5
+NEXT
+
+' 3. Iterator Mutation
+MutRuns = 0
+FOR M = 1 TO 5
+  MutRuns = MutRuns + 1
+  M = M + 1
+NEXT
+```
+**Memory State (End of Execution):**
+```text
+CountA  = 5            (number)
+I       = 6            (number)
+CountB  = 5            (number)
+J       = 0            (number)
+Runs    = 3            (number)
+K       = 4            (number)
+Limit   = 10           (number)
+Inc     = 5            (number)
+MutRuns = 3            (number)
+M       = 7            (number)
+```
+
+---
+
+### DO WHILE / UNTIL (Pre-test Loop)
+
+**Syntax:** `DO [{WHILE | UNTIL} condition] ... LOOP`
+
+Evaluates the condition BEFORE executing the block. If the initial condition is unmet, the loop executes 0 times. Truthiness is strict: exactly 0 is FALSE, any other number is TRUE.
+
+**Example:**
+```basic
+Cond = 0
+DO WHILE Cond
+  PRINT "Never prints"
+LOOP
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Proves that a pre-test loop bypasses the block entirely if the condition is false (WHILE 0) or already true (UNTIL -1). Also validates arbitrary float truthiness.
+
+```basic
+' 1. WHILE False -> 0 runs
+RunsPreWhile = 0
+DO WHILE 0
+  RunsPreWhile = RunsPreWhile + 1
+LOOP
+
+' 2. UNTIL True -> 0 runs
+RunsPreUntil = 0
+DO UNTIL -1
+  RunsPreUntil = RunsPreUntil + 1
+LOOP
+
+' 3. WHILE Arbitrary Float (True) -> 1 run
+RunsFloat = 0
+CondF = 42.5
+DO WHILE CondF
+  RunsFloat = RunsFloat + 1
+  CondF = 0
+LOOP
+```
+**Memory State (End of Execution):**
+```text
+RunsPreWhile = 0            (number)
+RunsPreUntil = 0            (number)
+RunsFloat    = 1            (number)
+```
+
+---
+
+### DO ... LOOP WHILE / UNTIL (Post-test Loop)
+
+**Syntax:** `DO ... LOOP [{WHILE | UNTIL} condition]`
+
+Evaluates the condition AFTER executing the block. The loop is guaranteed to execute AT LEAST ONCE, regardless of the initial condition.
+
+**Example:**
+```basic
+Cond = 0
+DO
+  PRINT "Prints exactly once"
+LOOP WHILE Cond
+```
+**Output:**
+```text
+ Prints exactly once 
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Proves the post-test execution flow. A WHILE condition initialized to 0 (FALSE) will still allow exactly one iteration before exiting.
+
+```basic
+RunsPostA = 0
+DO
+  RunsPostA = RunsPostA + 1
+LOOP WHILE 0
+
+RunsPostB = 0
+DO
+  RunsPostB = RunsPostB + 1
+LOOP UNTIL -1
+```
+**Memory State (End of Execution):**
+```text
+RunsPostA = 1            (number)
+RunsPostB = 1            (number)
+```
+
+---
+
+## CORE: Memory, Types & Structures
 
 ### Default Implicit Typing (SINGLE)
 

@@ -1,0 +1,128 @@
+{
+  "suite": "CORE: Control Flow & Jumps",
+  "vectors": [
+    {
+      "name": "FOR...NEXT Statement",
+      "syntax": "FOR counter = start TO end [STEP increment] ... NEXT [counter]",
+      "description": "Iterates a block of code based on a counter variable. The loop continues until the counter passes the terminal value.",
+      "example": {
+        "code": [
+          "FOR I = 1 TO 3",
+          "  PRINT I;",
+          "NEXT"
+        ],
+        "output": " 1  2  3 "
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRKS:\n1. **Terminal Overshoot**: The loop iterator always increments past the limit, leaving the leaked value in memory.\n2. **Bound Immutability**: The TO and STEP expressions are evaluated exactly ONCE upon entering the loop. Mutating their source variables inside the loop has no effect.\n3. **Iterator Mutation**: Modifying the counter explicitly inside the loop directly affects the remaining cycles.",
+        "setup": [
+          "' 1. Terminal Overshoot (Positive & Negative)",
+          "CountA = 0: FOR I = 1 TO 5: CountA = CountA + 1: NEXT",
+          "CountB = 0: FOR J = 5 TO 1 STEP -1: CountB = CountB + 1: NEXT",
+          "",
+          "' 2. Bound Immutability",
+          "Limit = 3: Inc = 1: Runs = 0",
+          "FOR K = 1 TO Limit STEP Inc",
+          "  Runs = Runs + 1",
+          "  Limit = 10",
+          "  Inc = 5",
+          "NEXT",
+          "",
+          "' 3. Iterator Mutation",
+          "MutRuns = 0",
+          "FOR M = 1 TO 5",
+          "  MutRuns = MutRuns + 1",
+          "  M = M + 1",
+          "NEXT"
+        ],
+        "assertions": [
+          { "var": "CountA", "val": 5, "type": "number" },
+          { "var": "I", "val": 6, "type": "number" },
+          { "var": "CountB", "val": 5, "type": "number" },
+          { "var": "J", "val": 0, "type": "number" },
+          { "var": "Runs", "val": 3, "type": "number" },
+          { "var": "K", "val": 4, "type": "number" },
+          { "var": "Limit", "val": 10, "type": "number" },
+          { "var": "Inc", "val": 5, "type": "number" },
+          { "var": "MutRuns", "val": 3, "type": "number" },
+          { "var": "M", "val": 7, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "DO WHILE / UNTIL (Pre-test Loop)",
+      "syntax": "DO [{WHILE | UNTIL} condition] ... LOOP",
+      "description": "Evaluates the condition BEFORE executing the block. If the initial condition is unmet, the loop executes 0 times. Truthiness is strict: exactly 0 is FALSE, any other number is TRUE.",
+      "example": {
+        "code": [
+          "Cond = 0",
+          "DO WHILE Cond",
+          "  PRINT \"Never prints\"",
+          "LOOP"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Proves that a pre-test loop bypasses the block entirely if the condition is false (WHILE 0) or already true (UNTIL -1). Also validates arbitrary float truthiness.",
+        "setup": [
+          "' 1. WHILE False -> 0 runs",
+          "RunsPreWhile = 0",
+          "DO WHILE 0",
+          "  RunsPreWhile = RunsPreWhile + 1",
+          "LOOP",
+          "",
+          "' 2. UNTIL True -> 0 runs",
+          "RunsPreUntil = 0",
+          "DO UNTIL -1",
+          "  RunsPreUntil = RunsPreUntil + 1",
+          "LOOP",
+          "",
+          "' 3. WHILE Arbitrary Float (True) -> 1 run",
+          "RunsFloat = 0",
+          "CondF = 42.5",
+          "DO WHILE CondF",
+          "  RunsFloat = RunsFloat + 1",
+          "  CondF = 0",
+          "LOOP"
+        ],
+        "assertions": [
+          { "var": "RunsPreWhile", "val": 0, "type": "number" },
+          { "var": "RunsPreUntil", "val": 0, "type": "number" },
+          { "var": "RunsFloat", "val": 1, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "DO ... LOOP WHILE / UNTIL (Post-test Loop)",
+      "syntax": "DO ... LOOP [{WHILE | UNTIL} condition]",
+      "description": "Evaluates the condition AFTER executing the block. The loop is guaranteed to execute AT LEAST ONCE, regardless of the initial condition.",
+      "example": {
+        "code": [
+          "Cond = 0",
+          "DO",
+          "  PRINT \"Prints exactly once\"",
+          "LOOP WHILE Cond"
+        ],
+        "output": " Prints exactly once "
+      },
+      "quirks_and_tests": {
+        "description": "Proves the post-test execution flow. A WHILE condition initialized to 0 (FALSE) will still allow exactly one iteration before exiting.",
+        "setup": [
+          "RunsPostA = 0",
+          "DO",
+          "  RunsPostA = RunsPostA + 1",
+          "LOOP WHILE 0",
+          "",
+          "RunsPostB = 0",
+          "DO",
+          "  RunsPostB = RunsPostB + 1",
+          "LOOP UNTIL -1"
+        ],
+        "assertions": [
+          { "var": "RunsPostA", "val": 1, "type": "number" },
+          { "var": "RunsPostB", "val": 1, "type": "number" }
+        ]
+      }
+    }
+  ]
+}

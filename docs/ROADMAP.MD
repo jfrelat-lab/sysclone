@@ -210,15 +210,15 @@
     - [x] Trigonometry (`SIN`, `COS`, `TAN`, `ATN`): Precision normalization for cross-platform assertion.
   - [x] **Suite 3: Memory, Scoping, & Structures (`memory_scoping.json`):**
     - [x] Explicit Aliasing (`DIM X AS STRING` to `X$` mapping).
-    - [x] Implicit Typing (`DEFINT`, `DEFSNG`): First-letter routing.
+    - [x] Implicit Typing (`DEFINT`, `DEFSNG`, Default `SINGLE`): Dynamic runtime evaluation to prevent scope leakage and strict first-letter routing.
     - [x] Fixed-Length Strings (`AS STRING * N`): Space auto-padding and strict truncation.
     - [x] `STATIC`: Vault persistence across subroutine calls vs global isolation.
     - [x] `SHARED`: Tier 1 global routing vs localized shadowing.
     - [x] Pass-by-Reference: Array indices and variables mutating via `CALL`.
     - [x] `SWAP`, `ERASE`: Deep copying UDTs and static array zeroing.
   - [ ] **Suite 4: Control Flow & Jumps (`control_flow.json`):**
-    - [ ] `FOR ... NEXT`: Iterator mutation and terminal value leakage (Step overshoot).
-    - [ ] `DO WHILE/UNTIL`: Truthiness evaluation (any non-zero integer is TRUE).
+    - [x] `FOR ... NEXT`: Iterator mutation and terminal value leakage (Step overshoot).
+    - [x] `DO WHILE/UNTIL`: Truthiness evaluation (any non-zero integer is TRUE).
     - [ ] `SELECT CASE`: Execution of `TO` ranges and cascading conditions.
     - [ ] Single-Line `IF`: Statement chaining via colons (`:`) and `ELSE` binding.
     - [ ] `GOSUB ... RETURN`: Mini-callstack integrity within localized scopes.

@@ -1,5 +1,5 @@
 {
-  "suite": "STDLIB: Memory, Types & Structures",
+  "suite": "CORE: Memory, Types & Structures",
   "vectors": [
     {
       "name": "Default Implicit Typing (SINGLE)",

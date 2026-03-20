@@ -411,30 +411,37 @@ export class Evaluator {
                 return null;
             }
 
-            case 'FOR':
-                const startVal = yield* this.evaluate(node.start);
+            case 'FOR': {
+                // 1. BOUND IMMUTABILITY: Evaluate TO and STEP exactly ONCE before starting
                 const endVal = yield* this.evaluate(node.end);
                 const stepVal = node.step ? yield* this.evaluate(node.step) : 1;
                 
+                // 2. Initialize the iterator directly into MS-DOS memory
+                const startVal = yield* this.evaluate(node.start);
                 this.env.assign(node.variable, startVal);
-                
+
                 while (true) {
-                    yield; 
-                    const currentVal = this.env.lookup(node.variable);
-                    if (stepVal > 0 && currentVal > endVal) break;
-                    if (stepVal < 0 && currentVal < endVal) break;
-                    
-                    const res = yield* this.evaluate(node.body);
-                    if (res && res._control) {
-                        // Catch the EXIT specifically targeted for the FOR loop
-                        if (res._control === 'EXIT' && res.target === 'FOR') break;
-                        // Bubble up other control signals (GOTO, END, EXIT SUB)
-                        return res; 
+                    // --- Virtual CPU Tick ---
+                    // Breathes life into the browser event loop, preventing UI freezes
+                    yield;
+
+                    // 3. Read CURRENT value from memory (crucial if mutated by the body)
+                    let currentVal = this.env.lookup(node.variable);
+
+                    // 4. Bounds Check
+                    if (stepVal >= 0 ? currentVal > endVal : currentVal < endVal) {
+                        break; // Exit loop, leaving the Overshoot value safely in memory
                     }
 
+                    // 5. Execute Body
+                    yield* this.evaluate(node.body);
+
+                    // 6. The NEXT statement: Re-read memory (in case the body mutated it!), apply STEP, and write back
+                    currentVal = this.env.lookup(node.variable);
                     this.env.assign(node.variable, currentVal + stepVal);
                 }
                 return null;
+            }
 
             case 'SELECT_CASE':
                 const testVal = yield* this.evaluate(node.testExpr);

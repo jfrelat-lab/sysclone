@@ -352,7 +352,92 @@ registerSuite('Truth Vector: STDLIB: Strings & Type Casting', () => {
     });
 });
 
-registerSuite('Truth Vector: STDLIB: Memory, Types & Structures', () => {
+registerSuite('Truth Vector: CORE: Control Flow & Jumps', () => {
+
+    test('FOR...NEXT Statement', () => {
+        const code = `
+            ' 1. Terminal Overshoot (Positive & Negative)
+            CountA = 0: FOR I = 1 TO 5: CountA = CountA + 1: NEXT
+            CountB = 0: FOR J = 5 TO 1 STEP -1: CountB = CountB + 1: NEXT
+            
+            ' 2. Bound Immutability
+            Limit = 3: Inc = 1: Runs = 0
+            FOR K = 1 TO Limit STEP Inc
+              Runs = Runs + 1
+              Limit = 10
+              Inc = 5
+            NEXT
+            
+            ' 3. Iterator Mutation
+            MutRuns = 0
+            FOR M = 1 TO 5
+              MutRuns = MutRuns + 1
+              M = M + 1
+            NEXT
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('CountA'), 5, "CountA assertion failed");
+        assertEqual(env.lookup('I'), 6, "I assertion failed");
+        assertEqual(env.lookup('CountB'), 5, "CountB assertion failed");
+        assertEqual(env.lookup('J'), 0, "J assertion failed");
+        assertEqual(env.lookup('Runs'), 3, "Runs assertion failed");
+        assertEqual(env.lookup('K'), 4, "K assertion failed");
+        assertEqual(env.lookup('Limit'), 10, "Limit assertion failed");
+        assertEqual(env.lookup('Inc'), 5, "Inc assertion failed");
+        assertEqual(env.lookup('MutRuns'), 3, "MutRuns assertion failed");
+        assertEqual(env.lookup('M'), 7, "M assertion failed");
+    });
+
+    test('DO WHILE / UNTIL (Pre-test Loop)', () => {
+        const code = `
+            ' 1. WHILE False -> 0 runs
+            RunsPreWhile = 0
+            DO WHILE 0
+              RunsPreWhile = RunsPreWhile + 1
+            LOOP
+            
+            ' 2. UNTIL True -> 0 runs
+            RunsPreUntil = 0
+            DO UNTIL -1
+              RunsPreUntil = RunsPreUntil + 1
+            LOOP
+            
+            ' 3. WHILE Arbitrary Float (True) -> 1 run
+            RunsFloat = 0
+            CondF = 42.5
+            DO WHILE CondF
+              RunsFloat = RunsFloat + 1
+              CondF = 0
+            LOOP
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('RunsPreWhile'), 0, "RunsPreWhile assertion failed");
+        assertEqual(env.lookup('RunsPreUntil'), 0, "RunsPreUntil assertion failed");
+        assertEqual(env.lookup('RunsFloat'), 1, "RunsFloat assertion failed");
+    });
+
+    test('DO ... LOOP WHILE / UNTIL (Post-test Loop)', () => {
+        const code = `
+            RunsPostA = 0
+            DO
+              RunsPostA = RunsPostA + 1
+            LOOP WHILE 0
+            
+            RunsPostB = 0
+            DO
+              RunsPostB = RunsPostB + 1
+            LOOP UNTIL -1
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('RunsPostA'), 1, "RunsPostA assertion failed");
+        assertEqual(env.lookup('RunsPostB'), 1, "RunsPostB assertion failed");
+    });
+});
+
+registerSuite('Truth Vector: CORE: Memory, Types & Structures', () => {
 
     test('Default Implicit Typing (SINGLE)', () => {
         const code = `
