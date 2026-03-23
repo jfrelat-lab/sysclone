@@ -1,6 +1,7 @@
-// src/runtime/environment.js
-import { QFixedString } from './qfixedstring.js';
-import { bankersRound } from './qbasic/builtins.js';
+// src/runtime/qbasic/qbasic_environment.js
+import { BaseEnvironment } from '../base_environment.js';
+import { QFixedString } from '../qfixedstring.js';
+import { bankersRound } from './builtins.js';
 
 /**
  * A specialized Map that transparently handles MS-DOS variable aliasing.
@@ -42,8 +43,9 @@ class VariableVault {
  * Manages variables, types, subroutines, and scoping for the Sysclone engine.
  * Handles the hierarchical relationship between local and global execution contexts.
  */
-export class Environment {
+export class QBasicEnvironment extends BaseEnvironment {
     constructor(parent = null, staticScope = null) {
+        super(parent);
         this.parent = parent;
         this.sharedEnv = parent ? parent.sharedEnv : this;
 
@@ -59,21 +61,6 @@ export class Environment {
 
         this.dataBank = [];
         this.dataPointer = 0;
-    }
-
-    // --- DATA BANK MANAGEMENT ---
-    addData(values) {
-        for (let v of values) this.sharedEnv.dataBank.push(v);
-    }
-    readData() {
-        if (this.sharedEnv.dataPointer >= this.sharedEnv.dataBank.length) throw new Error("Out of DATA");
-        return this.sharedEnv.dataBank[this.sharedEnv.dataPointer++];
-    }
-    restoreData(index = 0) {
-        this.sharedEnv.dataPointer = index;
-    }
-    getDataCount() {
-        return this.sharedEnv.dataBank.length;
     }
 
     // --- IMPLICIT TYPING MANAGEMENT (DEFINT / DEFSNG) ---

@@ -279,6 +279,23 @@
   - [x] 100% Parsing achieved.
   - [x] Full execution of board logic (Reversi) and preliminary sorting algorithms (SortDemo).
 
+## Phase 12.5: Multi-Language Architecture Refactoring (The Engine Split)
+*Before introducing Turbo Pascal or JIT compilation, the monolithic engine must be strictly decoupled. The goal is to separate the universal Virtual CPU mechanics from language-specific execution rules and memory behaviors.*
+
+- [ ] **12.5.1. Environment Decoupling (Memory & Scoping):**
+  - [ ] Extract the core memory interactions (RAM mapping, Data Bank skeleton) into an abstract `BaseEnvironment`.
+  - [ ] Create `QBasicEnvironment` (inheriting from Base): Isolate the 3-Tier Flat Scoping, `VariableVault` aliasing, and `DEFINT` implicit typing rules.
+  - [ ] Create `PascalEnvironment` (inheriting from Base): Implement standard Lexical Scoping (`this.parent` traversal) and prepare a mock Heap Allocator for typed pointers.
+- [ ] **12.5.2. Evaluator Refactoring (Visitor Pattern):**
+  - [ ] Rename `Evaluator` to `VirtualCPU`. Strip it of all language-specific AST node handling (`switch (node.type)`). It must solely manage the Execution Loop, Ticks (`yield`), Hardware Interrupts (`SYS_DELAY`), and "Control Flow Bubbling" (Jumps/Exits).
+  - [ ] Create `QBasicInterpreterVisitor`: Move the massive MS-DOS evaluation switch block into this dedicated visitor.
+  - [ ] Create `PascalInterpreterVisitor` (Stub): Prepare the initial evaluation switch for Pascal-specific AST nodes.
+  - [ ] Update the `VirtualCPU` to dynamically accept and delegate node evaluation to the injected Visitor.
+- [ ] **12.5.3. UI & Bootstrapping (Dynamic Strategy):**
+  - [ ] Create the `PascalTokenizer` extending `BaseTokenizer` to handle TP keywords and syntax (`BEGIN`, `END`, `;`).
+  - [ ] Update `src/ui.js` to dynamically inject `QBasicTokenizer` or `PascalTokenizer` based on the loaded file extension (`.bas` vs `.pas`).
+  - [ ] Update `src/webvm.js` (The Orchestrator) to instantiate the correct Environment and Visitor triplet when booting a ROM.
+
 ---
 
 # Roadmap: Sysclone - Milestone 3 (JIT Compilation)

@@ -1,7 +1,7 @@
 // src/runtime/environment.test.js
 
-import { Environment } from './environment.js';
-import { test, assertEqual, registerSuite } from '../test_runner.js';
+import { QBasicEnvironment as Environment } from './qbasic_environment.js';
+import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 /**
  * Unit tests for the Environment, Scoping (3-Tier), and Memory allocation systems.

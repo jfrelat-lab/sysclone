@@ -1,9 +1,7 @@
 // src/runtime/evaluator.test.js
 import { Evaluator } from './evaluator.js';
-import { Environment } from './environment.js';
+import { QBasicEnvironment as Environment } from './qbasic/qbasic_environment.js';
 import { block } from '../parser/qbasic/controlFlow.js';
-import { Memory } from '../hardware/memory.js';
-import { VGA } from '../hardware/vga.js';
 import { test, assertEqual, registerSuite } from '../test_runner.js';
 
 // ============================================================================
@@ -264,7 +262,7 @@ registerSuite('Evaluator: I/O Formatting (MS-DOS PRINT Rules)', () => {
 
     test('PRINT USING engine should strictly format strings (&) and decimals (###.###)', () => {
         const evaluator = new Evaluator(new Environment());
-        const output = evaluator.formatPrintUsing("  &###.### seconds  ", ["Insertion", 0.051283]);
+        const output = evaluator.isa.io.formatPrintUsing("  &###.### seconds  ", ["Insertion", 0.051283]);
         assertEqual(output, "  Insertion  0.051 seconds  ");
     });
 

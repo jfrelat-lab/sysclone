@@ -1,10 +1,10 @@
 // src/runtime/evaluator.js
-import { Environment } from './environment.js';
+import { QBasicEnvironment as Environment } from './qbasic/qbasic_environment.js';
 import { QArray } from './qarray.js';
 import { QFixedString } from './qfixedstring.js';
 import { BuiltIns, bankersRound } from './qbasic/builtins.js';
-import { toCP437Array } from '../hardware/encoding.js';
 import { BuiltInTokens } from '../parser/qbasic/tokens.js';
+import { QBasicISA as ISA } from './qbasic/instructions/index.js';
 
 /**
  * The core execution engine of Sysclone.
@@ -21,6 +21,8 @@ export class Evaluator {
             this.env = env;
         }
         this.hw = hardware;
+        this.isa = new ISA(this.hw); // Inject the ISA Facade
+
         this.labels = new Map();
         this.hasScannedLabels = false;
         this.topLevelBlock = undefined;
@@ -100,53 +102,6 @@ export class Evaluator {
                 }
             }
         }
-    }
-
-    /**
-     * Purist MS-DOS string formatter for PRINT USING.
-     * Decoupled from the I/O engine for strict unit testing.
-     */
-    formatPrintUsing(formatStr, values) {
-        let valIndex = 0;
-        
-        // The regex catches '&' (Strings) and '[#,\.]+' (Numbers)
-        return formatStr.replace(/&|[#,\.]+/g, (match) => {
-            if (valIndex >= values.length) return match;
-            let val = values[valIndex++];
-            
-            // --- 1. String Formatting ---
-            if (match === '&') {
-                return (val !== null && val !== undefined) ? val.toString() : "";
-            }
-            
-            // --- 2. Number Formatting ---
-            let numVal = Number(val);
-            if (isNaN(numVal)) numVal = 0; // Fallback to avoid outright NaN crashes
-            
-            let numStr = "";
-            
-            if (match.includes('.')) {
-                // Extract the number of decimal places requested (e.g., .### -> 3)
-                const decimals = match.split('.')[1].replace(/[^#]/g, '').length;
-                numStr = numVal.toFixed(decimals); // Preserve floating point precision!
-            } else {
-                // Integers only
-                numStr = Math.round(numVal).toString(); 
-            }
-            
-            // Handle comma thousands separators
-            if (match.includes(',')) {
-                let parts = numStr.split('.');
-                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-                numStr = parts.join('.');
-            }
-            
-            // MS-DOS overflow rule: Prefix with '%' if the formatted number is too wide
-            if (numStr.length > match.length) return "%" + numStr;
-            
-            // Right-align numbers within the specified width
-            return numStr.padStart(match.length, ' ');
-        });
     }
 
     /**
@@ -249,9 +204,9 @@ export class Evaluator {
             case 'IDENTIFIER': 
                 const varName = node.value.toUpperCase();
                 
-                // 1. Hardware interception (I/O)
-                if (varName === BuiltInTokens.INKEY$) return this.hw.io ? this.hw.io.inkey() : "";
-                if (varName === BuiltInTokens.TIMER)  return this.hw.io ? this.hw.io.timer() : 0;
+                // 1. Hardware interception (I/O) via ISA !
+                if (varName === BuiltInTokens.INKEY$) return this.isa.io.readINKEY();
+                if (varName === BuiltInTokens.TIMER)  return this.isa.io.readTIMER();
                 
                 // 2. Pure STDLIB interception (e.g., RND without parentheses)
                 if (BuiltIns[varName]) {
@@ -529,119 +484,43 @@ export class Evaluator {
 
             // --- I/O STATEMENTS ---
             case 'PRINT': {
-                let output = "";
                 const values = [];
-                
-                // 1. Evaluate all expressions in the PRINT statement and store their resolved values.
                 if (node.values && node.values.length > 0) {
                     for (let expr of node.values) {
                         values.push(yield* this.evaluate(expr));
                     }
                 }
                 
-                // 2. Handle the PRINT USING statement for specific string/number formatting (e.g., currency).
-                if (node.usingFormat) {
-                    const formatStr = yield* this.evaluate(node.usingFormat);
-                    
-                    // --- PURIST USING ENGINE ---
-                    // The heavy lifting is delegated to our unit-tested method
-                    output = this.formatPrintUsing(formatStr, values);
-                } else {
-                    // 3. Handle standard PRINT statements.
-                    for (let val of values) {
-                        // Surgical hardware interception for the TAB() function.
-                        if (val && val._special === 'TAB') {
-                            if (this.hw.vga) {
-                                // Flush any pending text in the output buffer to the VRAM before moving the cursor.
-                                if (output.length > 0) {
-                                    this.hw.vga.print(Array.from(toCP437Array(output)));
-                                    output = "";
-                                }
-                                
-                                const targetX = Math.max(1, Math.round(val.col)) - 1;
-                                
-                                // If the cursor is already past the target column, QBasic wraps it to the next line.
-                                if (this.hw.vga.cursorX > targetX) {
-                                    this.hw.vga.print([13, 10]); // CR LF
-                                }
-                                
-                                // Pad the screen with spaces until the cursor reaches the target column.
-                                const spaces = targetX - this.hw.vga.cursorX;
-                                if (spaces > 0) {
-                                    this.hw.vga.print(Array.from(toCP437Array(" ".repeat(spaces))));
-                                }
-                            }
-                        } else {
-                            // Apply strict MS-DOS formatting rules for standard values.
-                            if (typeof val === 'number') {
-                                // Numbers always get a trailing space.
-                                // Positive numbers and zero get a leading space (acting as an implicit '+' sign).
-                                // Negative numbers keep their '-' sign instead of the leading space.
-                                output += (val >= 0 ? " " + val.toString() + " " : val.toString() + " ");
-                            } else {
-                                // Strings are concatenated exactly as they are, without any automatic spacing.
-                                output += (val !== null && val !== undefined) ? val.toString() : "";
-                            }
-                        }
-                    }
-                }
+                const usingFormat = node.usingFormat ? yield* this.evaluate(node.usingFormat) : null;
                 
-                if (this.hw.vga) {
-                    // CPU Phase: Translate the final Unicode string into a CP437 byte array for the MS-DOS hardware.
-                    const byteStream = Array.from(toCP437Array(output));
-                    
-                    // Hardware Phase: Inject Carriage Return (13) and Line Feed (10) if a newline is required.
-                    // (i.e., the PRINT statement did not end with a semicolon or comma).
-                    if (node.newline) {
-                        byteStream.push(13, 10);
-                    }
-                    this.hw.vga.print(byteStream);
-                }
+                // Pure delegation to the ISA
+                this.isa.io.executePRINT(values, usingFormat, node.newline);
                 return null; 
             }
 
-            case 'INPUT':
-                if (node.prompt !== undefined && this.hw.vga) {
-                    this.hw.vga.print(toCP437Array(node.prompt + "? "));
+            case 'INPUT': {
+                // Language Semantics: QBasic automatically appends "? " for INPUT.
+                let finalPrompt = undefined;
+                if (node.prompt !== undefined) {
+                    finalPrompt = node.prompt + "? ";
                 }
-
-                let inputBuffer = "";
                 
-                // Hardware Signal: Turn on the blinking cursor!
-                if (this.hw.vga) this.hw.vga.showCursor();
+                // Hardware initialization via ISA
+                this.isa.io.openInputBuffer(finalPrompt);
                 
+                // Hardware polling loop
+                let inputResult;
                 while (true) {
-                    yield; 
-
-                    if (!this.hw.io) break; 
-                    const key = this.hw.io.inkey();
-                    if (!key) continue; 
-
-                    if (key === String.fromCharCode(13)) { // Enter
-                        if (this.hw.vga) this.hw.vga.print([13, 10]); // CR LF
-                        break; 
-                    }
-                    
-                    if (key === String.fromCharCode(8)) { // Backspace
-                        if (inputBuffer.length > 0) {
-                            inputBuffer = inputBuffer.slice(0, -1);
-                            // Standard destructive backspace sequence for Terminals: BS, Space, BS
-                            if (this.hw.vga) this.hw.vga.print([8, 32, 8]); 
-                        }
-                        continue;
-                    }
-                    
-                    if (key.length === 1) {
-                        inputBuffer += key;
-                        // Echo the typed character natively
-                        if (this.hw.vga) this.hw.vga.print(toCP437Array(key));
-                    }
+                    yield; // CPU ticks
+                    inputResult = this.isa.io.pumpInputBuffer();
+                    if (inputResult.done) break;
                 }
 
-                // Hardware Signal: Turn off the cursor
-                if (this.hw.vga) this.hw.vga.hideCursor();
+                // Hardware closure
+                const rawString = this.isa.io.closeInputBuffer();
 
-                const splitValues = inputBuffer.split(',');
+                // Semantic Parsing (Multiple targets split by comma)
+                const splitValues = rawString.split(',');
                 for (let i = 0; i < node.targets.length; i++) {
                     const target = node.targets[i];
                     let valStr = (splitValues[i] !== undefined) ? splitValues[i].trim() : "";
@@ -654,87 +533,55 @@ export class Evaluator {
                     else if (targetRef.type === 'OBJECT') targetRef.object[targetRef.property] = finalVal;
                 }
                 return null;
+            }
 
             case 'LINE_INPUT': {
-                // LINE INPUT does not automatically append "? " like standard INPUT does.
-                if (node.prompt && this.hw.vga) {
-                    this.hw.vga.print(toCP437Array(node.prompt));
-                }
-
-                let lineBuffer = "";
+                // Language Semantics: LINE INPUT prints the prompt exactly as-is.
+                this.isa.io.openInputBuffer(node.prompt);
                 
-                // Hardware Signal: Turn on the blinking cursor!
-                if (this.hw.vga) this.hw.vga.showCursor();
-                
+                // Hardware polling loop
+                let inputResult;
                 while (true) {
-                    yield; // Non-blocking wait for user input
-
-                    if (!this.hw.io) break; 
-                    const key = this.hw.io.inkey();
-                    if (!key) continue; 
-
-                    if (key === String.fromCharCode(13)) { // Enter
-                        if (this.hw.vga) this.hw.vga.print([13, 10]); // CR LF
-                        break; 
-                    }
-                    
-                    if (key === String.fromCharCode(8)) { // Backspace
-                        if (lineBuffer.length > 0) {
-                            lineBuffer = lineBuffer.slice(0, -1);
-                            if (this.hw.vga) this.hw.vga.print([8, 32, 8]); 
-                        }
-                        continue;
-                    }
-                    
-                    if (key.length === 1) {
-                        lineBuffer += key;
-                        if (this.hw.vga) this.hw.vga.print(toCP437Array(key));
-                    }
+                    yield; 
+                    inputResult = this.isa.io.pumpInputBuffer();
+                    if (inputResult.done) break;
                 }
 
-                // Hardware Signal: Turn off the cursor
-                if (this.hw.vga) this.hw.vga.hideCursor();
+                // Hardware closure
+                const rawString = this.isa.io.closeInputBuffer();
 
-                // LINE INPUT assigns the entire raw string to a single target
+                // Semantic Assignment (Entire raw string to a single target)
                 const targetRef = yield* this.evaluateLValue(node.target);
-                if (targetRef.type === 'ENV') this.env.assign(targetRef.name, lineBuffer);
-                else if (targetRef.type === 'ARRAY') targetRef.array.set(targetRef.indices, lineBuffer);
-                else if (targetRef.type === 'OBJECT') targetRef.object[targetRef.property] = lineBuffer;
+                if (targetRef.type === 'ENV') this.env.assign(targetRef.name, rawString);
+                else if (targetRef.type === 'ARRAY') targetRef.array.set(targetRef.indices, rawString);
+                else if (targetRef.type === 'OBJECT') targetRef.object[targetRef.property] = rawString;
                 
                 return null;
             }
             
-            case 'CLS': if (this.hw.vga) this.hw.vga.cls(); return null;
+            case 'CLS': 
+                this.isa.graphics.executeCLS(); 
+                return null;
 
             case 'LOCATE':
-                // evaluate(null) elegantly returns null in our engine
                 const row = yield* this.evaluate(node.row);
                 const col = yield* this.evaluate(node.col);
                 const cur = yield* this.evaluate(node.cursor);
-                const start = yield* this.evaluate(node.start);
-                const stop  = yield* this.evaluate(node.stop);
+                yield* this.evaluate(node.start);
+                yield* this.evaluate(node.stop);
                 
-                if (this.hw.vga) {
-                    this.hw.vga.locate(row, col);
-                    // Hardware Cursor Control
-                    if (cur !== null) {
-                        if (cur === 0) this.hw.vga.hideCursor();
-                        else this.hw.vga.showCursor();
-                    }
-                    // Note: 'start' and 'stop' scanlines for cursor thickness 
-                    // are parsed and evaluated, but hardware emulation is stubbed for now.
-                }
+                this.isa.io.executeLOCATE(row, col, cur);
                 return null;
 
             case 'COLOR':
-                const fg = node.fg !== null ? yield* this.evaluate(node.fg) : (this.hw.vga ? this.hw.vga.currentFg : 15);
-                const bg = node.bg !== null ? yield* this.evaluate(node.bg) : (this.hw.vga ? this.hw.vga.currentBg : 0);
-                if (this.hw.vga) this.hw.vga.color(fg, bg);
+                const fg = node.fg !== null ? yield* this.evaluate(node.fg) : null;
+                const bg = node.bg !== null ? yield* this.evaluate(node.bg) : null;
+                this.isa.graphics.executeCOLOR(fg, bg);
                 return null;
             
             case 'DEF_SEG':
                 const segAddr = node.address ? yield* this.evaluate(node.address) : null;
-                if (this.hw.memory) this.hw.memory.defSeg(segAddr);
+                this.isa.memory.executeDEF_SEG(segAddr);
                 return null;
 
             case 'RESTORE':
@@ -760,15 +607,13 @@ export class Evaluator {
             case 'POKE':
                 const pAddr = yield* this.evaluate(node.address);
                 const pVal = yield* this.evaluate(node.value);
-                if (this.hw.memory) this.hw.memory.poke(pAddr, pVal);
+                this.isa.memory.executePOKE(pAddr, pVal);
                 return null;
 
             case 'OUT':
                 const port = yield* this.evaluate(node.port);
                 const val = yield* this.evaluate(node.value);
-                if (this.hw.vga) {
-                    this.hw.vga.out(port, val);
-                }
+                this.isa.io.executeOUT(port, val);
                 return null;
 
             case 'ASSIGN': {
@@ -871,7 +716,7 @@ export class Evaluator {
             // --- GRAPHICS STATEMENTS ---
             case 'SCREEN_STMT':
                 const mode = yield* this.evaluate(node.mode);
-                if (this.hw.vga) this.hw.vga.setMode(mode);
+                this.isa.graphics.executeSCREEN(mode);
                 return null;
 
             case 'PALETTE':
@@ -880,11 +725,7 @@ export class Evaluator {
                 if (node.attribute !== null && node.color !== null) {
                     const attr = yield* this.evaluate(node.attribute);
                     const color = yield* this.evaluate(node.color);
-                    if (this.hw.vga && typeof this.hw.vga.setPalette === 'function') {
-                        this.hw.vga.setPalette(attr, color);
-                    }
-                } else {
-                    // TODO: Handle parameterless PALETTE (hardware reset)
+                    this.isa.graphics.executePALETTE(attr, color);
                 }
                 return null;
 
@@ -893,32 +734,30 @@ export class Evaluator {
                 const wY1 = yield* this.evaluate(node.y1);
                 const wX2 = yield* this.evaluate(node.x2);
                 const wY2 = yield* this.evaluate(node.y2);
-                if (this.hw.vga) this.hw.vga.setWindow(node.invertY, wX1, wY1, wX2, wY2);
+                this.isa.graphics.executeWINDOW(node.invertY, wX1, wY1, wX2, wY2);
                 return null;
 
             case 'PSET':
                 const pX = yield* this.evaluate(node.x);
                 const pY = yield* this.evaluate(node.y);
                 const pCol = node.color !== null ? yield* this.evaluate(node.color) : null;
-                if (this.hw.vga) this.hw.vga.pset(pX, pY, pCol, node.isStep);
+                this.isa.graphics.executePSET(pX, pY, pCol, node.isStep);
                 return null;
 
             case 'PRESET':
                 const prX = yield* this.evaluate(node.x);
                 const prY = yield* this.evaluate(node.y);
-                // PRESET defaults to the background color, whereas PSET defaults to the foreground color
-                const prCol = node.color !== null ? yield* this.evaluate(node.color) : (this.hw.vga ? this.hw.vga.currentBg : 0);
-                if (this.hw.vga) this.hw.vga.pset(prX, prY, prCol, node.isStep);
+                const prCol = node.color !== null ? yield* this.evaluate(node.color) : null;
+                this.isa.graphics.executePRESET(prX, prY, prCol, node.isStep);
                 return null;
 
             case 'LINE':
-                // Use the current hardware graphic cursor if the start coordinate was omitted (e.g., LINE - (x, y))
-                const lX1 = node.startX !== null ? yield* this.evaluate(node.startX) : (this.hw.vga ? this.hw.vga.lastX : 0);
-                const lY1 = node.startY !== null ? yield* this.evaluate(node.startY) : (this.hw.vga ? this.hw.vga.lastY : 0);
+                const lX1 = node.startX !== null ? yield* this.evaluate(node.startX) : null;
+                const lY1 = node.startY !== null ? yield* this.evaluate(node.startY) : null;
                 const lX2 = yield* this.evaluate(node.endX);
                 const lY2 = yield* this.evaluate(node.endY);
                 const lCol = node.color !== null ? yield* this.evaluate(node.color) : null;
-                if (this.hw.vga) this.hw.vga.line(lX1, lY1, lX2, lY2, lCol, node.box, node.startIsStep, node.endIsStep);
+                this.isa.graphics.executeLINE(lX1, lY1, lX2, lY2, lCol, node.box, node.startIsStep, node.endIsStep);
                 return null;
 
             case 'CIRCLE':
@@ -929,7 +768,7 @@ export class Evaluator {
                 const cSt = node.start !== null ? yield* this.evaluate(node.start) : null;
                 const cEnd = node.end !== null ? yield* this.evaluate(node.end) : null;
                 const cAsp = node.aspect !== null ? yield* this.evaluate(node.aspect) : null;
-                if (this.hw.vga) this.hw.vga.circle(cX, cY, cR, cCol, cSt, cEnd, cAsp, node.isStep);
+                this.isa.graphics.executeCIRCLE(cX, cY, cR, cCol, cSt, cEnd, cAsp, node.isStep);
                 return null;
 
             case 'PAINT':
@@ -937,7 +776,7 @@ export class Evaluator {
                 const ptY = yield* this.evaluate(node.y);
                 const ptC = node.paintColor !== null ? yield* this.evaluate(node.paintColor) : null;
                 const pbC = node.borderColor !== null ? yield* this.evaluate(node.borderColor) : null;
-                if (this.hw.vga) this.hw.vga.paint(ptX, ptY, ptC, pbC, node.isStep);
+                this.isa.graphics.executePAINT(ptX, ptY, ptC, pbC, node.isStep);
                 return null;
 
             case 'GET_GRAPHICS': {
@@ -958,9 +797,7 @@ export class Evaluator {
                     getIdx = ref.indices[0] !== undefined ? ref.indices[0] : 0;
                 }
                 
-                if (this.hw.vga) {
-                    this.hw.vga.getGraphics(gx1, gy1, gx2, gy2, getArr, getIdx, node.startIsStep, node.endIsStep);
-                }
+                this.isa.graphics.executeGET_GRAPHICS(gx1, gy1, gx2, gy2, getArr, getIdx, node.startIsStep, node.endIsStep);
                 return null;
             }
 
@@ -979,9 +816,7 @@ export class Evaluator {
                     putIdx = ref.indices[0] !== undefined ? ref.indices[0] : 0;
                 }
 
-                if (this.hw.vga) {
-                    this.hw.vga.putGraphics(px, py, putArr, putIdx, node.action, node.isStep);
-                }
+                this.isa.graphics.executePUT_GRAPHICS(px, py, putArr, putIdx, node.action, node.isStep);
                 return null;
             }
 
@@ -1189,14 +1024,10 @@ export class Evaluator {
 
         // --- 3. HARDWARE-DEPENDENT BUILT-INS ---
         if (callee === BuiltInTokens.PEEK) {
-            return this.hw.memory ? this.hw.memory.peek(args[0]) : 0;
+            return this.isa.memory.readPEEK(args[0]);
         }
         if (callee === BuiltInTokens.POINT) {
-            // QBasic POINT(x, y) needs to read directly from the VRAM
-            if (this.hw.vga && typeof this.hw.vga.point === 'function') {
-                return this.hw.vga.point(args[0], args[1]);
-            }
-            return 0; // Fallback to background color (0) if no VGA hardware is attached
+            return this.isa.graphics.readPOINT(args[0], args[1]);
         }
         if (callee === BuiltInTokens.TAB) {
             // Return a special token for the PRINT statement hardware interceptor
@@ -1209,9 +1040,7 @@ export class Evaluator {
             // Loop and yield control to the browser until we collect exactly n characters
             while (resultStr.length < charCount) {
                 yield; 
-                if (!this.hw.io) break; 
-                
-                const key = this.hw.io.inkey();
+                const key = this.isa.io.readINKEY();
                 if (key) {
                     // INPUT$ intercepts keystrokes silently (no hardware echo to VGA)
                     resultStr += key;
@@ -1221,14 +1050,13 @@ export class Evaluator {
         }
 
         // --- 4. RESOLVE ARRAYS IN ENVIRONMENT ---
-        // Flat search replacing the old while(curr) traversal
         let val = this.env.variables.get(callee) || 
                   (this.env.staticScope && this.env.staticScope.get(callee)) || 
                   this.env.sharedEnv.variables.get(callee);
 
         if (val && val.constructor.name === 'QArray') {
             if (args.length === 0) return val;
-            return val.get(args); // Uses the factorized 'args' directly!
+            return val.get(args);
         }
 
         throw new Error(`Routine, Function, or Array not found: ${callee}`);

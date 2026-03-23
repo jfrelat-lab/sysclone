@@ -2,7 +2,7 @@
 import { VGA } from './hardware/vga.js';
 import { IO } from './hardware/io.js';
 import { Memory } from './hardware/memory.js';
-import { Environment } from './runtime/environment.js';
+import { QBasicEnvironment as Environment } from './runtime/qbasic/qbasic_environment.js';
 import { Evaluator } from './runtime/evaluator.js';
 import { block } from './parser/qbasic/controlFlow.js';
 import { autoDecodeSource } from './hardware/encoding.js';
