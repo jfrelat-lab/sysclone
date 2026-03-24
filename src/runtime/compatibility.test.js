@@ -389,7 +389,51 @@ registerSuite('Truth Vector: CORE: Control Flow & Jumps', () => {
         assertEqual(env.lookup('M'), 7, "M assertion failed");
     });
 
-    test('DO WHILE / UNTIL (Pre-test Loop)', () => {
+    test('EXIT FOR Statement', () => {
+        const code = `
+            ' 1. Basic Exit and Iterator Retention
+            TargetVal = 0: FinalI = 0
+            FOR I = 5 TO 1 STEP -1
+              IF I = 3 THEN
+                TargetVal = I
+                EXIT FOR
+              END IF
+            NEXT
+            FinalI = I
+            
+            ' 2. Scope Isolation (Nested Loops)
+            OuterCount = 0: InnerCount = 0
+            FOR Outer = 1 TO 3
+              OuterCount = OuterCount + 1
+              FOR Inner = 1 TO 5
+                IF Inner = 2 THEN EXIT FOR
+                InnerCount = InnerCount + 1
+              NEXT
+            NEXT
+            FinalOuter = Outer
+            FinalInner = Inner
+            
+            ' 3. Short-Circuit Execution
+            Flag = 0: FinalK = 0
+            FOR K = 1 TO 5
+              EXIT FOR
+              Flag = 99
+            NEXT
+            FinalK = K
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('TargetVal'), 3, "TargetVal assertion failed");
+        assertEqual(env.lookup('FinalI'), 3, "FinalI assertion failed");
+        assertEqual(env.lookup('OuterCount'), 3, "OuterCount assertion failed");
+        assertEqual(env.lookup('FinalOuter'), 4, "FinalOuter assertion failed");
+        assertEqual(env.lookup('InnerCount'), 3, "InnerCount assertion failed");
+        assertEqual(env.lookup('FinalInner'), 2, "FinalInner assertion failed");
+        assertEqual(env.lookup('Flag'), 0, "Flag assertion failed");
+        assertEqual(env.lookup('FinalK'), 1, "FinalK assertion failed");
+    });
+
+    test('DO...LOOP Statement (Pre-test)', () => {
         const code = `
             ' 1. WHILE False -> 0 runs
             RunsPreWhile = 0
@@ -418,7 +462,7 @@ registerSuite('Truth Vector: CORE: Control Flow & Jumps', () => {
         assertEqual(env.lookup('RunsFloat'), 1, "RunsFloat assertion failed");
     });
 
-    test('DO ... LOOP WHILE / UNTIL (Post-test Loop)', () => {
+    test('DO...LOOP Statement (Post-test)', () => {
         const code = `
             RunsPostA = 0
             DO
@@ -434,6 +478,82 @@ registerSuite('Truth Vector: CORE: Control Flow & Jumps', () => {
 
         assertEqual(env.lookup('RunsPostA'), 1, "RunsPostA assertion failed");
         assertEqual(env.lookup('RunsPostB'), 1, "RunsPostB assertion failed");
+    });
+
+    test('GOSUB...RETURN Statement', () => {
+        const code = `
+            GlobalVar = 10: StepId = 0
+            GOSUB RoutineStart
+            StepId = 99
+            GOTO EndTest
+            
+            RoutineStart:
+              GlobalVar = GlobalVar * 2
+              GOTO RoutineSkip
+              GlobalVar = 0 ' MUST NEVER EXECUTE
+            RoutineSkip:
+              StepId = 1
+            RETURN
+            
+            EndTest:
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('GlobalVar'), 20, "GlobalVar assertion failed");
+        assertEqual(env.lookup('StepId'), 99, "StepId assertion failed");
+    });
+
+    test('SELECT CASE Statement', () => {
+        const code = `
+            ' 1. Exact Match, Range (TO), and No Fallthrough
+            TestVal = 5: Result = 0: ExecCount = 0
+            SELECT CASE TestVal
+              CASE 1, 2, 3
+                Result = 1: ExecCount = ExecCount + 1
+              CASE 4 TO 6
+                Result = 2: ExecCount = ExecCount + 1
+              CASE 5
+                Result = 3: ExecCount = ExecCount + 1 ' MUST NEVER EXECUTE (No fallthrough)
+              CASE ELSE
+                Result = 4: ExecCount = ExecCount + 1
+            END SELECT
+            
+            ' 2. Relational Matching (CASE IS)
+            Score = 85: Grade = 0
+            SELECT CASE Score
+              CASE IS >= 90
+                Grade = 1
+              CASE IS >= 80
+                Grade = 2
+              CASE IS < 50
+                Grade = 3
+            END SELECT
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('Result'), 2, "Result assertion failed");
+        assertEqual(env.lookup('ExecCount'), 1, "ExecCount assertion failed");
+        assertEqual(env.lookup('Grade'), 2, "Grade assertion failed");
+    });
+
+    test('WHILE...WEND Statement', () => {
+        const code = `
+            Runs = 0: ValA = 1
+            WHILE ValA
+              Runs = Runs + 1
+              IF Runs = 2 THEN GOTO EscapeWhile
+            WEND
+            EscapeWhile:
+            
+            FalseRuns = 0
+            WHILE 0
+              FalseRuns = 99
+            WEND
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('Runs'), 2, "Runs assertion failed");
+        assertEqual(env.lookup('FalseRuns'), 0, "FalseRuns assertion failed");
     });
 });
 
@@ -516,25 +636,93 @@ registerSuite('Truth Vector: CORE: Memory, Types & Structures', () => {
 
     test('SWAP Statement', () => {
         const code = `
-            SwapA = 99
-            SwapB = 42
-            SWAP SwapA, SwapB
+            ' 1. Scalar Swap
+            ValA = 10: ValB = 99
+            SWAP ValA, ValB
+            
+            ' 2. Array Indices Swap
+            DIM SwapArr(2)
+            SwapArr(1) = 42: SwapArr(2) = 77
+            SWAP SwapArr(1), SwapArr(2)
+            ArrRes1 = SwapArr(1)
+            ArrRes2 = SwapArr(2)
+            
+            ' 3. Fixed-Length String Swap Integrity
+            TYPE SwapType
+              F AS STRING * 4
+            END TYPE
+            DIM ST1 AS SwapType, ST2 AS SwapType
+            ST1.F = "A"
+            ST2.F = "B"
+            SWAP ST1, ST2
+            ST1.F = "Z"
+            FixedLenAfterSwap = LEN(ST1.F)
         `;
         const env = executeToEnv(code);
 
-        assertEqual(env.lookup('SwapA'), 42, "SwapA assertion failed");
-        assertEqual(env.lookup('SwapB'), 99, "SwapB assertion failed");
+        assertEqual(env.lookup('ValA'), 99, "ValA assertion failed");
+        assertEqual(env.lookup('ValB'), 10, "ValB assertion failed");
+        assertEqual(env.lookup('ArrRes1'), 77, "ArrRes1 assertion failed");
+        assertEqual(env.lookup('ArrRes2'), 42, "ArrRes2 assertion failed");
+        assertEqual(env.lookup('FixedLenAfterSwap'), 4, "FixedLenAfterSwap assertion failed");
     });
 
-    test('ERASE Statement (Static Arrays)', () => {
+    test('ERASE Statement', () => {
         const code = `
-            DIM EraseArr(1 TO 3)
-            EraseArr(2) = 777
-            ERASE EraseArr
-            ClearedVal = EraseArr(2)
+            ' 1. Numeric Array Erase
+            DIM NumArr(2)
+            NumArr(1) = 42: NumArr(2) = 99
+            ERASE NumArr
+            CheckNum1 = NumArr(1)
+            CheckNum2 = NumArr(2)
+            
+            ' 2. String Array Erase
+            DIM StrArr$(1)
+            StrArr$(1) = "Hello World"
+            ERASE StrArr$
+            CheckStr$ = StrArr$(1)
+            
+            ' 3. UDT with Fixed-Length String Erase
+            TYPE EraseType
+              F AS STRING * 4
+            END TYPE
+            DIM EArr(1) AS EraseType
+            EArr(1).F = "TEST"
+            ERASE EArr
+            EArr(1).F = "X"
+            FixedLenAfterErase = LEN(EArr(1).F)
         `;
         const env = executeToEnv(code);
 
-        assertEqual(env.lookup('ClearedVal'), 0, "ClearedVal assertion failed");
+        assertEqual(env.lookup('CheckNum1'), 0, "CheckNum1 assertion failed");
+        assertEqual(env.lookup('CheckNum2'), 0, "CheckNum2 assertion failed");
+        assertEqual(env.lookup('CheckStr$'), "", "CheckStr$ assertion failed");
+        assertEqual(env.lookup('FixedLenAfterErase'), 4, "FixedLenAfterErase assertion failed");
+    });
+});
+
+registerSuite('Truth Vector: CORE: Procedures & Functions', () => {
+
+    test('CALL Statement', () => {
+        const code = `
+            RefVar = 10
+            ValVar = 10
+            DeepVar = 10
+            CALL ScopeTest(RefVar, (ValVar), (((DeepVar))))
+            GOTO EndCallTest
+            
+            SUB ScopeTest (ArgRef, ArgVal, ArgDeep)
+              ArgRef = 99
+              ArgVal = 99
+              ArgDeep = 99
+            END SUB
+            
+            EndCallTest:
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('RefVar'), 99, "RefVar assertion failed");
+        assertEqual(env.lookup('ValVar'), 10, "ValVar assertion failed");
+        assertEqual(env.lookup('DeepVar'), 10, "DeepVar assertion failed");
     });
 });

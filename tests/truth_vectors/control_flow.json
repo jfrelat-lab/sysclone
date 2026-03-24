@@ -36,21 +36,79 @@
           "NEXT"
         ],
         "assertions": [
-          { "var": "CountA", "val": 5, "type": "number" },
-          { "var": "I", "val": 6, "type": "number" },
-          { "var": "CountB", "val": 5, "type": "number" },
-          { "var": "J", "val": 0, "type": "number" },
-          { "var": "Runs", "val": 3, "type": "number" },
-          { "var": "K", "val": 4, "type": "number" },
-          { "var": "Limit", "val": 10, "type": "number" },
-          { "var": "Inc", "val": 5, "type": "number" },
-          { "var": "MutRuns", "val": 3, "type": "number" },
-          { "var": "M", "val": 7, "type": "number" }
+          { "var": "CountA", "val": 5, "type": "number", "message": "Positive step loop must execute body exactly 5 times" },
+          { "var": "I", "val": 6, "type": "number", "message": "Positive step iterator must overshoot terminal value by 1" },
+          { "var": "CountB", "val": 5, "type": "number", "message": "Negative step loop must execute body exactly 5 times" },
+          { "var": "J", "val": 0, "type": "number", "message": "Negative step iterator must overshoot terminal value by -1" },
+          { "var": "Runs", "val": 3, "type": "number", "message": "Loop must execute based on original bounds despite limit/step mutations" },
+          { "var": "K", "val": 4, "type": "number", "message": "Iterator must reflect unmodified step behavior" },
+          { "var": "Limit", "val": 10, "type": "number", "message": "Mutating bound variable inside loop must persist in memory" },
+          { "var": "Inc", "val": 5, "type": "number", "message": "Mutating step variable inside loop must persist in memory" },
+          { "var": "MutRuns", "val": 3, "type": "number", "message": "Loop execution count must reflect manual iterator mutation" },
+          { "var": "M", "val": 7, "type": "number", "message": "Iterator must overshoot correctly after manual mutation" }
         ]
       }
     },
     {
-      "name": "DO WHILE / UNTIL (Pre-test Loop)",
+      "name": "EXIT FOR Statement",
+      "syntax": "EXIT FOR",
+      "description": "Immediately terminates the execution of the innermost FOR...NEXT loop, transferring control to the statement following the NEXT keyword.",
+      "example": {
+        "code": [
+          "FOR I = 1 TO 5",
+          "  IF I = 3 THEN EXIT FOR",
+          "  PRINT I;",
+          "NEXT"
+        ],
+        "output": " 1  2 "
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRKS:\n1. **Iterator Retention**: Unlike a naturally completed loop which overshoots, exiting prematurely leaves the iterator at its exact current value.\n2. **Scope Isolation**: In nested loops, `EXIT FOR` strictly breaks only the deepest active loop without affecting outer iterators.\n3. **Short-Circuit**: Any statements remaining in the loop body after the `EXIT FOR` command are immediately bypassed.",
+        "setup": [
+          "' 1. Basic Exit and Iterator Retention",
+          "TargetVal = 0: FinalI = 0",
+          "FOR I = 5 TO 1 STEP -1",
+          "  IF I = 3 THEN",
+          "    TargetVal = I",
+          "    EXIT FOR",
+          "  END IF",
+          "NEXT",
+          "FinalI = I",
+          "",
+          "' 2. Scope Isolation (Nested Loops)",
+          "OuterCount = 0: InnerCount = 0",
+          "FOR Outer = 1 TO 3",
+          "  OuterCount = OuterCount + 1",
+          "  FOR Inner = 1 TO 5",
+          "    IF Inner = 2 THEN EXIT FOR",
+          "    InnerCount = InnerCount + 1",
+          "  NEXT",
+          "NEXT",
+          "FinalOuter = Outer",
+          "FinalInner = Inner",
+          "",
+          "' 3. Short-Circuit Execution",
+          "Flag = 0: FinalK = 0",
+          "FOR K = 1 TO 5",
+          "  EXIT FOR",
+          "  Flag = 99",
+          "NEXT",
+          "FinalK = K"
+        ],
+        "assertions": [
+          { "var": "TargetVal", "val": 3, "type": "number", "message": "TargetVal must be assigned before exit" },
+          { "var": "FinalI", "val": 3, "type": "number", "message": "Iterator I must retain exact value at EXIT FOR" },
+          { "var": "OuterCount", "val": 3, "type": "number", "message": "Outer loop must complete all iterations" },
+          { "var": "FinalOuter", "val": 4, "type": "number", "message": "Outer loop must natively overshoot" },
+          { "var": "InnerCount", "val": 3, "type": "number", "message": "Inner loop must execute exactly once per outer cycle" },
+          { "var": "FinalInner", "val": 2, "type": "number", "message": "Inner loop iterator must retain exact value upon exit" },
+          { "var": "Flag", "val": 0, "type": "number", "message": "Statements after EXIT FOR must be completely ignored" },
+          { "var": "FinalK", "val": 1, "type": "number", "message": "Iterator K must retain value immediately upon exit" }
+        ]
+      }
+    },
+    {
+      "name": "DO...LOOP Statement (Pre-test)",
       "syntax": "DO [{WHILE | UNTIL} condition] ... LOOP",
       "description": "Evaluates the condition BEFORE executing the block. If the initial condition is unmet, the loop executes 0 times. Truthiness is strict: exactly 0 is FALSE, any other number is TRUE.",
       "example": {
@@ -86,14 +144,14 @@
           "LOOP"
         ],
         "assertions": [
-          { "var": "RunsPreWhile", "val": 0, "type": "number" },
-          { "var": "RunsPreUntil", "val": 0, "type": "number" },
-          { "var": "RunsFloat", "val": 1, "type": "number" }
+          { "var": "RunsPreWhile", "val": 0, "type": "number", "message": "Pre-test WHILE 0 must completely skip the loop body" },
+          { "var": "RunsPreUntil", "val": 0, "type": "number", "message": "Pre-test UNTIL -1 must completely skip the loop body" },
+          { "var": "RunsFloat", "val": 1, "type": "number", "message": "Any non-zero float must be evaluated as TRUE" }
         ]
       }
     },
     {
-      "name": "DO ... LOOP WHILE / UNTIL (Post-test Loop)",
+      "name": "DO...LOOP Statement (Post-test)",
       "syntax": "DO ... LOOP [{WHILE | UNTIL} condition]",
       "description": "Evaluates the condition AFTER executing the block. The loop is guaranteed to execute AT LEAST ONCE, regardless of the initial condition.",
       "example": {
@@ -119,8 +177,135 @@
           "LOOP UNTIL -1"
         ],
         "assertions": [
-          { "var": "RunsPostA", "val": 1, "type": "number" },
-          { "var": "RunsPostB", "val": 1, "type": "number" }
+          { "var": "RunsPostA", "val": 1, "type": "number", "message": "Post-test WHILE 0 must execute the loop body exactly once" },
+          { "var": "RunsPostB", "val": 1, "type": "number", "message": "Post-test UNTIL -1 must execute the loop body exactly once" }
+        ]
+      }
+    },
+    {
+      "name": "GOSUB...RETURN Statement",
+      "syntax": "GOSUB label ... label: ... RETURN",
+      "description": "Branches to, and returns from, a subroutine within the same module. Variables are fully shared with the caller.",
+      "example": {
+        "code": [
+          "GOSUB PrintMsg",
+          "END",
+          "PrintMsg:",
+          "  PRINT \"Hello\"",
+          "RETURN"
+        ],
+        "output": "Hello"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRKS:\n1. **Scope Sharing**: GOSUB does not create a new variable scope. It shares the exact same memory space as the caller.\n2. **Internal Jumps**: A GOTO inside a GOSUB block strictly shifts the internal pointer without breaking the GOSUB loop.\n3. **Spatial Return**: The RETURN statement is strictly required to escape the GOSUB isolation loop and resume main execution.",
+        "setup": [
+          "GlobalVar = 10: StepId = 0",
+          "GOSUB RoutineStart",
+          "StepId = 99",
+          "GOTO EndTest",
+          "",
+          "RoutineStart:",
+          "  GlobalVar = GlobalVar * 2",
+          "  GOTO RoutineSkip",
+          "  GlobalVar = 0 ' MUST NEVER EXECUTE",
+          "RoutineSkip:",
+          "  StepId = 1",
+          "RETURN",
+          "",
+          "EndTest:"
+        ],
+        "assertions": [
+          { "var": "GlobalVar", "val": 20, "type": "number", "message": "GOSUB must mutate the exact same variables as the caller" },
+          { "var": "StepId", "val": 99, "type": "number", "message": "Execution must resume exactly after the GOSUB caller line" }
+        ]
+      }
+    },
+    {
+      "name": "SELECT CASE Statement",
+      "syntax": "SELECT CASE testexpression ... CASE {expressionlist | IS relation | start TO end} ... [CASE ELSE] ... END SELECT",
+      "description": "Executes one of several blocks of statements depending on the value of an expression. Supports exact matches, inclusive ranges (TO), and relational comparisons (IS).",
+      "example": {
+        "code": [
+          "Score = 85",
+          "SELECT CASE Score",
+          "  CASE IS >= 90",
+          "    PRINT \"Grade: A\"",
+          "  CASE 80 TO 89",
+          "    PRINT \"Grade: B\"",
+          "  CASE 0, 1, 2",
+          "    PRINT \"Grade: Z\"",
+          "  CASE ELSE",
+          "    PRINT \"Unknown\"",
+          "END SELECT"
+        ],
+        "output": "Grade: B"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRKS:\n1. **Single Evaluation**: The base test expression is evaluated exactly once.\n2. **No Fallthrough**: Unlike C or JavaScript, QBasic executes ONLY the first matching CASE block and then exits the SELECT entirely.\n3. **Range Matching**: The 'TO' keyword denotes an inclusive mathematical range.\n4. **Relational Matching**: The 'IS' keyword allows direct relational comparisons (>, <, >=, <=, <>).",
+        "setup": [
+          "' 1. Exact Match, Range (TO), and No Fallthrough",
+          "TestVal = 5: Result = 0: ExecCount = 0",
+          "SELECT CASE TestVal",
+          "  CASE 1, 2, 3",
+          "    Result = 1: ExecCount = ExecCount + 1",
+          "  CASE 4 TO 6",
+          "    Result = 2: ExecCount = ExecCount + 1",
+          "  CASE 5",
+          "    Result = 3: ExecCount = ExecCount + 1 ' MUST NEVER EXECUTE (No fallthrough)",
+          "  CASE ELSE",
+          "    Result = 4: ExecCount = ExecCount + 1",
+          "END SELECT",
+          "",
+          "' 2. Relational Matching (CASE IS)",
+          "Score = 85: Grade = 0",
+          "SELECT CASE Score",
+          "  CASE IS >= 90",
+          "    Grade = 1",
+          "  CASE IS >= 80",
+          "    Grade = 2",
+          "  CASE IS < 50",
+          "    Grade = 3",
+          "END SELECT"
+        ],
+        "assertions": [
+          { "var": "Result", "val": 2, "type": "number", "message": "SELECT CASE must correctly match the inclusive range 4 TO 6" },
+          { "var": "ExecCount", "val": 1, "type": "number", "message": "SELECT CASE must never fallthrough to subsequent cases after a match" },
+          { "var": "Grade", "val": 2, "type": "number", "message": "SELECT CASE must correctly evaluate relational CASE IS conditions" }
+        ]
+      }
+    },
+    {
+      "name": "WHILE...WEND Statement",
+      "syntax": "WHILE condition ... WEND",
+      "description": "Executes a series of statements as long as a specified condition is true. It is the legacy predecessor to DO WHILE...LOOP.",
+      "example": {
+        "code": [
+          "I = 1",
+          "WHILE I < 4",
+          "  PRINT I;",
+          "  I = I + 1",
+          "WEND"
+        ],
+        "output": " 1  2  3 "
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRKS:\n1. **No Native Exit**: Unlike DO or FOR, QBasic does not support 'EXIT WHILE'. Early termination must be achieved via GOTO or RETURN.\n2. **Pre-test Only**: The condition is evaluated before the loop begins. If initially false (0), the body executes 0 times.",
+        "setup": [
+          "Runs = 0: ValA = 1",
+          "WHILE ValA",
+          "  Runs = Runs + 1",
+          "  IF Runs = 2 THEN GOTO EscapeWhile",
+          "WEND",
+          "EscapeWhile:",
+          "",
+          "FalseRuns = 0",
+          "WHILE 0",
+          "  FalseRuns = 99",
+          "WEND"
+        ],
+        "assertions": [
+          { "var": "Runs", "val": 2, "type": "number", "message": "WHILE must process exactly 2 iterations before the GOTO escape" },
+          { "var": "FalseRuns", "val": 0, "type": "number", "message": "WHILE must completely skip execution if the initial condition is 0" }
         ]
       }
     }

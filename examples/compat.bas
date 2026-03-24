@@ -640,7 +640,94 @@ ELSE
   PRINT "FAIL: [FOR...NEXT Statement] M expected "; 7; " but got "; M
 END IF
 
-' Vector: DO WHILE / UNTIL (Pre-test Loop)
+' Vector: EXIT FOR Statement
+' 1. Basic Exit and Iterator Retention
+TargetVal = 0: FinalI = 0
+FOR I = 5 TO 1 STEP -1
+  IF I = 3 THEN
+    TargetVal = I
+    EXIT FOR
+  END IF
+NEXT
+FinalI = I
+
+' 2. Scope Isolation (Nested Loops)
+OuterCount = 0: InnerCount = 0
+FOR Outer = 1 TO 3
+  OuterCount = OuterCount + 1
+  FOR Inner = 1 TO 5
+    IF Inner = 2 THEN EXIT FOR
+    InnerCount = InnerCount + 1
+  NEXT
+NEXT
+FinalOuter = Outer
+FinalInner = Inner
+
+' 3. Short-Circuit Execution
+Flag = 0: FinalK = 0
+FOR K = 1 TO 5
+  EXIT FOR
+  Flag = 99
+NEXT
+FinalK = K
+TotalTests% = TotalTests% + 1
+IF TargetVal = 3 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [EXIT FOR Statement] TargetVal expected "; 3; " but got "; TargetVal
+END IF
+TotalTests% = TotalTests% + 1
+IF FinalI = 3 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [EXIT FOR Statement] FinalI expected "; 3; " but got "; FinalI
+END IF
+TotalTests% = TotalTests% + 1
+IF OuterCount = 3 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [EXIT FOR Statement] OuterCount expected "; 3; " but got "; OuterCount
+END IF
+TotalTests% = TotalTests% + 1
+IF FinalOuter = 4 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [EXIT FOR Statement] FinalOuter expected "; 4; " but got "; FinalOuter
+END IF
+TotalTests% = TotalTests% + 1
+IF InnerCount = 3 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [EXIT FOR Statement] InnerCount expected "; 3; " but got "; InnerCount
+END IF
+TotalTests% = TotalTests% + 1
+IF FinalInner = 2 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [EXIT FOR Statement] FinalInner expected "; 2; " but got "; FinalInner
+END IF
+TotalTests% = TotalTests% + 1
+IF Flag = 0 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [EXIT FOR Statement] Flag expected "; 0; " but got "; Flag
+END IF
+TotalTests% = TotalTests% + 1
+IF FinalK = 1 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [EXIT FOR Statement] FinalK expected "; 1; " but got "; FinalK
+END IF
+
+' Vector: DO...LOOP Statement (Pre-test)
 ' 1. WHILE False -> 0 runs
 RunsPreWhile = 0
 DO WHILE 0
@@ -665,24 +752,24 @@ IF RunsPreWhile = 0 THEN
   PassedTests% = PassedTests% + 1
 ELSE
   FailedTests% = FailedTests% + 1
-  PRINT "FAIL: [DO WHILE / UNTIL (Pre-test Loop)] RunsPreWhile expected "; 0; " but got "; RunsPreWhile
+  PRINT "FAIL: [DO...LOOP Statement (Pre-test)] RunsPreWhile expected "; 0; " but got "; RunsPreWhile
 END IF
 TotalTests% = TotalTests% + 1
 IF RunsPreUntil = 0 THEN
   PassedTests% = PassedTests% + 1
 ELSE
   FailedTests% = FailedTests% + 1
-  PRINT "FAIL: [DO WHILE / UNTIL (Pre-test Loop)] RunsPreUntil expected "; 0; " but got "; RunsPreUntil
+  PRINT "FAIL: [DO...LOOP Statement (Pre-test)] RunsPreUntil expected "; 0; " but got "; RunsPreUntil
 END IF
 TotalTests% = TotalTests% + 1
 IF RunsFloat = 1 THEN
   PassedTests% = PassedTests% + 1
 ELSE
   FailedTests% = FailedTests% + 1
-  PRINT "FAIL: [DO WHILE / UNTIL (Pre-test Loop)] RunsFloat expected "; 1; " but got "; RunsFloat
+  PRINT "FAIL: [DO...LOOP Statement (Pre-test)] RunsFloat expected "; 1; " but got "; RunsFloat
 END IF
 
-' Vector: DO ... LOOP WHILE / UNTIL (Post-test Loop)
+' Vector: DO...LOOP Statement (Post-test)
 RunsPostA = 0
 DO
   RunsPostA = RunsPostA + 1
@@ -697,14 +784,117 @@ IF RunsPostA = 1 THEN
   PassedTests% = PassedTests% + 1
 ELSE
   FailedTests% = FailedTests% + 1
-  PRINT "FAIL: [DO ... LOOP WHILE / UNTIL (Post-test Loop)] RunsPostA expected "; 1; " but got "; RunsPostA
+  PRINT "FAIL: [DO...LOOP Statement (Post-test)] RunsPostA expected "; 1; " but got "; RunsPostA
 END IF
 TotalTests% = TotalTests% + 1
 IF RunsPostB = 1 THEN
   PassedTests% = PassedTests% + 1
 ELSE
   FailedTests% = FailedTests% + 1
-  PRINT "FAIL: [DO ... LOOP WHILE / UNTIL (Post-test Loop)] RunsPostB expected "; 1; " but got "; RunsPostB
+  PRINT "FAIL: [DO...LOOP Statement (Post-test)] RunsPostB expected "; 1; " but got "; RunsPostB
+END IF
+
+' Vector: GOSUB...RETURN Statement
+GlobalVar = 10: StepId = 0
+GOSUB RoutineStart
+StepId = 99
+GOTO EndTest
+
+RoutineStart:
+  GlobalVar = GlobalVar * 2
+  GOTO RoutineSkip
+  GlobalVar = 0 ' MUST NEVER EXECUTE
+RoutineSkip:
+  StepId = 1
+RETURN
+
+EndTest:
+TotalTests% = TotalTests% + 1
+IF GlobalVar = 20 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [GOSUB...RETURN Statement] GlobalVar expected "; 20; " but got "; GlobalVar
+END IF
+TotalTests% = TotalTests% + 1
+IF StepId = 99 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [GOSUB...RETURN Statement] StepId expected "; 99; " but got "; StepId
+END IF
+
+' Vector: SELECT CASE Statement
+' 1. Exact Match, Range (TO), and No Fallthrough
+TestVal = 5: Result = 0: ExecCount = 0
+SELECT CASE TestVal
+  CASE 1, 2, 3
+    Result = 1: ExecCount = ExecCount + 1
+  CASE 4 TO 6
+    Result = 2: ExecCount = ExecCount + 1
+  CASE 5
+    Result = 3: ExecCount = ExecCount + 1 ' MUST NEVER EXECUTE (No fallthrough)
+  CASE ELSE
+    Result = 4: ExecCount = ExecCount + 1
+END SELECT
+
+' 2. Relational Matching (CASE IS)
+Score = 85: Grade = 0
+SELECT CASE Score
+  CASE IS >= 90
+    Grade = 1
+  CASE IS >= 80
+    Grade = 2
+  CASE IS < 50
+    Grade = 3
+END SELECT
+TotalTests% = TotalTests% + 1
+IF Result = 2 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [SELECT CASE Statement] Result expected "; 2; " but got "; Result
+END IF
+TotalTests% = TotalTests% + 1
+IF ExecCount = 1 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [SELECT CASE Statement] ExecCount expected "; 1; " but got "; ExecCount
+END IF
+TotalTests% = TotalTests% + 1
+IF Grade = 2 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [SELECT CASE Statement] Grade expected "; 2; " but got "; Grade
+END IF
+
+' Vector: WHILE...WEND Statement
+Runs = 0: ValA = 1
+WHILE ValA
+  Runs = Runs + 1
+  IF Runs = 2 THEN GOTO EscapeWhile
+WEND
+EscapeWhile:
+
+FalseRuns = 0
+WHILE 0
+  FalseRuns = 99
+WEND
+TotalTests% = TotalTests% + 1
+IF Runs = 2 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [WHILE...WEND Statement] Runs expected "; 2; " but got "; Runs
+END IF
+TotalTests% = TotalTests% + 1
+IF FalseRuns = 0 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [WHILE...WEND Statement] FalseRuns expected "; 0; " but got "; FalseRuns
 END IF
 
 ' --- SUITE: CORE: Memory, Types & Structures ---
@@ -804,35 +994,151 @@ ELSE
 END IF
 
 ' Vector: SWAP Statement
-SwapA = 99
-SwapB = 42
-SWAP SwapA, SwapB
+' 1. Scalar Swap
+ValA = 10: ValB = 99
+SWAP ValA, ValB
+
+' 2. Array Indices Swap
+DIM SwapArr(2)
+SwapArr(1) = 42: SwapArr(2) = 77
+SWAP SwapArr(1), SwapArr(2)
+ArrRes1 = SwapArr(1)
+ArrRes2 = SwapArr(2)
+
+' 3. Fixed-Length String Swap Integrity
+TYPE SwapType
+  F AS STRING * 4
+END TYPE
+DIM ST1 AS SwapType, ST2 AS SwapType
+ST1.F = "A"
+ST2.F = "B"
+SWAP ST1, ST2
+ST1.F = "Z"
+FixedLenAfterSwap = LEN(ST1.F)
 TotalTests% = TotalTests% + 1
-IF SwapA = 42 THEN
+IF ValA = 99 THEN
   PassedTests% = PassedTests% + 1
 ELSE
   FailedTests% = FailedTests% + 1
-  PRINT "FAIL: [SWAP Statement] SwapA expected "; 42; " but got "; SwapA
+  PRINT "FAIL: [SWAP Statement] ValA expected "; 99; " but got "; ValA
 END IF
 TotalTests% = TotalTests% + 1
-IF SwapB = 99 THEN
+IF ValB = 10 THEN
   PassedTests% = PassedTests% + 1
 ELSE
   FailedTests% = FailedTests% + 1
-  PRINT "FAIL: [SWAP Statement] SwapB expected "; 99; " but got "; SwapB
+  PRINT "FAIL: [SWAP Statement] ValB expected "; 10; " but got "; ValB
+END IF
+TotalTests% = TotalTests% + 1
+IF ArrRes1 = 77 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [SWAP Statement] ArrRes1 expected "; 77; " but got "; ArrRes1
+END IF
+TotalTests% = TotalTests% + 1
+IF ArrRes2 = 42 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [SWAP Statement] ArrRes2 expected "; 42; " but got "; ArrRes2
+END IF
+TotalTests% = TotalTests% + 1
+IF FixedLenAfterSwap = 4 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [SWAP Statement] FixedLenAfterSwap expected "; 4; " but got "; FixedLenAfterSwap
 END IF
 
-' Vector: ERASE Statement (Static Arrays)
-DIM EraseArr(1 TO 3)
-EraseArr(2) = 777
-ERASE EraseArr
-ClearedVal = EraseArr(2)
+' Vector: ERASE Statement
+' 1. Numeric Array Erase
+DIM NumArr(2)
+NumArr(1) = 42: NumArr(2) = 99
+ERASE NumArr
+CheckNum1 = NumArr(1)
+CheckNum2 = NumArr(2)
+
+' 2. String Array Erase
+DIM StrArr$(1)
+StrArr$(1) = "Hello World"
+ERASE StrArr$
+CheckStr$ = StrArr$(1)
+
+' 3. UDT with Fixed-Length String Erase
+TYPE EraseType
+  F AS STRING * 4
+END TYPE
+DIM EArr(1) AS EraseType
+EArr(1).F = "TEST"
+ERASE EArr
+EArr(1).F = "X"
+FixedLenAfterErase = LEN(EArr(1).F)
 TotalTests% = TotalTests% + 1
-IF ClearedVal = 0 THEN
+IF CheckNum1 = 0 THEN
   PassedTests% = PassedTests% + 1
 ELSE
   FailedTests% = FailedTests% + 1
-  PRINT "FAIL: [ERASE Statement (Static Arrays)] ClearedVal expected "; 0; " but got "; ClearedVal
+  PRINT "FAIL: [ERASE Statement] CheckNum1 expected "; 0; " but got "; CheckNum1
+END IF
+TotalTests% = TotalTests% + 1
+IF CheckNum2 = 0 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [ERASE Statement] CheckNum2 expected "; 0; " but got "; CheckNum2
+END IF
+TotalTests% = TotalTests% + 1
+IF CheckStr$ = "" THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [ERASE Statement] CheckStr$ expected "; ""; " but got "; CheckStr$
+END IF
+TotalTests% = TotalTests% + 1
+IF FixedLenAfterErase = 4 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [ERASE Statement] FixedLenAfterErase expected "; 4; " but got "; FixedLenAfterErase
+END IF
+
+' --- SUITE: CORE: Procedures & Functions ---
+
+' Vector: CALL Statement
+RefVar = 10
+ValVar = 10
+DeepVar = 10
+CALL ScopeTest(RefVar, (ValVar), (((DeepVar))))
+GOTO EndCallTest
+
+SUB ScopeTest (ArgRef, ArgVal, ArgDeep)
+  ArgRef = 99
+  ArgVal = 99
+  ArgDeep = 99
+END SUB
+
+EndCallTest:
+TotalTests% = TotalTests% + 1
+IF RefVar = 99 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [CALL Statement] RefVar expected "; 99; " but got "; RefVar
+END IF
+TotalTests% = TotalTests% + 1
+IF ValVar = 10 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [CALL Statement] ValVar expected "; 10; " but got "; ValVar
+END IF
+TotalTests% = TotalTests% + 1
+IF DeepVar = 10 THEN
+  PassedTests% = PassedTests% + 1
+ELSE
+  FailedTests% = FailedTests% + 1
+  PRINT "FAIL: [CALL Statement] DeepVar expected "; 10; " but got "; DeepVar
 END IF
 
 ' --- FINAL REPORT ---

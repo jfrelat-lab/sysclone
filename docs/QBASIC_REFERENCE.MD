@@ -4,7 +4,7 @@
 
 ## 🔠 Alphabetical Index
 
-[/ (Floating-Point Division)](#-floating-point-division-) • [\ (Integer Division)](#-integer-division-) • [ABS Function](#abs-function) • [ASC Function](#asc-function) • [ATN Function](#atn-function) • [CHR$ Function](#chr-function) • [CINT Function](#cint-function) • [COS Function](#cos-function) • [Default Implicit Typing (SINGLE)](#default-implicit-typing-single-) • [DEFINT Statement](#defint-statement) • [DEFSNG Statement](#defsng-statement) • [DO ... LOOP WHILE / UNTIL (Post-test Loop)](#do-loop-while-until-post-test-loop-) • [DO WHILE / UNTIL (Pre-test Loop)](#do-while-until-pre-test-loop-) • [ERASE Statement (Static Arrays)](#erase-statement-static-arrays-) • [EXP Function](#exp-function) • [Explicit Type Suffix Override](#explicit-type-suffix-override) • [FIX Function](#fix-function) • [Fixed-Length String Padding](#fixed-length-string-padding) • [Fixed-Length String Truncation](#fixed-length-string-truncation) • [FOR...NEXT Statement](#for-next-statement) • [HEX$ Function](#hex-function) • [INSTR Function](#instr-function) • [INT Function](#int-function) • [LCASE$ Function](#lcase-function) • [LEFT$ Function](#left-function) • [LEN Function](#len-function) • [LOG Function](#log-function) • [LTRIM$ Function](#ltrim-function) • [Memory Aliasing (DIM AS STRING)](#memory-aliasing-dim-as-string-) • [MID$ Function](#mid-function) • [MOD Operator](#mod-operator) • [RIGHT$ Function](#right-function) • [RTRIM$ Function](#rtrim-function) • [SIN Function](#sin-function) • [SPACE$ Function](#space-function) • [SQR Function](#sqr-function) • [STR$ Function](#str-function) • [STRING$ Function](#string-function) • [SWAP Statement](#swap-statement) • [TAN Function](#tan-function) • [UCASE$ Function](#ucase-function) • [VAL Function](#val-function)
+[/ (Floating-Point Division)](#-floating-point-division-) • [\ (Integer Division)](#-integer-division-) • [ABS Function](#abs-function) • [ASC Function](#asc-function) • [ATN Function](#atn-function) • [CALL Statement](#call-statement) • [CHR$ Function](#chr-function) • [CINT Function](#cint-function) • [COS Function](#cos-function) • [Default Implicit Typing (SINGLE)](#default-implicit-typing-single-) • [DEFINT Statement](#defint-statement) • [DEFSNG Statement](#defsng-statement) • [DO...LOOP Statement (Post-test)](#do-loop-statement-post-test-) • [DO...LOOP Statement (Pre-test)](#do-loop-statement-pre-test-) • [ERASE Statement](#erase-statement) • [EXIT FOR Statement](#exit-for-statement) • [EXP Function](#exp-function) • [Explicit Type Suffix Override](#explicit-type-suffix-override) • [FIX Function](#fix-function) • [Fixed-Length String Padding](#fixed-length-string-padding) • [Fixed-Length String Truncation](#fixed-length-string-truncation) • [FOR...NEXT Statement](#for-next-statement) • [GOSUB...RETURN Statement](#gosub-return-statement) • [HEX$ Function](#hex-function) • [INSTR Function](#instr-function) • [INT Function](#int-function) • [LCASE$ Function](#lcase-function) • [LEFT$ Function](#left-function) • [LEN Function](#len-function) • [LOG Function](#log-function) • [LTRIM$ Function](#ltrim-function) • [Memory Aliasing (DIM AS STRING)](#memory-aliasing-dim-as-string-) • [MID$ Function](#mid-function) • [MOD Operator](#mod-operator) • [RIGHT$ Function](#right-function) • [RTRIM$ Function](#rtrim-function) • [SELECT CASE Statement](#select-case-statement) • [SIN Function](#sin-function) • [SPACE$ Function](#space-function) • [SQR Function](#sqr-function) • [STR$ Function](#str-function) • [STRING$ Function](#string-function) • [SWAP Statement](#swap-statement) • [TAN Function](#tan-function) • [UCASE$ Function](#ucase-function) • [VAL Function](#val-function) • [WHILE...WEND Statement](#while-wend-statement)
 
 ---
 
@@ -44,8 +44,12 @@
   - [INSTR Function](#instr-function)
 - **CORE: Control Flow & Jumps**
   - [FOR...NEXT Statement](#for-next-statement)
-  - [DO WHILE / UNTIL (Pre-test Loop)](#do-while-until-pre-test-loop-)
-  - [DO ... LOOP WHILE / UNTIL (Post-test Loop)](#do-loop-while-until-post-test-loop-)
+  - [EXIT FOR Statement](#exit-for-statement)
+  - [DO...LOOP Statement (Pre-test)](#do-loop-statement-pre-test-)
+  - [DO...LOOP Statement (Post-test)](#do-loop-statement-post-test-)
+  - [GOSUB...RETURN Statement](#gosub-return-statement)
+  - [SELECT CASE Statement](#select-case-statement)
+  - [WHILE...WEND Statement](#while-wend-statement)
 - **CORE: Memory, Types & Structures**
   - [Default Implicit Typing (SINGLE)](#default-implicit-typing-single-)
   - [DEFINT Statement](#defint-statement)
@@ -55,7 +59,9 @@
   - [Fixed-Length String Padding](#fixed-length-string-padding)
   - [Fixed-Length String Truncation](#fixed-length-string-truncation)
   - [SWAP Statement](#swap-statement)
-  - [ERASE Statement (Static Arrays)](#erase-statement-static-arrays-)
+  - [ERASE Statement](#erase-statement)
+- **CORE: Procedures & Functions**
+  - [CALL Statement](#call-statement)
 
 ---
 
@@ -1056,7 +1062,77 @@ M       = 7            (number)
 
 ---
 
-### DO WHILE / UNTIL (Pre-test Loop)
+### EXIT FOR Statement
+
+**Syntax:** `EXIT FOR`
+
+Immediately terminates the execution of the innermost FOR...NEXT loop, transferring control to the statement following the NEXT keyword.
+
+**Example:**
+```basic
+FOR I = 1 TO 5
+  IF I = 3 THEN EXIT FOR
+  PRINT I;
+NEXT
+```
+**Output:**
+```text
+ 1  2 
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL QUIRKS:
+1. **Iterator Retention**: Unlike a naturally completed loop which overshoots, exiting prematurely leaves the iterator at its exact current value.
+2. **Scope Isolation**: In nested loops, `EXIT FOR` strictly breaks only the deepest active loop without affecting outer iterators.
+3. **Short-Circuit**: Any statements remaining in the loop body after the `EXIT FOR` command are immediately bypassed.
+
+```basic
+' 1. Basic Exit and Iterator Retention
+TargetVal = 0: FinalI = 0
+FOR I = 5 TO 1 STEP -1
+  IF I = 3 THEN
+    TargetVal = I
+    EXIT FOR
+  END IF
+NEXT
+FinalI = I
+
+' 2. Scope Isolation (Nested Loops)
+OuterCount = 0: InnerCount = 0
+FOR Outer = 1 TO 3
+  OuterCount = OuterCount + 1
+  FOR Inner = 1 TO 5
+    IF Inner = 2 THEN EXIT FOR
+    InnerCount = InnerCount + 1
+  NEXT
+NEXT
+FinalOuter = Outer
+FinalInner = Inner
+
+' 3. Short-Circuit Execution
+Flag = 0: FinalK = 0
+FOR K = 1 TO 5
+  EXIT FOR
+  Flag = 99
+NEXT
+FinalK = K
+```
+**Memory State (End of Execution):**
+```text
+TargetVal  = 3            (number)
+FinalI     = 3            (number)
+OuterCount = 3            (number)
+FinalOuter = 4            (number)
+InnerCount = 3            (number)
+FinalInner = 2            (number)
+Flag       = 0            (number)
+FinalK     = 1            (number)
+```
+
+---
+
+### DO...LOOP Statement (Pre-test)
 
 **Syntax:** `DO [{WHILE | UNTIL} condition] ... LOOP`
 
@@ -1108,7 +1184,7 @@ RunsFloat    = 1            (number)
 
 ---
 
-### DO ... LOOP WHILE / UNTIL (Post-test Loop)
+### DO...LOOP Statement (Post-test)
 
 **Syntax:** `DO ... LOOP [{WHILE | UNTIL} condition]`
 
@@ -1145,6 +1221,169 @@ LOOP UNTIL -1
 ```text
 RunsPostA = 1            (number)
 RunsPostB = 1            (number)
+```
+
+---
+
+### GOSUB...RETURN Statement
+
+**Syntax:** `GOSUB label ... label: ... RETURN`
+
+Branches to, and returns from, a subroutine within the same module. Variables are fully shared with the caller.
+
+**Example:**
+```basic
+GOSUB PrintMsg
+END
+PrintMsg:
+  PRINT "Hello"
+RETURN
+```
+**Output:**
+```text
+Hello
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL QUIRKS:
+1. **Scope Sharing**: GOSUB does not create a new variable scope. It shares the exact same memory space as the caller.
+2. **Internal Jumps**: A GOTO inside a GOSUB block strictly shifts the internal pointer without breaking the GOSUB loop.
+3. **Spatial Return**: The RETURN statement is strictly required to escape the GOSUB isolation loop and resume main execution.
+
+```basic
+GlobalVar = 10: StepId = 0
+GOSUB RoutineStart
+StepId = 99
+GOTO EndTest
+
+RoutineStart:
+  GlobalVar = GlobalVar * 2
+  GOTO RoutineSkip
+  GlobalVar = 0 ' MUST NEVER EXECUTE
+RoutineSkip:
+  StepId = 1
+RETURN
+
+EndTest:
+```
+**Memory State (End of Execution):**
+```text
+GlobalVar = 20           (number)
+StepId    = 99           (number)
+```
+
+---
+
+### SELECT CASE Statement
+
+**Syntax:** `SELECT CASE testexpression ... CASE {expressionlist | IS relation | start TO end} ... [CASE ELSE] ... END SELECT`
+
+Executes one of several blocks of statements depending on the value of an expression. Supports exact matches, inclusive ranges (TO), and relational comparisons (IS).
+
+**Example:**
+```basic
+Score = 85
+SELECT CASE Score
+  CASE IS >= 90
+    PRINT "Grade: A"
+  CASE 80 TO 89
+    PRINT "Grade: B"
+  CASE 0, 1, 2
+    PRINT "Grade: Z"
+  CASE ELSE
+    PRINT "Unknown"
+END SELECT
+```
+**Output:**
+```text
+Grade: B
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL QUIRKS:
+1. **Single Evaluation**: The base test expression is evaluated exactly once.
+2. **No Fallthrough**: Unlike C or JavaScript, QBasic executes ONLY the first matching CASE block and then exits the SELECT entirely.
+3. **Range Matching**: The 'TO' keyword denotes an inclusive mathematical range.
+4. **Relational Matching**: The 'IS' keyword allows direct relational comparisons (>, <, >=, <=, <>).
+
+```basic
+' 1. Exact Match, Range (TO), and No Fallthrough
+TestVal = 5: Result = 0: ExecCount = 0
+SELECT CASE TestVal
+  CASE 1, 2, 3
+    Result = 1: ExecCount = ExecCount + 1
+  CASE 4 TO 6
+    Result = 2: ExecCount = ExecCount + 1
+  CASE 5
+    Result = 3: ExecCount = ExecCount + 1 ' MUST NEVER EXECUTE (No fallthrough)
+  CASE ELSE
+    Result = 4: ExecCount = ExecCount + 1
+END SELECT
+
+' 2. Relational Matching (CASE IS)
+Score = 85: Grade = 0
+SELECT CASE Score
+  CASE IS >= 90
+    Grade = 1
+  CASE IS >= 80
+    Grade = 2
+  CASE IS < 50
+    Grade = 3
+END SELECT
+```
+**Memory State (End of Execution):**
+```text
+Result    = 2            (number)
+ExecCount = 1            (number)
+Grade     = 2            (number)
+```
+
+---
+
+### WHILE...WEND Statement
+
+**Syntax:** `WHILE condition ... WEND`
+
+Executes a series of statements as long as a specified condition is true. It is the legacy predecessor to DO WHILE...LOOP.
+
+**Example:**
+```basic
+I = 1
+WHILE I < 4
+  PRINT I;
+  I = I + 1
+WEND
+```
+**Output:**
+```text
+ 1  2  3 
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL QUIRKS:
+1. **No Native Exit**: Unlike DO or FOR, QBasic does not support 'EXIT WHILE'. Early termination must be achieved via GOTO or RETURN.
+2. **Pre-test Only**: The condition is evaluated before the loop begins. If initially false (0), the body executes 0 times.
+
+```basic
+Runs = 0: ValA = 1
+WHILE ValA
+  Runs = Runs + 1
+  IF Runs = 2 THEN GOTO EscapeWhile
+WEND
+EscapeWhile:
+
+FalseRuns = 0
+WHILE 0
+  FalseRuns = 99
+WEND
+```
+**Memory State (End of Execution):**
+```text
+Runs      = 2            (number)
+FalseRuns = 0            (number)
 ```
 
 ---
@@ -1382,11 +1621,11 @@ TruncStr = "123"        (string)
 
 **Syntax:** `SWAP variable1, variable2`
 
-Exchanges the values of two variables.
+Exchanges the values of two variables of the same type. Works with scalars, array elements, and UDT properties.
 
 **Example:**
 ```basic
-A = 1 : B = 2
+A = 1: B = 2
 SWAP A, B
 PRINT A; B
 ```
@@ -1397,31 +1636,55 @@ PRINT A; B
 
 #### 🔬 Hardware Quirks & Edge Cases
 
-Both variables must be of the same data type. Sysclone enforces deep cloning to ensure JavaScript object references don't bleed during the swap.
+CRITICAL QUIRKS:
+1. **Memory Type Integrity**: SWAP must work seamlessly across direct environment variables and complex array indices.
+2. **Reference Decoupling**: In memory-managed languages (like JS), swapping object references directly can entangle them. A purist VM must deep-clone the values to safely exchange them.
+3. **Fixed-Length Preservation**: Swapping UDTs or Fixed-Length Strings must mutate the memory IN PLACE, otherwise the fixed-length constraint is permanently destroyed.
 
 ```basic
-SwapA = 99
-SwapB = 42
-SWAP SwapA, SwapB
+' 1. Scalar Swap
+ValA = 10: ValB = 99
+SWAP ValA, ValB
+
+' 2. Array Indices Swap
+DIM SwapArr(2)
+SwapArr(1) = 42: SwapArr(2) = 77
+SWAP SwapArr(1), SwapArr(2)
+ArrRes1 = SwapArr(1)
+ArrRes2 = SwapArr(2)
+
+' 3. Fixed-Length String Swap Integrity
+TYPE SwapType
+  F AS STRING * 4
+END TYPE
+DIM ST1 AS SwapType, ST2 AS SwapType
+ST1.F = "A"
+ST2.F = "B"
+SWAP ST1, ST2
+ST1.F = "Z"
+FixedLenAfterSwap = LEN(ST1.F)
 ```
 **Memory State (End of Execution):**
 ```text
-SwapA = 42           (number)
-SwapB = 99           (number)
+ValA              = 99           (number)
+ValB              = 10           (number)
+ArrRes1           = 77           (number)
+ArrRes2           = 42           (number)
+FixedLenAfterSwap = 4            (number)
 ```
 
 ---
 
-### ERASE Statement (Static Arrays)
+### ERASE Statement
 
-**Syntax:** `ERASE arrayname [, arrayname]...`
+**Syntax:** `ERASE arrayname [, arrayname] ...`
 
-Reinitializes elements of static arrays or deallocates dynamic arrays.
+Reinitializes elements of static arrays and completely deallocates dynamic arrays from memory.
 
 **Example:**
 ```basic
-DIM Arr(1)
-Arr(1) = 99
+DIM Arr(5)
+Arr(1) = 42
 ERASE Arr
 PRINT Arr(1)
 ```
@@ -1432,17 +1695,94 @@ PRINT Arr(1)
 
 #### 🔬 Hardware Quirks & Edge Cases
 
-For static (non-dynamic) arrays, it does not destroy the array structure but soft-resets its elements: numbers revert to 0 and strings to empty.
+CRITICAL QUIRKS:
+1. **Static Array Reset**: For statically dimensioned arrays, ERASE does not destroy the array footprint. It iterates and resets numeric arrays to 0, and string arrays to empty strings ("").
+2. **Type Protection**: Erasing an array of UDTs containing Fixed-Length strings must softly reset the string's content without destroying its prototype length.
 
 ```basic
-DIM EraseArr(1 TO 3)
-EraseArr(2) = 777
-ERASE EraseArr
-ClearedVal = EraseArr(2)
+' 1. Numeric Array Erase
+DIM NumArr(2)
+NumArr(1) = 42: NumArr(2) = 99
+ERASE NumArr
+CheckNum1 = NumArr(1)
+CheckNum2 = NumArr(2)
+
+' 2. String Array Erase
+DIM StrArr$(1)
+StrArr$(1) = "Hello World"
+ERASE StrArr$
+CheckStr$ = StrArr$(1)
+
+' 3. UDT with Fixed-Length String Erase
+TYPE EraseType
+  F AS STRING * 4
+END TYPE
+DIM EArr(1) AS EraseType
+EArr(1).F = "TEST"
+ERASE EArr
+EArr(1).F = "X"
+FixedLenAfterErase = LEN(EArr(1).F)
 ```
 **Memory State (End of Execution):**
 ```text
-ClearedVal = 0            (number)
+CheckNum1          = 0            (number)
+CheckNum2          = 0            (number)
+CheckStr$          = ""           (string)
+FixedLenAfterErase = 4            (number)
+```
+
+---
+
+## CORE: Procedures & Functions
+
+### CALL Statement
+
+**Syntax:** `CALL subname([argumentlist])`
+
+Transfers control to a subroutine. Arguments are passed by reference by default, allowing the subroutine to directly modify the caller's variables.
+
+**Example:**
+```basic
+A = 10
+CALL Multiply(A)
+PRINT A
+END
+SUB Multiply(X)
+  X = X * 2
+END SUB
+```
+**Output:**
+```text
+ 20 
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL QUIRKS:
+1. **Pass by Reference (Default)**: Passing a raw variable directly links the subroutine's parameter to the caller's memory address.
+2. **Pass by Value (Forced)**: Enclosing a variable in extra parentheses explicitly evaluates it as an expression (an R-Value), forcing a disconnected copy to be passed.
+3. **Multiple Parentheses**: Nesting parentheses, such as (((X))), must strictly resolve as a single R-Value without corrupting the AST or evaluation.
+
+```basic
+RefVar = 10
+ValVar = 10
+DeepVar = 10
+CALL ScopeTest(RefVar, (ValVar), (((DeepVar))))
+GOTO EndCallTest
+
+SUB ScopeTest (ArgRef, ArgVal, ArgDeep)
+  ArgRef = 99
+  ArgVal = 99
+  ArgDeep = 99
+END SUB
+
+EndCallTest:
+```
+**Memory State (End of Execution):**
+```text
+RefVar  = 99           (number)
+ValVar  = 10           (number)
+DeepVar = 10           (number)
 ```
 
 ---

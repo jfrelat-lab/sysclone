@@ -47,21 +47,48 @@ const statementList = sequenceObj([
 ]).map(obj => [obj.first, ...obj.rest]);
 
 /**
- * Parses a single item within a CASE statement.
- * Handles both exact values (CASE 5) and ranges (CASE 3 TO 5).
+ * 1. Relational Matching (e.g., CASE IS >= 90)
+ * Unambiguous because it explicitly starts with the 'IS' keyword.
  */
-const caseItem = sequenceObj([
-    capture('low', expression),
-    capture('highOpt', optional(sequenceObj([
-        ws, keyword(Tokens.TO), ws, capture('high', expression)
-    ]).map(obj => obj.high)))
-]).map(obj => {
-    // If 'TO' was found, return a range node
-    if (obj.highOpt) {
-        return { type: 'CASE_RANGE', low: obj.low, high: obj.highOpt };
-    }
-    return obj.low;
-});
+const caseIs = sequenceObj([
+    keyword(Tokens.IS), optWs, 
+    capture('operator', regex(/^(>=|<=|<>|>|<|=)/)), optWs, 
+    capture('value', expression)
+]).map(obj => ({ 
+    type: 'CASE_IS', 
+    operator: obj.operator, 
+    value: obj.value 
+}));
+
+/**
+ * 2. Range Matching (e.g., CASE 4 TO 6)
+ * Must be checked BEFORE caseExact, otherwise the first expression is consumed prematurely!
+ */
+const caseRange = sequenceObj([
+    capture('low', expression), ws, 
+    keyword(Tokens.TO), ws, 
+    capture('high', expression)
+]).map(obj => ({ 
+    type: 'CASE_RANGE', 
+    low: obj.low, 
+    high: obj.high 
+}));
+
+/**
+ * 3. Exact Matching (e.g., CASE 5 or CASE "Hello")
+ * The ultimate fallback. It simply consumes a single expression.
+ */
+const caseExact = expression; // No mapping needed, the expression parser already returns a valid AST node
+
+/**
+ * Parses a single item within a CASE statement list.
+ * Order matters: Most specific patterns first, generic fallbacks last.
+ */
+const caseItem = choice([
+    caseIs,
+    caseRange,
+    caseExact
+]);
 
 /**
  * SELECT CASE ... END SELECT

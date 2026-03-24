@@ -1,0 +1,45 @@
+{
+  "suite": "CORE: Procedures & Functions",
+  "vectors": [
+    {
+      "name": "CALL Statement",
+      "syntax": "CALL subname([argumentlist])",
+      "description": "Transfers control to a subroutine. Arguments are passed by reference by default, allowing the subroutine to directly modify the caller's variables.",
+      "example": {
+        "code": [
+          "A = 10",
+          "CALL Multiply(A)",
+          "PRINT A",
+          "END",
+          "SUB Multiply(X)",
+          "  X = X * 2",
+          "END SUB"
+        ],
+        "output": " 20 "
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRKS:\n1. **Pass by Reference (Default)**: Passing a raw variable directly links the subroutine's parameter to the caller's memory address.\n2. **Pass by Value (Forced)**: Enclosing a variable in extra parentheses explicitly evaluates it as an expression (an R-Value), forcing a disconnected copy to be passed.\n3. **Multiple Parentheses**: Nesting parentheses, such as (((X))), must strictly resolve as a single R-Value without corrupting the AST or evaluation.",
+        "setup": [
+          "RefVar = 10",
+          "ValVar = 10",
+          "DeepVar = 10",
+          "CALL ScopeTest(RefVar, (ValVar), (((DeepVar))))",
+          "GOTO EndCallTest",
+          "",
+          "SUB ScopeTest (ArgRef, ArgVal, ArgDeep)",
+          "  ArgRef = 99",
+          "  ArgVal = 99",
+          "  ArgDeep = 99",
+          "END SUB",
+          "",
+          "EndCallTest:"
+        ],
+        "assertions": [
+          { "var": "RefVar", "val": 99, "type": "number", "message": "Raw variables must be passed by reference and mutated by the subroutine" },
+          { "var": "ValVar", "val": 10, "type": "number", "message": "Variables enclosed in parentheses must be passed by value, preserving the caller's original data" },
+          { "var": "DeepVar", "val": 10, "type": "number", "message": "Variables enclosed in multiple parentheses must still be strictly parsed and passed by value" }
+        ]
+      }
+    }
+  ]
+}

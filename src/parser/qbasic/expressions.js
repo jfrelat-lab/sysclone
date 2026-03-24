@@ -8,9 +8,28 @@ import { identifier, numberLiteral, stringLiteral, optWs, keyword } from './lexe
  */
 export const expression = lazy(() => logicExpr);
 
+/**
+ * Parses an expression enclosed in parentheses: (X) or (((X)))
+ * * MS-DOS QUIRK: Parentheses are not just for mathematical order of operations.
+ * Wrapping a variable in parentheses explicitly casts it as an R-Value (an evaluated expression).
+ * This forces the VirtualCPU to pass the variable by value instead of by reference during a CALL.
+ * We inject a silent metadata tag `_isRValue` to preserve this semantic intent without 
+ * creating redundant nested nodes in the AST.
+ */
 const parensExpr = sequenceObj([
     str('('), optWs, capture('expr', expression), optWs, str(')')
-]).map(obj => obj.expr);
+]).map(obj => {
+    const node = obj.expr;
+    
+    // Inject the metadata tag if the parsed expression is a valid AST node object.
+    // This allows nested parentheses (((X))) to safely overwrite the same tag 
+    // without creating infinite AST depth.
+    if (node && typeof node === 'object') {
+        node._isRValue = true;
+    }
+    
+    return node;
+});
 
 // --- 1. Function Calls and Property Access ---
 const commaSep = sequenceObj([optWs, str(','), optWs]);

@@ -11,7 +11,7 @@ export const Tokens = {
     FOR: 'FOR', TO: 'TO', STEP: 'STEP', NEXT: 'NEXT',
     DO: 'DO', LOOP: 'LOOP', UNTIL: 'UNTIL', WHILE: 'WHILE', WEND: 'WEND', 
     GOTO: 'GOTO', GOSUB: 'GOSUB', RETURN: 'RETURN', CALL: 'CALL',
-    SELECT: 'SELECT', CASE: 'CASE', EXIT: 'EXIT', SWAP: 'SWAP',
+    SELECT: 'SELECT', CASE: 'CASE', IS: 'IS', EXIT: 'EXIT', SWAP: 'SWAP',
     
     // Legacy Error Handling & Jumps
     ON: 'ON', ERROR: 'ERROR', RESUME: 'RESUME',

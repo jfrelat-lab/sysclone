@@ -168,51 +168,93 @@
     {
       "name": "SWAP Statement",
       "syntax": "SWAP variable1, variable2",
-      "description": "Exchanges the values of two variables.",
+      "description": "Exchanges the values of two variables of the same type. Works with scalars, array elements, and UDT properties.",
       "example": {
         "code": [
-          "A = 1 : B = 2",
+          "A = 1: B = 2",
           "SWAP A, B",
           "PRINT A; B"
         ],
         "output": " 2  1 "
       },
       "quirks_and_tests": {
-        "description": "Both variables must be of the same data type. Sysclone enforces deep cloning to ensure JavaScript object references don't bleed during the swap.",
+        "description": "CRITICAL QUIRKS:\n1. **Memory Type Integrity**: SWAP must work seamlessly across direct environment variables and complex array indices.\n2. **Reference Decoupling**: In memory-managed languages (like JS), swapping object references directly can entangle them. A purist VM must deep-clone the values to safely exchange them.\n3. **Fixed-Length Preservation**: Swapping UDTs or Fixed-Length Strings must mutate the memory IN PLACE, otherwise the fixed-length constraint is permanently destroyed.",
         "setup": [
-          "SwapA = 99",
-          "SwapB = 42",
-          "SWAP SwapA, SwapB"
+          "' 1. Scalar Swap",
+          "ValA = 10: ValB = 99",
+          "SWAP ValA, ValB",
+          "",
+          "' 2. Array Indices Swap",
+          "DIM SwapArr(2)",
+          "SwapArr(1) = 42: SwapArr(2) = 77",
+          "SWAP SwapArr(1), SwapArr(2)",
+          "ArrRes1 = SwapArr(1)",
+          "ArrRes2 = SwapArr(2)",
+          "",
+          "' 3. Fixed-Length String Swap Integrity",
+          "TYPE SwapType",
+          "  F AS STRING * 4",
+          "END TYPE",
+          "DIM ST1 AS SwapType, ST2 AS SwapType",
+          "ST1.F = \"A\"",
+          "ST2.F = \"B\"",
+          "SWAP ST1, ST2",
+          "ST1.F = \"Z\"",
+          "FixedLenAfterSwap = LEN(ST1.F)"
         ],
         "assertions": [
-          { "var": "SwapA", "val": 42, "type": "number" },
-          { "var": "SwapB", "val": 99, "type": "number" }
+          { "var": "ValA", "val": 99, "type": "number", "message": "First scalar variable must receive the second's value" },
+          { "var": "ValB", "val": 10, "type": "number", "message": "Second scalar variable must receive the first's value" },
+          { "var": "ArrRes1", "val": 77, "type": "number", "message": "First array index must receive the second index's value" },
+          { "var": "ArrRes2", "val": 42, "type": "number", "message": "Second array index must receive the first index's value" },
+          { "var": "FixedLenAfterSwap", "val": 4, "type": "number", "message": "Fixed-Length property MUST retain its exact memory padding after a SWAP" }
         ]
       }
     },
     {
-      "name": "ERASE Statement (Static Arrays)",
-      "syntax": "ERASE arrayname [, arrayname]...",
-      "description": "Reinitializes elements of static arrays or deallocates dynamic arrays.",
+      "name": "ERASE Statement",
+      "syntax": "ERASE arrayname [, arrayname] ...",
+      "description": "Reinitializes elements of static arrays and completely deallocates dynamic arrays from memory.",
       "example": {
         "code": [
-          "DIM Arr(1)",
-          "Arr(1) = 99",
+          "DIM Arr(5)",
+          "Arr(1) = 42",
           "ERASE Arr",
           "PRINT Arr(1)"
         ],
         "output": " 0 "
       },
       "quirks_and_tests": {
-        "description": "For static (non-dynamic) arrays, it does not destroy the array structure but soft-resets its elements: numbers revert to 0 and strings to empty.",
+        "description": "CRITICAL QUIRKS:\n1. **Static Array Reset**: For statically dimensioned arrays, ERASE does not destroy the array footprint. It iterates and resets numeric arrays to 0, and string arrays to empty strings (\"\").\n2. **Type Protection**: Erasing an array of UDTs containing Fixed-Length strings must softly reset the string's content without destroying its prototype length.",
         "setup": [
-          "DIM EraseArr(1 TO 3)",
-          "EraseArr(2) = 777",
-          "ERASE EraseArr",
-          "ClearedVal = EraseArr(2)"
+          "' 1. Numeric Array Erase",
+          "DIM NumArr(2)",
+          "NumArr(1) = 42: NumArr(2) = 99",
+          "ERASE NumArr",
+          "CheckNum1 = NumArr(1)",
+          "CheckNum2 = NumArr(2)",
+          "",
+          "' 2. String Array Erase",
+          "DIM StrArr$(1)",
+          "StrArr$(1) = \"Hello World\"",
+          "ERASE StrArr$",
+          "CheckStr$ = StrArr$(1)",
+          "",
+          "' 3. UDT with Fixed-Length String Erase",
+          "TYPE EraseType",
+          "  F AS STRING * 4",
+          "END TYPE",
+          "DIM EArr(1) AS EraseType",
+          "EArr(1).F = \"TEST\"",
+          "ERASE EArr",
+          "EArr(1).F = \"X\"",
+          "FixedLenAfterErase = LEN(EArr(1).F)"
         ],
         "assertions": [
-          { "var": "ClearedVal", "val": 0, "type": "number" }
+          { "var": "CheckNum1", "val": 0, "type": "number", "message": "Numeric array element 1 must be reset to 0" },
+          { "var": "CheckNum2", "val": 0, "type": "number", "message": "Numeric array element 2 must be reset to 0" },
+          { "var": "CheckStr$", "val": "", "type": "string", "message": "String array elements must be reset to empty strings" },
+          { "var": "FixedLenAfterErase", "val": 4, "type": "number", "message": "Fixed-Length String inside UDT MUST survive ERASE and retain its memory size" }
         ]
       }
     }

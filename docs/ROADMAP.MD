@@ -187,49 +187,49 @@
   - [x] Implement strings: `CHR$`, `ASC`, `STR$`, `HEX$`, `VAL` (including Hex `&H` and Octal `&O` prefixes), `LEN`, `MID$`, `LEFT$`, `RIGHT$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `INSTR`, `STRING$`, `SPC`.
   - [x] Add memory/variable utilities: `SWAP`, `ERASE`.
   - [x] Add hardware intercepts: `TAB`, `INPUT$`.
-- [x] **9.5. The "Truth Vector" Compatibility Framework:**
-  - [x] Design a language-agnostic format (e.g., JSON/YAML) to strictly document QBasic/MS-DOS quirks and edge cases (the "Truth Vectors").
-  - [x] Build a generator that compiles these vectors into a native `.BAS` self-testing suite, runnable in DOSBox to prove hardware-accurate behavior.
+- [ ] **9.5. The "Truth Vector" Compatibility Framework (Automated DOSBox):**
+  *A rigorous, automated infrastructure to prove the VirtualCPU's exact historical accuracy against MS-DOS originals without polluting the repository.*
+  - [x] Design a language-agnostic format (e.g., JSON/YAML) to strictly document QBasic/MS-DOS quirks and edge cases.
+  - [ ] **Isolation & Clean Repository**: Move truth vectors out of `examples/` into a dedicated sandbox (`tools/truth_vectors/`). Implement strict `.gitignore` rules (`engines/`) to keep proprietary MS-DOS binaries (QB45/TP7) out of version control.
+  - [ ] **Orchestration Node.js (CLI Runner)**: Develop a headless DOSBox controller (`runner.js`) that dynamically mounts workspaces, triggers native MS-DOS compilers/interpreters via batch scripts, and captures standard output (`output.txt`) for direct comparison.
+  - [ ] **Contributor DX**: Write a comprehensive `README.md` detailing the local DOSBox setup and binary sourcing (Archive.org) to make truth vector validation reproducible for anyone.
+  - [x] Build a generator that compiles these vectors into a native `.BAS` self-testing suite.
   - [x] Build a companion generator that translates these verified vectors into JavaScript unit tests for the Sysclone engine.
   - [x] Generate comprehensive Markdown documentation automatically from the Truth Vectors to serve as a definitive guide to QBasic behavior.
 - [ ] **9.6. Exhaustive Truth Vector Implementation (Instruction by Instruction):**
   *Systematically port and document every QBasic instruction and built-in function to the Truth Vector JSON format. Each entry must detail standard behavior (Black Box) and historical MS-DOS quirks (White Box).*
   - [x] **Suite 1: Strings & Type Casting (`builtins_string.json`):**
-    - [x] `STR$`: Standard padding vs negative signs.
-    - [x] `HEX$`: 32-bit two's complement and floating-point Banker's rounding.
-    - [x] `VAL`: Hexadecimal (`&H`) and Octal (`&O`) radix prefixes.
-    - [x] `MID$`, `LEFT$`, `RIGHT$`: Out-of-bounds slicing and omitted length arguments.
-    - [x] `LEN`, `UCASE$`, `LCASE$`, `LTRIM$`, `RTRIM$`, `SPACE$`, `STRING$`.
-    - [x] `CHR$`, `ASC`: Handling of control characters (e.g., `CR`, `LF`, `ESC`) vs graphical CP437 mapping.
-    - [x] `INSTR`: 1-based indexing, start offset, and empty substring fallbacks.
+    - [x] `STR$`, `HEX$`, `VAL` (Hex/Octal).
+    - [x] `MID$`, `LEFT$`, `RIGHT$`, `LEN`, `UCASE$`, `LCASE$`, `LTRIM$`, `RTRIM$`, `SPACE$`, `STRING$`.
+    - [x] `CHR$`, `ASC`, `INSTR`.
   - [x] **Suite 2: Math & Floating-Point Unit (`builtins_math.json`):**
-    - [x] `INT`, `FIX`, `CINT`: Downward floor vs zero-truncation vs Banker's rounding.
-    - [x] `\` (Integer Division) vs `/` (Float Division): Pre-truncation of operands vs result truncation.
-    - [x] `MOD`: Operand rounding and sign inheritance rules.
+    - [x] `INT`, `FIX`, `CINT`, `\`, `/`, `MOD`.
     - [x] `ABS`, `SQR`, `EXP`, `LOG`, `RND`.
-    - [x] Trigonometry (`SIN`, `COS`, `TAN`, `ATN`): Precision normalization for cross-platform assertion.
+    - [x] Trigonometry (`SIN`, `COS`, `TAN`, `ATN`).
   - [x] **Suite 3: Memory, Scoping, & Structures (`memory_scoping.json`):**
     - [x] Explicit Aliasing (`DIM X AS STRING` to `X$` mapping).
-    - [x] Implicit Typing (`DEFINT`, `DEFSNG`, Default `SINGLE`): Dynamic runtime evaluation to prevent scope leakage and strict first-letter routing.
-    - [x] Fixed-Length Strings (`AS STRING * N`): Space auto-padding and strict truncation.
-    - [x] `STATIC`: Vault persistence across subroutine calls vs global isolation.
-    - [x] `SHARED`: Tier 1 global routing vs localized shadowing.
-    - [x] Pass-by-Reference: Array indices and variables mutating via `CALL`.
-    - [x] `SWAP`, `ERASE`: Deep copying UDTs and static array zeroing.
-  - [ ] **Suite 4: Control Flow & Jumps (`control_flow.json`):**
-    - [x] `FOR ... NEXT`: Iterator mutation and terminal value leakage (Step overshoot).
-    - [x] `DO WHILE/UNTIL`: Truthiness evaluation (any non-zero integer is TRUE).
-    - [ ] `SELECT CASE`: Execution of `TO` ranges and cascading conditions.
+    - [x] Implicit Typing (`DEFINT`, `DEFSNG`).
+    - [x] Fixed-Length Strings (`AS STRING * N`).
+    - [x] `STATIC` & `SHARED` (Tier 1 global routing vs localized shadowing).
+    - [x] `SWAP`, `ERASE`.
+  - [x] **Suite 4: Control Flow & Jumps (`control_flow.json`):**
+    - [x] `FOR ... NEXT`, `EXIT FOR` (Iterator mutation and overshoot).
+    - [x] `DO WHILE/UNTIL ... LOOP` (Pre-test vs Post-test Truthiness).
+    - [x] `WHILE ... WEND` (Legacy fallback handling).
+    - [x] `SELECT CASE` (`TO` ranges, `IS` relational operators, no fallthrough).
+    - [x] `GOSUB ... RETURN` (Mini-callstack and spatial scoping).
     - [ ] Single-Line `IF`: Statement chaining via colons (`:`) and `ELSE` binding.
-    - [ ] `GOSUB ... RETURN`: Mini-callstack integrity within localized scopes.
-  - [ ] **Suite 5: Data & Error Handling (`data_errors.json`):**
+  - [ ] **Suite 5: Procedures & Functions (`procedures.json`):**
+    - [x] `CALL` / `SUB`: Pass-by-Reference vs Forced Pass-by-Value via parenthesis.
+    - [ ] `FUNCTION`: Return value assignment via function name.
+  - [ ] **Suite 6: Data & Error Handling (`data_errors.json`):**
     - [ ] `DATA`, `READ`, `RESTORE`: Global data pointer manipulation and unquoted string parsing.
     - [ ] `ON ERROR GOTO`, `RESUME [NEXT]`: Hardware stubbing verification.
-  - [ ] **Suite 6: I/O, Formatting & Terminal (`io_terminal.json`):**
+  - [ ] **Suite 7: I/O, Formatting & Terminal (`io_terminal.json`):**
     - [ ] `PRINT`: Spacing rules for positive/negative numbers and ghost commas.
     - [ ] `PRINT USING`: Variable-length string interception (`&`) and decimal precision (`###.##`).
     - [ ] `LOCATE`: Ghost parameter handling (`LOCATE ,,0`) and out-of-bounds protection.
-  - [ ] **Suite 7: Graphics & VRAM - Silent Probing (`graphics_vram.json`):**
+  - [ ] **Suite 8: Graphics & VRAM - Silent Probing (`graphics_vram.json`):**
     - [ ] `WINDOW`: Cartesian inversion and viewport clipping logic.
     - [ ] `PSET`, `PRESET`: Bounds checking and default background fallback.
     - [ ] `LINE`: Bresenham accuracy, `B`/`BF` flags, and `STEP` relativity.
@@ -251,7 +251,7 @@
   - [ ] Implement elegant, dynamic viewport resizing and CSS scaling to seamlessly transition between native hardware resolutions (e.g., SCREEN 0 Text Mode, SCREEN 12 VGA 640x480, SCREEN 13 VGA 320x200) without breaking the DOM layout or pixel aspect ratio.
   - [ ] Add `PALETTE` and `PALETTE USING` dynamic mapping support.
 - [ ] **10.3. Geometry Primitives (SCREEN 7, 8, 9, 13):**
-- [x] Implement `PSET`, `PRESET`, and `POINT` (Pixel Write/Read).
+  - [x] Implement `PSET`, `PRESET`, and `POINT` (Pixel Write/Read).
   - [x] Add geometry rendering: `LINE` (Bresenham, Box, Box Fill), including relative origin support `LINE - (x, y)`.
   - [x] Support `STEP` (Relative coordinates) dynamically across all geometric primitives.
   - [x] Implement advanced `CIRCLE` logic: accurately emulating QBasic's default screen aspect ratios, undocumented negative aspect inversions, arc drawing, and 4-connected Midpoint anti-aliasing to prevent Moire holes in concentric loops.
@@ -278,6 +278,17 @@
 - [x] **12.3. SortDemo.bas & Reversi.bas:**
   - [x] 100% Parsing achieved.
   - [x] Full execution of board logic (Reversi) and preliminary sorting algorithms (SortDemo).
+
+## Phase 12.3: Universal Syntax Linter (The AST Gatekeeper)
+*Before splitting the architecture, establish a strict diagnostic layer. The Linter must catch syntax errors and logic flaws directly from the AST, protecting the VirtualCPU from runtime crashes.*
+
+- [ ] **12.3.1. Core Linter Engine:**
+  - [ ] Create `tools/linter.js`.
+  - [ ] Implement an AST traversal mechanism to silently dry-run `.bas` programs.
+- [ ] **12.3.2. Lexical & Semantic Validation:**
+  - [ ] **Reserved Keyword Protection:** Flag variables explicitly named after reserved QBasic Native Functions or Tokens (e.g., `VAL = 5`, `LEN = 10`).
+  - [ ] **Label Integrity:** Detect and report duplicated jump labels (`EndTest:` used twice) and "Label Not Found" jumps.
+  - [ ] **Block Matching:** Verify structural integrity (e.g., `FOR` without `NEXT`, `DO` without `LOOP`).
 
 ## Phase 12.5: Multi-Language Architecture Refactoring (The Engine Split)
 *Before introducing Turbo Pascal or JIT compilation, the monolithic engine must be strictly decoupled. The goal is to separate the universal Virtual CPU mechanics from language-specific execution rules and memory behaviors.*
@@ -325,6 +336,3 @@
   - [ ] Implement `NodeIO`: A headless input driver mapping `INKEY$` and `INPUT` to `process.stdin`.
 - [ ] **14.3. Backend Math & Logic:**
   - [ ] Validate the execution of heavy computational scripts (e.g., algorithmic math, text-based data processing) without browser overhead.
-- [ ] **14.4. Universal Syntax Linter:**
-  - [ ] Leverage the decoupled front-end to create `tools/lint.js`.
-  - [ ] Provide a strict, headless diagnostic tool capable of parsing any legacy `.bas` file and reporting syntax errors, unmatched blocks, or unhoisted labels directly to the terminal.
