@@ -1,0 +1,117 @@
+{
+  "suite": "STDLIB: Math & Floating-Point Unit (Turbo Pascal)",
+  "vectors": [
+    {
+      "name": "Int Function",
+      "syntax": "Int(X: Real): Real;",
+      "description": "Returns the integer part of a real number (as a Real).",
+      "example": {
+        "code": [
+          "WriteLn(Int(2.8):0:1);"
+        ],
+        "output": "2.0"
+      },
+      "quirks_and_tests": {
+        "description": "Unlike QBasic's INT, Pascal's Int simply truncates towards zero (like QBasic's FIX), and it returns a Real type, not an Integer.",
+        "setup": [
+          "IntPos := Int(2.8);",
+          "IntNeg := Int(-2.8);"
+        ],
+        "assertions": [
+          { "var": "IntPos", "val": 2.0, "type": "float" },
+          { "var": "IntNeg", "val": -2.0, "type": "float" }
+        ]
+      }
+    },
+    {
+      "name": "Trunc Function",
+      "syntax": "Trunc(X: Real): Longint;",
+      "description": "Truncates a real number to an integer value.",
+      "example": {
+        "code": [
+          "WriteLn(Trunc(-2.8));"
+        ],
+        "output": "-2"
+      },
+      "quirks_and_tests": {
+        "description": "This is the exact integer equivalent of QBasic's FIX. It truncates towards zero.",
+        "setup": [
+          "TruncPos := Trunc(2.8);",
+          "TruncNeg := Trunc(-2.8);"
+        ],
+        "assertions": [
+          { "var": "TruncPos", "val": 2, "type": "number" },
+          { "var": "TruncNeg", "val": -2, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "Round Function",
+      "syntax": "Round(X: Real): Longint;",
+      "description": "Rounds a real-type value to the nearest integer. If the value is exactly halfway between two integers, it rounds to the number with the greatest absolute magnitude (away from zero).",
+      "example": {
+        "code": [
+          "WriteLn(Round(2.5));"
+        ],
+        "output": "3"
+      },
+      "quirks_and_tests": {
+        "description": "Turbo Pascal employs standard arithmetic rounding (rounding away from zero). A fractional part of exactly .5 will always be rounded to the number with the greatest absolute magnitude, meaning positive numbers round up and negative numbers round down.",
+        "setup": [
+          "RoundUp := Round(2.6);",
+          "RoundHalf := Round(2.5);",
+          "RoundHalfOdd := Round(3.5);",
+          "RoundNegHalf := Round(-2.5);"
+        ],
+        "assertions": [
+          { "var": "RoundUp", "val": 3, "type": "number" },
+          { "var": "RoundHalf", "val": 3, "type": "number" },
+          { "var": "RoundHalfOdd", "val": 4, "type": "number" },
+          { "var": "RoundNegHalf", "val": -3, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "Div Operator (Integer Division)",
+      "syntax": "X Div Y",
+      "description": "Divides two integers and returns the integer quotient.",
+      "example": {
+        "code": [
+          "WriteLn(5 Div 2);"
+        ],
+        "output": "2"
+      },
+      "quirks_and_tests": {
+        "description": "Unlike QBasic's backslash (\\), Pascal's Div operator only accepts Integer types. It does not perform pre-rounding on Reals. It simply truncates the quotient.",
+        "setup": [
+          "IntDiv := 5 Div 2;"
+        ],
+        "assertions": [
+          { "var": "IntDiv", "val": 2, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "Mod Operator (Modulo)",
+      "syntax": "X Mod Y",
+      "description": "Returns the remainder of integer division.",
+      "example": {
+        "code": [
+          "WriteLn(10 Mod 3);"
+        ],
+        "output": "1"
+      },
+      "quirks_and_tests": {
+        "description": "Like Div, Mod only operates on Integer types in Turbo Pascal. The sign of the result is always the sign of the first operand.",
+        "setup": [
+          "ModNorm := 10 Mod 3;",
+          "ModNeg := -10 Mod 3;"
+        ],
+        "assertions": [
+          { "var": "ModNorm", "val": 1, "type": "number" },
+          { "var": "ModNeg", "val": -1, "type": "number" }
+        ]
+      }
+    }
+  ]
+}

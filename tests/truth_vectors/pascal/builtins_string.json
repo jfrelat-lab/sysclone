@@ -1,0 +1,208 @@
+{
+  "suite": "STDLIB: Strings & Type Casting (Turbo Pascal)",
+  "vectors": [
+    {
+      "name": "Length Function",
+      "syntax": "Length(S: String): Integer;",
+      "description": "Returns the dynamic length of a string.",
+      "example": {
+        "code": [
+          "WriteLn(Length('Turbo'));"
+        ],
+        "output": "5"
+      },
+      "quirks_and_tests": {
+        "description": "Standard length evaluation. Note that in memory, this dynamically reads the byte value at index 0 of the string array.",
+        "setup": [
+          "LenNorm := Length('Hello');",
+          "LenEmpty := Length('');"
+        ],
+        "assertions": [
+          { "var": "LenNorm", "val": 5, "type": "number" },
+          { "var": "LenEmpty", "val": 0, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "Copy Function",
+      "syntax": "Copy(S: String; Index: Integer; Count: Integer): String;",
+      "description": "Returns a substring containing Count characters, starting from Index.",
+      "example": {
+        "code": [
+          "WriteLn(Copy('Turbo Pascal', 1, 5));"
+        ],
+        "output": "Turbo"
+      },
+      "quirks_and_tests": {
+        "description": "Unlike QBasic's MID$, if the Index is greater than the string length, Copy returns an empty string. If Count exceeds the remaining characters, it gracefully returns only what is available without throwing out-of-bounds errors.",
+        "setup": [
+          "CopyNorm := Copy('Pascal', 1, 4);",
+          "CopyOOB := Copy('Pascal', 10, 2);",
+          "CopyTrunc := Copy('Pascal', 4, 10);"
+        ],
+        "assertions": [
+          { "var": "CopyNorm", "val": "Pasc", "type": "string" },
+          { "var": "CopyOOB", "val": "", "type": "string" },
+          { "var": "CopyTrunc", "val": "cal", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Pos Function",
+      "syntax": "Pos(Substr: String; S: String): Byte;",
+      "description": "Searches for a substring and returns the 1-based index of its first occurrence.",
+      "example": {
+        "code": [
+          "WriteLn(Pos('cal', 'Pascal'));"
+        ],
+        "output": "4"
+      },
+      "quirks_and_tests": {
+        "description": "Similar to QBasic's INSTR, but the arguments are inverted (Substring first, Target second). It is strictly case-sensitive. Returns 0 if not found.",
+        "setup": [
+          "PosFound := Pos('cal', 'Pascal');",
+          "PosNotFound := Pos('Basic', 'Pascal');",
+          "PosCase := Pos('pascal', 'Pascal');"
+        ],
+        "assertions": [
+          { "var": "PosFound", "val": 4, "type": "number" },
+          { "var": "PosNotFound", "val": 0, "type": "number" },
+          { "var": "PosCase", "val": 0, "type": "number" }
+        ]
+      }
+    },
+    {
+      "name": "Delete Procedure",
+      "syntax": "Delete(var S: String; Index: Integer; Count: Integer);",
+      "description": "Removes Count characters from string S, starting at Index.",
+      "example": {
+        "code": [
+          "S := 'Hello World';",
+          "Delete(S, 6, 6);",
+          "WriteLn(S);"
+        ],
+        "output": "Hello"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: This is a Procedure, not a Function. It mutates the string variable IN PLACE. If Index is out of bounds, it simply does nothing.",
+        "setup": [
+          "DelStr := 'Hello World';",
+          "Delete(DelStr, 6, 6);",
+          "DelOOB := 'Test';",
+          "Delete(DelOOB, 10, 2);"
+        ],
+        "assertions": [
+          { "var": "DelStr", "val": "Hello", "type": "string" },
+          { "var": "DelOOB", "val": "Test", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Insert Procedure",
+      "syntax": "Insert(Source: String; var S: String; Index: Integer);",
+      "description": "Inserts a Source string into target string S at the specified Index.",
+      "example": {
+        "code": [
+          "S := 'World';",
+          "Insert('Hello ', S, 1);",
+          "WriteLn(S);"
+        ],
+        "output": "Hello World"
+      },
+      "quirks_and_tests": {
+        "description": "Like Delete, it mutates the target string IN PLACE. If Index is greater than the current length of S, the Source string is simply concatenated at the end.",
+        "setup": [
+          "InsStr := 'World';",
+          "Insert('Hello ', InsStr, 1);",
+          "InsOOB := 'Hi';",
+          "Insert('!', InsOOB, 10);"
+        ],
+        "assertions": [
+          { "var": "InsStr", "val": "Hello World", "type": "string" },
+          { "var": "InsOOB", "val": "Hi!", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Str Procedure (Number to String)",
+      "syntax": "Str(X [: Width [: Decimals]], var S: String);",
+      "description": "Converts a numeric value to its string representation.",
+      "example": {
+        "code": [
+          "Str(42, S);",
+          "WriteLn(S);"
+        ],
+        "output": "42"
+      },
+      "quirks_and_tests": {
+        "description": "Unlike QBasic's STR$, this is a procedure that populates a target variable. Crucially, it does NOT prepend a leading space for positive numbers. It supports standard WriteLn-style formatting constraints.",
+        "setup": [
+          "Str(42, StrInt);",
+          "Str(-42, StrNeg);",
+          "Str(3.14159:0:2, StrFloat);"
+        ],
+        "assertions": [
+          { "var": "StrInt", "val": "42", "type": "string" },
+          { "var": "StrNeg", "val": "-42", "type": "string" },
+          { "var": "StrFloat", "val": "3.14", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Val Procedure (String to Number)",
+      "syntax": "Val(S: String; var V; var Code: Integer);",
+      "description": "Converts a string to its numeric value.",
+      "example": {
+        "code": [
+          "Val('42', Num, ErrCode);",
+          "WriteLn(Num);"
+        ],
+        "output": "42"
+      },
+      "quirks_and_tests": {
+        "description": "Converts a string to a numeric variable. The 'Code' parameter acts as an error flag: it returns 0 if successful, or the 1-based index of the invalid character if parsing fails.",
+        "setup": [
+          "ValInt := 0;",
+          "Val('42', ValInt, ValCode1);",
+          "ValFloat := 0.0;",
+          "Val('42.5', ValFloat, ValCode2);",
+          "ValErr := 0;",
+          "Val('42X', ValErr, ValCode3);"
+        ],
+        "assertions": [
+          { "var": "ValInt", "val": 42, "type": "number" },
+          { "var": "ValCode1", "val": 0, "type": "integer" },
+          { "var": "ValFloat", "val": 42.5, "type": "float" },
+          { "var": "ValCode2", "val": 0, "type": "integer" },
+          { "var": "ValErr", "val": 0, "type": "number" },
+          { "var": "ValCode3", "val": 3, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Direct Index Access & Length Byte",
+      "syntax": "S[Index]",
+      "description": "Characters in a string can be accessed directly as an array. Index 0 holds the length.",
+      "example": {
+        "code": [
+          "S := 'ABC';",
+          "WriteLn(Ord(S[0]));"
+        ],
+        "output": "3"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: In Turbo Pascal, a String is an array of characters from 0 to 255. Index 0 stores the dynamic length of the string as a character byte. Reading the Ord() of index 0 is functionally equivalent to calling Length().",
+        "setup": [
+          "LenByteStr := 'ABC';",
+          "FirstChar := LenByteStr[1];",
+          "LenByteVal := Ord(LenByteStr[0]);"
+        ],
+        "assertions": [
+          { "var": "LenByteStr", "val": "ABC", "type": "string" },
+          { "var": "FirstChar", "val": "A", "type": "string" },
+          { "var": "LenByteVal", "val": 3, "type": "number" }
+        ]
+      }
+    }
+  ]
+}

@@ -2,10 +2,7 @@
 ' SYSCLONE COMPATIBILITY HARNESS (Auto-Generated)
 ' Runs silently. Only prints failures and the final score.
 ' ==============================================================================
-TotalTests% = 0
-PassedTests% = 0
-FailedTests% = 0
-
+TotalTests% = 0: PassedTests% = 0: FailedTests% = 0
 PRINT "Running Sysclone Truth Vectors..."
 PRINT "---------------------------------"
 

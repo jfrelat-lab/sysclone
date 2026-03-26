@@ -9,6 +9,7 @@
     "start": "npm run build:truth && npm run build:catalog && node server.js",
     "test": "npm run build:truth && node tests/orchestrator.js",
     "test:qbasic": "npm run build:truth && node tests/orchestrator.js qbasic",
+    "test:pascal": "node tests/orchestrator.js pascal",
     "test:hardware": "node tests/orchestrator.js hardware"
   },
   "repository": {

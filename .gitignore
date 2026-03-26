@@ -14,17 +14,10 @@ artifacts/
 examples/_*.bas
 examples/lab/
 
-# --- External Compatibility Tests (QB45 / DOSBox) ---
-# Ignore binary and support files extracted from legacy QB45 environments
-examples/*.EXE
-examples/*.exe
-examples/*.COM
-examples/*.LIB
-examples/*.QLB
-examples/*.HLP
-examples/*.INI
-examples/*.PIF
-examples/*.BI
+# --- Legacy MS-DOS Engines & Truth Vectors ---
+# Ignore binary and support files extracted from legacy environments
+examples/QB45/
+examples/TP7/
 
 # Logs
 npm-debug.log*
