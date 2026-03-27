@@ -1,18 +1,18 @@
 {
-  "suite": "STDLIB: Math & Floating-Point Unit (Turbo Pascal)",
+  "suite": "STDLIB: Math Built-ins",
   "vectors": [
     {
       "name": "Int Function",
-      "syntax": "Int(X: Real): Real;",
-      "description": "Returns the integer part of a real number (as a Real).",
+      "syntax": "function Int(X: Real): Real;",
+      "description": "Returns the integer part of a real number.",
       "example": {
         "code": [
-          "WriteLn(Int(2.8):0:1);"
+          "WriteLn(Int(2.8):0:2);"
         ],
-        "output": "2.0"
+        "output": "2.00"
       },
       "quirks_and_tests": {
-        "description": "Unlike QBasic's INT, Pascal's Int simply truncates towards zero (like QBasic's FIX), and it returns a Real type, not an Integer.",
+        "description": "The Int() function returns a REAL type, not an integer. It simply truncates the decimal part without rounding.",
         "setup": [
           "IntPos := Int(2.8);",
           "IntNeg := Int(-2.8);"
@@ -25,16 +25,16 @@
     },
     {
       "name": "Trunc Function",
-      "syntax": "Trunc(X: Real): Longint;",
-      "description": "Truncates a real number to an integer value.",
+      "syntax": "function Trunc(X: Real): Longint;",
+      "description": "Truncates a real-type value to an integer-type value.",
       "example": {
         "code": [
-          "WriteLn(Trunc(-2.8));"
+          "WriteLn(Trunc(2.8));"
         ],
-        "output": "-2"
+        "output": "2"
       },
       "quirks_and_tests": {
-        "description": "This is the exact integer equivalent of QBasic's FIX. It truncates towards zero.",
+        "description": "It removes the fractional part, rounding toward zero.",
         "setup": [
           "TruncPos := Trunc(2.8);",
           "TruncNeg := Trunc(-2.8);"
@@ -47,7 +47,7 @@
     },
     {
       "name": "Round Function",
-      "syntax": "Round(X: Real): Longint;",
+      "syntax": "function Round(X: Real): Longint;",
       "description": "Rounds a real-type value to the nearest integer. If the value is exactly halfway between two integers, it rounds to the number with the greatest absolute magnitude (away from zero).",
       "example": {
         "code": [
@@ -72,40 +72,40 @@
       }
     },
     {
-      "name": "Div Operator (Integer Division)",
-      "syntax": "X Div Y",
-      "description": "Divides two integers and returns the integer quotient.",
+      "name": "Integer Division (DIV)",
+      "syntax": "Operand1: Longint DIV Operand2: Longint; { Returns Longint }",
+      "description": "Performs integer division. Truncates the result towards zero.",
       "example": {
         "code": [
-          "WriteLn(5 Div 2);"
+          "WriteLn(10 DIV 3);"
         ],
-        "output": "2"
+        "output": "3"
       },
       "quirks_and_tests": {
-        "description": "Unlike QBasic's backslash (\\), Pascal's Div operator only accepts Integer types. It does not perform pre-rounding on Reals. It simply truncates the quotient.",
+        "description": "Unlike standard real division (/), DIV strictly returns an integer.",
         "setup": [
-          "IntDiv := 5 Div 2;"
+          "IntDiv := 10 DIV 3;"
         ],
         "assertions": [
-          { "var": "IntDiv", "val": 2, "type": "number" }
+          { "var": "IntDiv", "val": 3, "type": "number" }
         ]
       }
     },
     {
-      "name": "Mod Operator (Modulo)",
-      "syntax": "X Mod Y",
+      "name": "Modulo Operator (MOD)",
+      "syntax": "Operand1: Longint MOD Operand2: Longint; { Returns Longint }",
       "description": "Returns the remainder of integer division.",
       "example": {
         "code": [
-          "WriteLn(10 Mod 3);"
+          "WriteLn(10 MOD 3);"
         ],
         "output": "1"
       },
       "quirks_and_tests": {
-        "description": "Like Div, Mod only operates on Integer types in Turbo Pascal. The sign of the result is always the sign of the first operand.",
+        "description": "Standard modulo arithmetic. The sign of the result depends on the dividend.",
         "setup": [
-          "ModNorm := 10 Mod 3;",
-          "ModNeg := -10 Mod 3;"
+          "ModNorm := 10 MOD 3;",
+          "ModNeg := -10 MOD 3;"
         ],
         "assertions": [
           { "var": "ModNorm", "val": 1, "type": "number" },

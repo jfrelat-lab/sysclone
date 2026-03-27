@@ -1,0 +1,157 @@
+{
+  "suite": "STDLIB: System & Ordinal Routines",
+  "vectors": [
+    {
+      "name": "Inc Procedure",
+      "syntax": "procedure Inc(var X: Ordinal [; N: Longint]);",
+      "description": "Increments an ordinal variable. If N is specified, increments by N.",
+      "example": {
+        "code": [
+          "X := 10;",
+          "Inc(X, 5);",
+          "WriteLn(X);"
+        ],
+        "output": "15"
+      },
+      "quirks_and_tests": {
+        "description": "Like Delete and Insert, Inc is a mutating procedure, not a function. It operates directly on the memory address of the variable. It works on any ordinal type (Integer, Char, Boolean).",
+        "setup": [
+          "IncBase := 10;",
+          "Inc(IncBase);",
+          "IncStep := 10;",
+          "Inc(IncStep, 5);",
+          "IncChar := 'A';",
+          "Inc(IncChar);"
+        ],
+        "assertions": [
+          { "var": "IncBase", "val": 11, "type": "number" },
+          { "var": "IncStep", "val": 15, "type": "number" },
+          { "var": "IncChar", "val": "B", "type": "char" }
+        ]
+      }
+    },
+    {
+      "name": "Dec Procedure",
+      "syntax": "procedure Dec(var X: Ordinal [; N: Longint]);",
+      "description": "Decrements an ordinal variable. If N is specified, decrements by N.",
+      "example": {
+        "code": [
+          "X := 10;",
+          "Dec(X);",
+          "WriteLn(X);"
+        ],
+        "output": "9"
+      },
+      "quirks_and_tests": {
+        "description": "The inverse of Inc. Mutates the variable in place. Highly optimized by the compiler into native DEC or SUB assembly instructions.",
+        "setup": [
+          "DecBase := 10;",
+          "Dec(DecBase);",
+          "DecStep := 10;",
+          "Dec(DecStep, 5);",
+          "DecChar := 'B';",
+          "Dec(DecChar);"
+        ],
+        "assertions": [
+          { "var": "DecBase", "val": 9, "type": "number" },
+          { "var": "DecStep", "val": 5, "type": "number" },
+          { "var": "DecChar", "val": "A", "type": "char" }
+        ]
+      }
+    },
+    {
+      "name": "Succ and Pred Functions",
+      "syntax": "function Succ(X: Ordinal): Ordinal;\nfunction Pred(X: Ordinal): Ordinal;",
+      "description": "Returns the successor or predecessor of an ordinal value.",
+      "example": {
+        "code": [
+          "WriteLn(Succ('A'));"
+        ],
+        "output": "B"
+      },
+      "quirks_and_tests": {
+        "description": "Unlike Inc and Dec, these are purely functional and do not mutate the argument. They evaluate to the next or previous value in the ordinal sequence.",
+        "setup": [
+          "SuccNum := Succ(42);",
+          "PredNum := Pred(42);",
+          "SuccChar := Succ('A');"
+        ],
+        "assertions": [
+          { "var": "SuccNum", "val": 43, "type": "number" },
+          { "var": "PredNum", "val": 41, "type": "number" },
+          { "var": "SuccChar", "val": "B", "type": "char" }
+        ]
+      }
+    },
+    {
+      "name": "Ord Function",
+      "syntax": "function Ord(X: Ordinal): Longint;",
+      "description": "Returns the ordinal value (memory integer representation) of an ordinal-type expression.",
+      "example": {
+        "code": [
+          "WriteLn(Ord('A'));"
+        ],
+        "output": "65"
+      },
+      "quirks_and_tests": {
+        "description": "Standard ASCII mapping for characters. Structurally tied to Pascal's strict ordinal type system.",
+        "setup": [
+          "OrdChar := Ord('A');",
+          "OrdSpace := Ord(' ');"
+        ],
+        "assertions": [
+          { "var": "OrdChar", "val": 65, "type": "integer" },
+          { "var": "OrdSpace", "val": 32, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Chr Function",
+      "syntax": "function Chr(X: Byte): Char;",
+      "description": "Returns the character corresponding to a specific ASCII value.",
+      "example": {
+        "code": [
+          "WriteLn(Chr(65));"
+        ],
+        "output": "A"
+      },
+      "quirks_and_tests": {
+        "description": "Specifically expects a Byte (0-255). It maps directly to the character in the extended ASCII memory table.",
+        "setup": [
+          "ChrVal := Chr(65);"
+        ],
+        "assertions": [
+          { "var": "ChrVal", "val": "A", "type": "char" }
+        ]
+      }
+    },
+    {
+      "name": "SizeOf Function",
+      "syntax": "function SizeOf(X: Any): Word;",
+      "description": "Returns the number of bytes occupied by a variable or a type.",
+      "example": {
+        "code": [
+          "WriteLn(SizeOf(Integer));"
+        ],
+        "output": "2"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: Memory footprint verification. In 16-bit MS-DOS, an Integer is 2 bytes, a Longint is 4 bytes, a standard String is 256 bytes (Length byte + 255 chars). Crucially, the default Real type is Borland's proprietary 'Real48' format, which occupies exactly 6 bytes (unlike IEEE 754 8-byte Doubles).",
+        "setup": [
+          "SizeInt := SizeOf(Integer);",
+          "SizeLong := SizeOf(Longint);",
+          "SizeReal := SizeOf(Real);",
+          "SizeStr := SizeOf(String);",
+          "SizeChar := SizeOf(Char);"
+        ],
+        "assertions": [
+          { "var": "SizeInt", "val": 2, "type": "integer" },
+          { "var": "SizeLong", "val": 4, "type": "integer" },
+          { "var": "SizeReal", "val": 6, "type": "integer" },
+          { "var": "SizeStr", "val": 256, "type": "integer" },
+          { "var": "SizeChar", "val": 1, "type": "integer" }
+        ]
+      }
+    }
+  ]
+}

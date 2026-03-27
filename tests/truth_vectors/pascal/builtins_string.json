@@ -1,9 +1,9 @@
 {
-  "suite": "STDLIB: Strings & Type Casting (Turbo Pascal)",
+  "suite": "STDLIB: Strings & Type Casting",
   "vectors": [
     {
       "name": "Length Function",
-      "syntax": "Length(S: String): Integer;",
+      "syntax": "function Length(S: String): Integer;",
       "description": "Returns the dynamic length of a string.",
       "example": {
         "code": [
@@ -25,7 +25,7 @@
     },
     {
       "name": "Copy Function",
-      "syntax": "Copy(S: String; Index: Integer; Count: Integer): String;",
+      "syntax": "function Copy(S: String; Index: Integer; Count: Integer): String;",
       "description": "Returns a substring containing Count characters, starting from Index.",
       "example": {
         "code": [
@@ -34,7 +34,7 @@
         "output": "Turbo"
       },
       "quirks_and_tests": {
-        "description": "Unlike QBasic's MID$, if the Index is greater than the string length, Copy returns an empty string. If Count exceeds the remaining characters, it gracefully returns only what is available without throwing out-of-bounds errors.",
+        "description": "If the Index is greater than the string length, Copy returns an empty string. If Count exceeds the remaining characters, it gracefully returns only what is available without throwing out-of-bounds errors.",
         "setup": [
           "CopyNorm := Copy('Pascal', 1, 4);",
           "CopyOOB := Copy('Pascal', 10, 2);",
@@ -49,7 +49,7 @@
     },
     {
       "name": "Pos Function",
-      "syntax": "Pos(Substr: String; S: String): Byte;",
+      "syntax": "function Pos(Substr: String; S: String): Byte;",
       "description": "Searches for a substring and returns the 1-based index of its first occurrence.",
       "example": {
         "code": [
@@ -58,7 +58,7 @@
         "output": "4"
       },
       "quirks_and_tests": {
-        "description": "Similar to QBasic's INSTR, but the arguments are inverted (Substring first, Target second). It is strictly case-sensitive. Returns 0 if not found.",
+        "description": "The arguments are ordered as Substring first, Target second. It is strictly case-sensitive. Returns 0 if not found.",
         "setup": [
           "PosFound := Pos('cal', 'Pascal');",
           "PosNotFound := Pos('Basic', 'Pascal');",
@@ -73,7 +73,7 @@
     },
     {
       "name": "Delete Procedure",
-      "syntax": "Delete(var S: String; Index: Integer; Count: Integer);",
+      "syntax": "procedure Delete(var S: String; Index: Integer; Count: Integer);",
       "description": "Removes Count characters from string S, starting at Index.",
       "example": {
         "code": [
@@ -99,7 +99,7 @@
     },
     {
       "name": "Insert Procedure",
-      "syntax": "Insert(Source: String; var S: String; Index: Integer);",
+      "syntax": "procedure Insert(Source: String; var S: String; Index: Integer);",
       "description": "Inserts a Source string into target string S at the specified Index.",
       "example": {
         "code": [
@@ -125,7 +125,7 @@
     },
     {
       "name": "Str Procedure (Number to String)",
-      "syntax": "Str(X [: Width [: Decimals]], var S: String);",
+      "syntax": "procedure Str(X [: Width [: Decimals]]; var S: String);",
       "description": "Converts a numeric value to its string representation.",
       "example": {
         "code": [
@@ -135,7 +135,7 @@
         "output": "42"
       },
       "quirks_and_tests": {
-        "description": "Unlike QBasic's STR$, this is a procedure that populates a target variable. Crucially, it does NOT prepend a leading space for positive numbers. It supports standard WriteLn-style formatting constraints.",
+        "description": "This is a procedure that populates a target variable. Crucially, it does not prepend a leading space for positive numbers. It supports standard WriteLn-style formatting constraints.",
         "setup": [
           "Str(42, StrInt);",
           "Str(-42, StrNeg);",
@@ -150,8 +150,8 @@
     },
     {
       "name": "Val Procedure (String to Number)",
-      "syntax": "Val(S: String; var V; var Code: Integer);",
-      "description": "Converts a string to its numeric value.",
+      "syntax": "procedure Val(S: String; var V; var Code: Integer);",
+      "description": "Converts a string to its numeric value. The target variable V is untyped (can be Integer, Longint, or Real), but the error Code variable MUST be strictly a 16-bit Integer.",
       "example": {
         "code": [
           "Val('42', Num, ErrCode);",
@@ -160,7 +160,7 @@
         "output": "42"
       },
       "quirks_and_tests": {
-        "description": "Converts a string to a numeric variable. The 'Code' parameter acts as an error flag: it returns 0 if successful, or the 1-based index of the invalid character if parsing fails.",
+        "description": "CRITICAL COMPILE-TIME QUIRK: Turbo Pascal enforces strict var-parameter typing. Passing a Longint for the 'Code' parameter will throw 'Error 89: Type mismatch' at compile time. RUNTIME QUIRK: If parsing fails, the target numeric variable remains unchanged, and Code is set to the 1-based index of the invalid character.",
         "setup": [
           "ValInt := 0;",
           "Val('42', ValInt, ValCode1);",
@@ -181,7 +181,7 @@
     },
     {
       "name": "Direct Index Access & Length Byte",
-      "syntax": "S[Index]",
+      "syntax": "S[Index: Byte]: Char;",
       "description": "Characters in a string can be accessed directly as an array. Index 0 holds the length.",
       "example": {
         "code": [
@@ -199,7 +199,7 @@
         ],
         "assertions": [
           { "var": "LenByteStr", "val": "ABC", "type": "string" },
-          { "var": "FirstChar", "val": "A", "type": "string" },
+          { "var": "FirstChar", "val": "A", "type": "char" },
           { "var": "LenByteVal", "val": 3, "type": "number" }
         ]
       }

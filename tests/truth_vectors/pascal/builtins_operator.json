@@ -1,0 +1,341 @@
+{
+  "suite": "CORE: Operators & Precedence",
+  "vectors": [
+    {
+      "name": "Unary Minus Operator (-)",
+      "syntax": "-Operand: Numeric; { Returns Numeric }",
+      "description": "Negates the value of a numeric operand.",
+      "example": {
+        "code": [
+          "WriteLn(-5);"
+        ],
+        "output": "-5"
+      },
+      "quirks_and_tests": {
+        "description": "Evaluates at Level 1 (highest precedence) along with NOT and @. It is a unary sign operator, distinct from binary subtraction.",
+        "setup": [
+          "UnaryBase := 5;",
+          "UnaryNeg := -UnaryBase;"
+        ],
+        "assertions": [
+          { "var": "UnaryBase", "val": 5, "type": "integer" },
+          { "var": "UnaryNeg", "val": -5, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Address Operator (@)",
+      "syntax": "@Operand: Any; { Returns Pointer }",
+      "description": "Returns the memory address of a variable, procedure, or function.",
+      "example": {
+        "code": [
+          "P := @MyVar;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Evaluates at Level 1 precedence. Generates a pointer to the memory location of the operand.",
+        "setup": [
+          "AddrTarget := 42;",
+          "TestPtr := @AddrTarget;"
+        ],
+        "assertions": [
+          { "var": "AddrTarget", "val": 42, "type": "integer" },
+          { "var": "TestPtr", "val": "@AddrTarget", "type": "^Integer" }
+        ]
+      }
+    },
+    {
+      "name": "Dereference Operator (^)",
+      "syntax": "PointerOperand^: BaseType;",
+      "description": "Accesses the value stored at the memory address pointed to by a typed pointer.",
+      "example": {
+        "code": [
+          "P^ := 99;",
+          "WriteLn(P^);"
+        ],
+        "output": "99"
+      },
+      "quirks_and_tests": {
+        "description": "A postfix operator. Modifying the dereferenced pointer directly mutates the original variable residing at that memory address.",
+        "setup": [
+          "DerefTarget := 10;",
+          "TestPtrDeref := @DerefTarget;",
+          "TestPtrDeref^ := 99;"
+        ],
+        "assertions": [
+          { "var": "DerefTarget", "val": 99, "type": "integer" },
+          { "var": "TestPtrDeref", "val": "@DerefTarget", "type": "^Integer" }
+        ]
+      }
+    },
+    {
+      "name": "Multiplication Operator (*)",
+      "syntax": "Operand1: Numeric * Operand2: Numeric; { Returns Numeric }",
+      "description": "Performs arithmetic multiplication.",
+      "example": {
+        "code": [
+          "WriteLn(6 * 7);"
+        ],
+        "output": "42"
+      },
+      "quirks_and_tests": {
+        "description": "Level 2 precedence. If both operands are integers, returns an integer. If one is real, returns a real. (Note: Also used for Set intersection, not covered here).",
+        "setup": [
+          "MulRes := 6 * 7;"
+        ],
+        "assertions": [
+          { "var": "MulRes", "val": 42, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Real Division Operator (/)",
+      "syntax": "Operand1: Numeric / Operand2: Numeric; { Returns Real }",
+      "description": "Performs real division.",
+      "example": {
+        "code": [
+          "WriteLn(10 / 2:0:1);"
+        ],
+        "output": "5.0"
+      },
+      "quirks_and_tests": {
+        "description": "Level 2 precedence. The division operator (/) ALWAYS returns a Real type, even if both operands are integers and the division is mathematically exact.",
+        "setup": [
+          "DivRes := 10 / 4;"
+        ],
+        "assertions": [
+          { "var": "DivRes", "val": 2.5, "type": "float" }
+        ]
+      }
+    },
+    {
+      "name": "Addition Operator (+)",
+      "syntax": "Operand1: Numeric + Operand2: Numeric; { Returns Numeric }",
+      "description": "Performs arithmetic addition.",
+      "example": {
+        "code": [
+          "WriteLn(10 + 5);"
+        ],
+        "output": "15"
+      },
+      "quirks_and_tests": {
+        "description": "Level 3 precedence. (Note: Also used for Set union, not covered here).",
+        "setup": [
+          "AddRes := 10 + 5;"
+        ],
+        "assertions": [
+          { "var": "AddRes", "val": 15, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Subtraction Operator (-)",
+      "syntax": "Operand1: Numeric - Operand2: Numeric; { Returns Numeric }",
+      "description": "Performs arithmetic subtraction.",
+      "example": {
+        "code": [
+          "WriteLn(10 - 5);"
+        ],
+        "output": "5"
+      },
+      "quirks_and_tests": {
+        "description": "Level 3 precedence. Evaluates left-to-right when chained with addition. (Note: Also used for Set difference, not covered here).",
+        "setup": [
+          "SubRes := 10 - 5;"
+        ],
+        "assertions": [
+          { "var": "SubRes", "val": 5, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "String Concatenation Operator (+)",
+      "syntax": "Operand1: String + Operand2: String; { Returns String }",
+      "description": "The addition operator is overloaded to perform string concatenation when applied to String or Char types.",
+      "example": {
+        "code": [
+          "WriteLn('Turbo' + ' Pascal');"
+        ],
+        "output": "Turbo Pascal"
+      },
+      "quirks_and_tests": {
+        "description": "Concatenates dynamically. If the resulting string exceeds 255 characters, it is silently truncated at runtime.",
+        "setup": [
+          "ConcatRes := 'Sys' + 'clone';"
+        ],
+        "assertions": [
+          { "var": "ConcatRes", "val": "Sysclone", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Equality Operator (=)",
+      "syntax": "Expr1 = Expr2; { Returns Boolean }",
+      "description": "Evaluates to True if both expressions are equal.",
+      "example": {
+        "code": [
+          "WriteLn(5 = 5);"
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "Level 4 precedence (lowest). String comparisons are strictly case-sensitive.",
+        "setup": [
+          "EqRes := (5 = 5);"
+        ],
+        "assertions": [
+          { "var": "EqRes", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Inequality Operator (<>)",
+      "syntax": "Expr1 <> Expr2; { Returns Boolean }",
+      "description": "Evaluates to True if expressions are not equal.",
+      "example": {
+        "code": [
+          "WriteLn(5 <> 4);"
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "Level 4 precedence.",
+        "setup": [
+          "NeqRes := (5 <> 4);"
+        ],
+        "assertions": [
+          { "var": "NeqRes", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Less Than Operator (<)",
+      "syntax": "Expr1 < Expr2; { Returns Boolean }",
+      "description": "Evaluates to True if the left expression is strictly less than the right.",
+      "example": {
+        "code": [
+          "WriteLn(4 < 5);"
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "Level 4 precedence.",
+        "setup": [
+          "LtRes := (4 < 5);"
+        ],
+        "assertions": [
+          { "var": "LtRes", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Greater Than Operator (>)",
+      "syntax": "Expr1 > Expr2; { Returns Boolean }",
+      "description": "Evaluates to True if the left expression is strictly greater than the right.",
+      "example": {
+        "code": [
+          "WriteLn(5 > 4);"
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "Level 4 precedence.",
+        "setup": [
+          "GtRes := (5 > 4);"
+        ],
+        "assertions": [
+          { "var": "GtRes", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Less Than or Equal Operator (<=)",
+      "syntax": "Expr1 <= Expr2; { Returns Boolean }",
+      "description": "Evaluates to True if the left expression is less than or equal to the right.",
+      "example": {
+        "code": [
+          "WriteLn(5 <= 5);"
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "Level 4 precedence. (Note: Also used to test if Set1 is a subset of Set2).",
+        "setup": [
+          "LteRes := (5 <= 5);"
+        ],
+        "assertions": [
+          { "var": "LteRes", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Greater Than or Equal Operator (>=)",
+      "syntax": "Expr1 >= Expr2; { Returns Boolean }",
+      "description": "Evaluates to True if the left expression is greater than or equal to the right.",
+      "example": {
+        "code": [
+          "WriteLn(5 >= 5);"
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "Level 4 precedence. (Note: Also used to test if Set1 is a superset of Set2).",
+        "setup": [
+          "GteRes := (5 >= 5);"
+        ],
+        "assertions": [
+          { "var": "GteRes", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Set Membership Operator (IN)",
+      "syntax": "Element IN Set: Boolean;",
+      "description": "Evaluates to True if the element is a member of the specified set.",
+      "example": {
+        "code": [
+          "WriteLn(3 IN [1..5]);"
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "Level 4 precedence. Operates on ordinal types and sets.",
+        "setup": [
+          "InResTrue := 3 IN [1, 2, 3, 4, 5];",
+          "InResFalse := 9 IN [1, 2, 3];"
+        ],
+        "assertions": [
+          { "var": "InResTrue", "val": true, "type": "boolean" },
+          { "var": "InResFalse", "val": false, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Operator Precedence Matrix",
+      "syntax": "L1(@, NOT) > L2(*, /, DIV, MOD, AND, SHL, SHR) > L3(+, -, OR, XOR) > L4(=, <>, <, >, <=, >=, IN)",
+      "description": "Defines the strict hierarchy of expression evaluation. Operators with higher precedence are evaluated first.",
+      "example": {
+        "code": [
+          "WriteLn(2 + 3 * 4);"
+        ],
+        "output": "14"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL COMPILE-TIME QUIRK: Logical operators (AND/OR, Level 2/3) have higher precedence than relational operators (=/<, Level 4). Expressions like 'A = 1 AND B = 2' will throw a Type Mismatch. They MUST be parenthesized: '(A = 1) AND (B = 2)'. This test validates the full chain.",
+        "setup": [
+          "PrecChain1 := (5 + 2 * 3 = 11);",
+          "PrecChain2 := (10 - 6 / 2 = 7.0);",
+          "PrecChain3 := NOT False AND True;",
+          "PrecChainFull := PrecChain1 AND PrecChain2 AND PrecChain3 AND (3 IN [1..5]);"
+        ],
+        "assertions": [
+          { "var": "PrecChain1", "val": true, "type": "boolean" },
+          { "var": "PrecChain2", "val": true, "type": "boolean" },
+          { "var": "PrecChain3", "val": true, "type": "boolean" },
+          { "var": "PrecChainFull", "val": true, "type": "boolean" }
+        ]
+      }
+    }
+  ]
+}

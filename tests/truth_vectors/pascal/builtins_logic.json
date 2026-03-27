@@ -1,0 +1,247 @@
+{
+  "suite": "CORE: Logic, Boolean & Bitwise",
+  "vectors": [
+    {
+      "name": "Boolean Type Fundamentals",
+      "syntax": "Type Boolean = (False, True);",
+      "description": "Turbo Pascal implements a strict Boolean type natively. In memory, it is an ordinal type where False evaluates to 0 and True evaluates to 1.",
+      "example": {
+        "code": [
+          "WriteLn(Ord(True));"
+        ],
+        "output": "1"
+      },
+      "quirks_and_tests": {
+        "description": "Validates the native ordinal memory mapping of Boolean values.",
+        "setup": [
+          "BoolTrue := True;",
+          "BoolFalse := False;",
+          "OrdTrue := Ord(True);",
+          "OrdFalse := Ord(False);"
+        ],
+        "assertions": [
+          { "var": "BoolTrue", "val": true, "type": "boolean" },
+          { "var": "BoolFalse", "val": false, "type": "boolean" },
+          { "var": "OrdTrue", "val": 1, "type": "integer" },
+          { "var": "OrdFalse", "val": 0, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Logical NOT Operator",
+      "syntax": "NOT Operand: Boolean; { Returns Boolean }",
+      "description": "Inverts the truth value of a Boolean expression.",
+      "example": {
+        "code": [
+          "WriteLn(NOT True);"
+        ],
+        "output": "FALSE"
+      },
+      "quirks_and_tests": {
+        "description": "When applied to a Boolean type, NOT performs a pure logical negation.",
+        "setup": [
+          "NotTrue := NOT True;",
+          "NotFalse := NOT False;"
+        ],
+        "assertions": [
+          { "var": "NotTrue", "val": false, "type": "boolean" },
+          { "var": "NotFalse", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Logical AND Operator",
+      "syntax": "Operand1: Boolean AND Operand2: Boolean; { Returns Boolean }",
+      "description": "Performs a logical conjunction on two Boolean expressions. By default, Turbo Pascal employs short-circuit evaluation ({$B-}).",
+      "example": {
+        "code": [
+          "WriteLn(True AND False);"
+        ],
+        "output": "FALSE"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL ARCHITECTURE: If the first operand of an AND is False, the second operand is skipped entirely. This test validates short-circuiting by attempting a division by zero using a variable (to bypass compile-time constant folding). If evaluated at runtime, it would trigger Runtime Error 200.",
+        "setup": [
+          "LogAndBase := True AND False;",
+          "ZeroVarAnd := 0;",
+          "SurvivedAndShort := False;",
+          "IF (False) AND (10 DIV ZeroVarAnd = 1) THEN SurvivedAndShort := False ELSE SurvivedAndShort := True;"
+        ],
+        "assertions": [
+          { "var": "LogAndBase", "val": false, "type": "boolean" },
+          { "var": "ZeroVarAnd", "val": 0, "type": "integer" },
+          { "var": "SurvivedAndShort", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Logical OR Operator",
+      "syntax": "Operand1: Boolean OR Operand2: Boolean; { Returns Boolean }",
+      "description": "Performs a logical disjunction on two Boolean expressions. Also subject to short-circuit evaluation ({$B-}).",
+      "example": {
+        "code": [
+          "WriteLn(True OR False);"
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL ARCHITECTURE: If the first operand of an OR is True, the compiler knows the overall expression is True and skips the second operand.",
+        "setup": [
+          "LogOrBase := True OR False;",
+          "ZeroVarOr := 0;",
+          "SurvivedOrShort := False;",
+          "IF (True) OR (10 DIV ZeroVarOr = 1) THEN SurvivedOrShort := True ELSE SurvivedOrShort := False;"
+        ],
+        "assertions": [
+          { "var": "LogOrBase", "val": true, "type": "boolean" },
+          { "var": "ZeroVarOr", "val": 0, "type": "integer" },
+          { "var": "SurvivedOrShort", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Logical XOR Operator",
+      "syntax": "Operand1: Boolean XOR Operand2: Boolean; { Returns Boolean }",
+      "description": "Performs a logical exclusive disjunction. Returns True if operands are strictly different.",
+      "example": {
+        "code": [
+          "WriteLn(True XOR True);"
+        ],
+        "output": "FALSE"
+      },
+      "quirks_and_tests": {
+        "description": "Unlike AND/OR, XOR cannot be short-circuited because both operands are always mathematically required to determine the final state.",
+        "setup": [
+          "LogXorDiff := True XOR False;",
+          "LogXorSame := True XOR True;"
+        ],
+        "assertions": [
+          { "var": "LogXorDiff", "val": true, "type": "boolean" },
+          { "var": "LogXorSame", "val": false, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Bitwise NOT Operator",
+      "syntax": "NOT Operand: Integer; { Returns Integer }",
+      "description": "Performs a bitwise one's complement operation on the binary representation of an ordinal integer type.",
+      "example": {
+        "code": [
+          "WriteLn(NOT 0);"
+        ],
+        "output": "-1"
+      },
+      "quirks_and_tests": {
+        "description": "Turbo Pascal overloads the NOT operator based on the operand type. When given an integer, it flips all bits (e.g., NOT 0 yields -1 in two's complement arithmetic).",
+        "setup": [
+          "BitNotZero := NOT 0;",
+          "BitNotPos := NOT 1;"
+        ],
+        "assertions": [
+          { "var": "BitNotZero", "val": -1, "type": "integer" },
+          { "var": "BitNotPos", "val": -2, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Bitwise AND Operator",
+      "syntax": "Operand1: Integer AND Operand2: Integer; { Returns Integer }",
+      "description": "Performs a bitwise logical AND between the bits of two integers.",
+      "example": {
+        "code": [
+          "WriteLn(170 AND 85);"
+        ],
+        "output": "0"
+      },
+      "quirks_and_tests": {
+        "description": "Overloaded for integers. Evaluates strictly at the bit level without any short-circuiting mechanics. (170 is $AA, 85 is $55).",
+        "setup": [
+          "BitAndEx := 170 AND 85;"
+        ],
+        "assertions": [
+          { "var": "BitAndEx", "val": 0, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Bitwise OR Operator",
+      "syntax": "Operand1: Integer OR Operand2: Integer; { Returns Integer }",
+      "description": "Performs a bitwise logical OR between the bits of two integers.",
+      "example": {
+        "code": [
+          "WriteLn(170 OR 85);"
+        ],
+        "output": "255"
+      },
+      "quirks_and_tests": {
+        "description": "Combines the bits of two integer values.",
+        "setup": [
+          "BitOrEx := 170 OR 85;"
+        ],
+        "assertions": [
+          { "var": "BitOrEx", "val": 255, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Bitwise XOR Operator",
+      "syntax": "Operand1: Integer XOR Operand2: Integer; { Returns Integer }",
+      "description": "Performs a bitwise logical Exclusive OR between two integers.",
+      "example": {
+        "code": [
+          "WriteLn(170 XOR 255);"
+        ],
+        "output": "85"
+      },
+      "quirks_and_tests": {
+        "description": "Toggles bits where the mask has a 1.",
+        "setup": [
+          "BitXorEx := 170 XOR 255;"
+        ],
+        "assertions": [
+          { "var": "BitXorEx", "val": 85, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Bit Shift Left (SHL)",
+      "syntax": "Value: Integer SHL Count: Byte; { Returns Integer }",
+      "description": "Shifts the bits of an integer value to the left by the specified count, filling vacated bits with zeros.",
+      "example": {
+        "code": [
+          "WriteLn(1 SHL 3);"
+        ],
+        "output": "8"
+      },
+      "quirks_and_tests": {
+        "description": "A low-level arithmetic shift, highly optimized by the compiler. Functionally equivalent to multiplying by 2^Count.",
+        "setup": [
+          "ShlEx := 1 SHL 3;"
+        ],
+        "assertions": [
+          { "var": "ShlEx", "val": 8, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Bit Shift Right (SHR)",
+      "syntax": "Value: Integer SHR Count: Byte; { Returns Integer }",
+      "description": "Shifts the bits of an integer value to the right by the specified count, filling vacated bits with zeros.",
+      "example": {
+        "code": [
+          "WriteLn(8 SHR 1);"
+        ],
+        "output": "4"
+      },
+      "quirks_and_tests": {
+        "description": "Logical right shift. Equivalent to an integer division by 2^Count.",
+        "setup": [
+          "ShrEx := 8 SHR 1;"
+        ],
+        "assertions": [
+          { "var": "ShrEx", "val": 4, "type": "integer" }
+        ]
+      }
+    }
+  ]
+}

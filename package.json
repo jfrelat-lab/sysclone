@@ -6,10 +6,12 @@
   "scripts": {
     "build:catalog": "node tools/build_catalog.js",
     "build:truth": "node tools/build_truth.js",
+    "truth:qbasic": "node tools/build_truth.js --target=qbasic && node tools/run_truth.js --target=qbasic",
+    "truth:pascal": "node tools/build_truth.js --target=pascal && node tools/run_truth.js --target=pascal",
     "start": "npm run build:truth && npm run build:catalog && node server.js",
     "test": "npm run build:truth && node tests/orchestrator.js",
-    "test:qbasic": "npm run build:truth && node tests/orchestrator.js qbasic",
-    "test:pascal": "node tests/orchestrator.js pascal",
+    "test:qbasic": "node tools/build_truth.js --target=qbasic && node tests/orchestrator.js qbasic",
+    "test:pascal": "node tools/build_truth.js --target=pascal && node tests/orchestrator.js pascal",
     "test:hardware": "node tests/orchestrator.js hardware"
   },
   "repository": {

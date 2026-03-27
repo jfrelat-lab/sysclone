@@ -6,7 +6,8 @@ import path from 'path';
  * Formats JSON values into valid Pascal literals.
  */
 function formatValue(val, type) {
-    if (type === 'string') return `'${val}'`; // Turbo Pascal uses single quotes for strings
+    if (type === 'string' || type === 'char') return `'${val}'`;
+    if (type === 'boolean') return val ? 'True' : 'False';
     return val; 
 }
 
@@ -22,6 +23,9 @@ export function buildPascal(suites, rootDir) {
     const integerVars = new Set(); 
     const realVars = new Set();
     const stringVars = new Set();
+    const charVars = new Set();
+    const booleanVars = new Set();
+    const customTypeVars = new Map();
 
     suites.forEach(suite => {
         suite.vectors.forEach(vec => {
@@ -30,6 +34,14 @@ export function buildPascal(suites, rootDir) {
                     // Type Routing
                     if (assert.type === 'string') {
                         stringVars.add(assert.var);
+                    } else if (assert.type === 'char') {
+                        charVars.add(assert.var);
+                    } else if (assert.type === 'boolean') {
+                        booleanVars.add(assert.var);
+                    } else if (assert.type.startsWith('^')) {
+                        if (!customTypeVars.has(assert.type))
+                            customTypeVars.set(assert.type, new Set());
+                        customTypeVars.get(assert.type).add(assert.var);
                     } else if (assert.type === 'float' || (assert.type === 'number' && assert.val.toString().includes('.'))) {
                         realVars.add(assert.var);
                     } else if (assert.type === 'integer') {
@@ -87,7 +99,12 @@ export function buildPascal(suites, rootDir) {
     lines.push(...getVarDeclarationLines(integerVars, 'Integer'));
     lines.push(...getVarDeclarationLines(longintVars, 'Longint'));
     lines.push(...getVarDeclarationLines(realVars, 'Real'));
+    lines.push(...getVarDeclarationLines(charVars, 'Char'));
+    lines.push(...getVarDeclarationLines(booleanVars, 'Boolean'));
     lines.push(...getVarDeclarationLines(stringVars, 'String'));
+    for (const [customType, varSet] of customTypeVars.entries()) {
+        lines.push(...getVarDeclarationLines(varSet, customType));
+    }
 
     lines.push(
         "",
@@ -117,6 +134,7 @@ export function buildPascal(suites, rootDir) {
             vec.quirks_and_tests.assertions.forEach(assert => {
                 let expected = formatValue(assert.val, assert.type);
                 const isReal = realVars.has(assert.var);
+                const isPointer = assert.type.startsWith('^');
                 
                 // CRITICAL: Force the expected value to become a floating literal
                 // for Pascal if it lacks a decimal point (e.g., transform "2" into "2.0")
@@ -129,9 +147,19 @@ export function buildPascal(suites, rootDir) {
                     ? `Abs(${assert.var} - ${expected}) < 0.0001`
                     : `${assert.var} = ${expected}`;
 
-                // Pascal formatting for WriteLn floats: Variable:Width:Decimals
-                const printVar = isReal ? `${assert.var}:0:2` : assert.var;
-                const printExpected = isReal ? `${expected}:0:2` : expected;
+                let printVar = assert.var;
+                let printExpected = expected;
+
+                if (isReal) {
+                    // Pascal formatting for WriteLn floats: Variable:Width:Decimals
+                    printVar = `${assert.var}:0:2`;
+                    printExpected = `${expected}:0:2`;
+                } else if (isPointer) {
+                    // Turbo Pascal prohibits printing raw pointers directly via WriteLn.
+                    // We must cast them to a 32-bit Longint to safely display their memory address.
+                    printVar = `Longint(${assert.var})`;
+                    printExpected = `Longint(${expected})`;
+                }
 
                 lines.push(
                     `  Inc(TotalTests);`,
@@ -139,7 +167,8 @@ export function buildPascal(suites, rootDir) {
                     `    Inc(PassedTests)`,
                     `  ELSE BEGIN`,
                     `    Inc(FailedTests);`,
-                    `    WriteLn('FAIL: [${vec.name}] ${assert.var} expected ', ${printExpected}, ' but got ', ${printVar});`,
+                    `    Write('FAIL: [${vec.name}] ${assert.var} expected ', ${printExpected});`,
+                    `    WriteLn(' but got ', ${printVar});`,
                     `  END;`
                 );
             });
