@@ -86,38 +86,29 @@ To guarantee absolute historical fidelity and prevent AI Agent hallucinations du
   2. The JavaScript integration test suites for the JIT engine.
   3. The `QBASIC_REFERENCE.MD` documentation.
 
-## 5. Multi-Language & JIT Evolution (Provisional Architecture)
+## 5. Multi-Language & JIT Evolution
 
-> **⚠️ PROVISIONAL DRAFT:** This section details the architectural refactoring required to transition Sysclone from a monolithic QBasic interpreter to a language-agnostic execution engine (Milestone 2.5). This is the prerequisite for Turbo Pascal integration and future WebAssembly JIT compilation.
+To support fundamentally different languages (e.g., QBasic's flat scoping vs. Pascal's lexical scoping) without creating a monolithic, unmaintainable core, the engine is strictly decoupled. However, early attempts to create a fully agnostic `VirtualCPU` paired with the `Visitor Pattern` were rejected in favor of specialized Evaluators.
 
-To support fundamentally different languages (e.g., QBasic's flat scoping vs. Pascal's lexical scoping and pointers) without creating a monolithic, unmaintainable core, the engine is strictly decoupled into an agnostic runner and language-specific plugins.
-
-### 5.1. The Virtual CPU & The Visitor Pattern
-The current `Evaluator` is refactored to separate the hardware execution mechanics from the language syntax rules.
-
-* **The VirtualCPU (VCPU):** An entirely language-agnostic generator engine. It manages the fundamental execution lifecycle:
-    * **The Tick Engine:** Yielding execution to the browser's `requestAnimationFrame` to prevent UI freezing.
-    * **Hardware Interrupts:** Catching and processing `SYS_DELAY` signals (for `SLEEP`, `SOUND`, or asynchronous I/O).
-    * **Control Flow Bubbling:** Handling low-level instruction pointer jumps (like `GOTO` or `EXIT`) across block boundaries.
-* **The Interpreter Visitors (Inversion of Control):** The massive `switch(node.type)` statement is extracted into dedicated Visitor classes.
-    * `QBasicInterpreterVisitor`: Contains the specific evaluation logic for MS-DOS quirks (e.g., `PRINT USING`, `PAINT`, `SWAP`).
-    * `PascalInterpreterVisitor`: Contains the evaluation logic for Turbo Pascal semantics (e.g., `WRITELN`, `NEW`, `DISPOSE`).
-* **JIT Readiness:** By isolating the node traversal into Visitors, Milestone 3 will simply require injecting a `WasmCompilerVisitor` that outputs binary opcodes instead of mutating state, leaving the `VirtualCPU` completely untouched.
+### 5.1. The Monolithic Evaluator Pattern (Zero-Risk Bias)
+Initially, the plan was to extract the syntax rules into a `Visitor` and leave the Control Flow (Jumps, Ticks, Interrupts) in an agnostic `VirtualCPU`. This failed because MS-DOS QBasic uses highly irregular control flows (like `GOTO` breaking out of blocks, or `RETURN` bubbling up from `GOSUB`), whereas languages like Turbo Pascal use strict procedural lexical scoping.
+* **Architectural Choice:** We employ specialized, monolithic evaluators (`QBasicEvaluator` and eventually `PascalEvaluator`). 
+* **Why?** It ensures that the execution loop natively understands the unique control flow quirks of its language. It protects the integrity of chronological memory pointers (like `DATA` blocks) without forcing unnatural abstractions onto other languages. 
 
 ### 5.2. Memory & State Decoupling (The Environment Split)
-QBasic and Pascal have radically different memory management philosophies. A single `Environment` class would result in severe code bloat. We use inheritance to isolate these paradigms:
+QBasic and Pascal have radically different memory management philosophies. We use inheritance to isolate these paradigms:
 
-* **`BaseEnvironment`:** The abstract foundation. It holds a basic symbol table and the critical reference to the Hardware Abstraction Layer's `Memory` (the 1MB virtual RAM stick).
+* **`BaseEnvironment`:** The abstract foundation. It holds a basic symbol table, the universal `DATA` bank, and the critical reference to the Hardware Abstraction Layer's `Memory` (the 1MB virtual RAM stick).
 * **`QBasicEnvironment`:** Inherits from Base. Strictly implements:
     * **3-Tier Flat Scoping:** Forcing Global/Main/Local isolation and actively preventing JS lexical traversal.
     * **The VariableVault:** Handling the implicit memory aliasing between explicitly typed variables (e.g., `DIM A AS STRING`) and their suffixed counterparts (`A$`).
     * **Implicit Typing:** Handling the `DEFINT A-Z` first-letter routing rules.
 * **`PascalEnvironment`:** Inherits from Base. Strictly implements:
     * **Lexical Scoping:** Native hierarchical traversal (`this.parent`) to support nested procedures.
-    * **The Heap Allocator:** A memory manager that maps Turbo Pascal typed pointers (`^`) directly to physical addresses within the HAL's `Uint8Array` RAM, allowing authentic pointer arithmetic and legacy memory hacks.
+    * **The Heap Allocator:** A memory manager that maps Turbo Pascal typed pointers (`^`) directly to physical addresses within the HAL's `Uint8Array` RAM.
 
 ### 5.3. WebVM Bootstrapping & Strategy Injection
 The WebVM Orchestrator (`webvm.js`) acts as the dependency injector. Upon loading a file, it checks the extension (`.bas` vs `.pas`) and dynamically assembles the execution pipeline:
-1.  **Frontend:** Injects the correct Monadic Parser and UI `Tokenizer` (`QBasicTokenizer` vs `PascalTokenizer`).
+1.  **Frontend:** Injects the correct UI `Tokenizer` (`QBasicTokenizer` vs `PascalTokenizer`).
 2.  **State:** Instantiates the correct environment (`QBasicEnvironment` vs `PascalEnvironment`).
-3.  **Middle-end:** Injects the corresponding `Visitor` into the agnostic `VirtualCPU`.
+3.  **Middle-end:** Instantiates the corresponding specialized evaluator (`QBasicEvaluator`).

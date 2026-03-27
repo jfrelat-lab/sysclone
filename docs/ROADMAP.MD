@@ -291,21 +291,19 @@
   - [ ] **Block Matching:** Verify structural integrity (e.g., `FOR` without `NEXT`, `DO` without `LOOP`).
 
 ## Phase 12.5: Multi-Language Architecture Refactoring (The Engine Split)
-*Before introducing Turbo Pascal or JIT compilation, the monolithic engine must be strictly decoupled. The goal is to separate the universal Virtual CPU mechanics from language-specific execution rules and memory behaviors.*
+*Before introducing Turbo Pascal or JIT compilation, the monolithic engine must be strictly decoupled. The goal is to separate the universal components from language-specific execution rules and memory behaviors.*
 
-- [ ] **12.5.1. Environment Decoupling (Memory & Scoping):**
-  - [ ] Extract the core memory interactions (RAM mapping, Data Bank skeleton) into an abstract `BaseEnvironment`.
-  - [ ] Create `QBasicEnvironment` (inheriting from Base): Isolate the 3-Tier Flat Scoping, `VariableVault` aliasing, and `DEFINT` implicit typing rules.
+- [x] **12.5.1. Environment Decoupling (Memory & Scoping):**
+  - [x] Extract the core memory interactions (RAM mapping, Data Bank skeleton) into an abstract `BaseEnvironment`.
+  - [x] Create `QBasicEnvironment` (inheriting from Base): Isolate the 3-Tier Flat Scoping, `VariableVault` aliasing, and `DEFINT` implicit typing rules.
   - [ ] Create `PascalEnvironment` (inheriting from Base): Implement standard Lexical Scoping (`this.parent` traversal) and prepare a mock Heap Allocator for typed pointers.
-- [ ] **12.5.2. Evaluator Refactoring (Visitor Pattern):**
-  - [ ] Rename `Evaluator` to `VirtualCPU`. Strip it of all language-specific AST node handling (`switch (node.type)`). It must solely manage the Execution Loop, Ticks (`yield`), Hardware Interrupts (`SYS_DELAY`), and "Control Flow Bubbling" (Jumps/Exits).
-  - [ ] Create `QBasicInterpreterVisitor`: Move the massive MS-DOS evaluation switch block into this dedicated visitor.
-  - [ ] Create `PascalInterpreterVisitor` (Stub): Prepare the initial evaluation switch for Pascal-specific AST nodes.
-  - [ ] Update the `VirtualCPU` to dynamically accept and delegate node evaluation to the injected Visitor.
+- [x] **12.5.2. Evaluator Specialization (Monolithic Pattern):**
+  - [x] Rename `Evaluator` to `QBasicEvaluator` and move to `src/runtime/qbasic/` to explicitly reflect its language-specific nature.
+  - [ ] Create `PascalEvaluator` (Stub) to handle strict lexical and procedural execution.
 - [ ] **12.5.3. UI & Bootstrapping (Dynamic Strategy):**
+  - [x] Create the `QBasicTokenizer` extending `BaseTokenizer`.
   - [ ] Create the `PascalTokenizer` extending `BaseTokenizer` to handle TP keywords and syntax (`BEGIN`, `END`, `;`).
-  - [ ] Update `src/ui.js` to dynamically inject `QBasicTokenizer` or `PascalTokenizer` based on the loaded file extension (`.bas` vs `.pas`).
-  - [ ] Update `src/webvm.js` (The Orchestrator) to instantiate the correct Environment and Visitor triplet when booting a ROM.
+  - [ ] Update `src/ui.js` and `src/webvm.js` to dynamically inject the correct Tokenizer, Environment, and Evaluator based on the loaded file extension (`.bas` vs `.pas`).
 
 ---
 
