@@ -1,4 +1,4 @@
-// src/runtime/builtins.test.js
+// src/runtime/qbasic/builtins.test.js
 import { BuiltIns } from './builtins.js';
 import { test, assertEqual, registerSuite } from '../../test_runner.js';
 

@@ -1,4 +1,4 @@
-// src/runtime/builtins.js
+// src/runtime/qbasic/builtins.js
 import { getCharFromCP437, getCP437FromChar } from '../../hardware/encoding.js';
 import { BuiltInTokens } from '../../parser/qbasic/tokens.js';
 

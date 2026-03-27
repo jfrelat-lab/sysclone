@@ -1,17 +1,17 @@
 // src/runtime/evaluator.js
-import { QBasicEnvironment as Environment } from './qbasic/qbasic_environment.js';
+import { QBasicEnvironment as Environment } from './qbasic_environment.js';
 import { QArray } from './qarray.js';
 import { QFixedString } from './qfixedstring.js';
-import { BuiltIns, bankersRound } from './qbasic/builtins.js';
-import { BuiltInTokens } from '../parser/qbasic/tokens.js';
-import { QBasicISA as ISA } from './qbasic/instructions/index.js';
+import { BuiltIns, bankersRound } from './builtins.js';
+import { BuiltInTokens } from '../../parser/qbasic/tokens.js';
+import { QBasicISA as ISA } from './instructions/index.js';
 
 /**
  * The core execution engine of Sysclone.
  * Acts as a virtual CPU that traverses the AST and interacts with the Hardware Abstraction Layer.
  * Uses Generator functions (*evaluate) to allow non-blocking execution in the browser.
  */
-export class Evaluator {
+export class QBasicEvaluator {
     constructor(env = null, hardware = { vga: null, io: null, memory: null }) {
         // Setup the 3-Tier Architecture natively if no custom env is provided
         if (!env) {
@@ -83,8 +83,7 @@ export class Evaluator {
                     } else if (node[i].type === 'TYPE_DECL') {
                         if (!insideSub) this.env.defineType(node[i].name, node[i].fields);
                     } else if (node[i].type === 'DATA') {
-                        // DATA is universally global, BUT only hoisted by the top-level Evaluator (no parent)
-                        if (!this.env.parent) {
+                        if (!this.env.staticScope) {
                             this.env.addData(node[i].values);
                         }
                     }
@@ -486,7 +485,7 @@ export class Evaluator {
         // DO WHILE / DO UNTIL (Condition evaluated BEFORE entering the block)
         while (true) {
             yield; // Virtual CPU Tick: Prevents infinite loop freezing
-            
+
             const cond = yield* this.evaluate(node.condition);
             
             // BREAK CONDITIONS based on loop type
@@ -494,7 +493,7 @@ export class Evaluator {
             if (node.loopType === 'WHILE' && (cond === 0 || cond === false)) break; // Break if False
 
             const res = yield* this.evaluate(node.body);
-            
+
             // CONTROL FLOW INTERCEPTION
             if (res && res._control) {
                 // If it's specifically an 'EXIT DO', shatter this specific loop cleanly
@@ -510,10 +509,10 @@ export class Evaluator {
         // DO ... LOOP WHILE / UNTIL (Condition evaluated AFTER executing the block at least once)
         while (true) {
             yield; // Virtual CPU Tick
-            
+
             // 1. Guaranteed execution of the body
             const res = yield* this.evaluate(node.body);
-            
+
             // 2. Control flow interception
             if (res && res._control) {
                 if (res._control === 'EXIT' && res.target === 'DO') break;
@@ -536,12 +535,12 @@ export class Evaluator {
         // The only way to escape early is via a GOTO or RETURN.
         while (true) {
             yield; // Virtual CPU Tick
-            
+
             const cond = yield* this.evaluate(node.condition);
             if (cond === 0 || cond === false) break;
-            
+
             const res = yield* this.evaluate(node.body);
-            
+
             // BUBBLING: Propagate GOTO, RETURN, or END commands
             if (res && res._control) return res;
         }
@@ -683,7 +682,7 @@ export class Evaluator {
     *visitERASE(node) {
         // MS-DOS ERASE Statement: 
         // For static arrays, it resets all elements to their default values (0 for numbers, "" for strings).
-        
+
         for (let target of node.targets) {
             const upperTarget = target.toUpperCase();
             
@@ -1027,7 +1026,7 @@ export class Evaluator {
             }
             
             // Re-instantiate properly to isolate execution state
-            const subEvaluator = new Evaluator(childEnv, this.hw);
+            const subEvaluator = new QBasicEvaluator(childEnv, this.hw);
 
             // --- Immediate return for single-line macros ---
             if (subDef.type === 'DEF_FN') {

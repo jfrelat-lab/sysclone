@@ -3,7 +3,7 @@ import { VGA } from './hardware/vga.js';
 import { IO } from './hardware/io.js';
 import { Memory } from './hardware/memory.js';
 import { QBasicEnvironment as Environment } from './runtime/qbasic/qbasic_environment.js';
-import { Evaluator } from './runtime/evaluator.js';
+import { QBasicEvaluator as Evaluator } from './runtime/qbasic/qbasic_evaluator.js';
 import { block } from './parser/qbasic/controlFlow.js';
 import { autoDecodeSource } from './hardware/encoding.js';
 import { WebUI } from './ui.js';
@@ -70,8 +70,9 @@ function resetHardware() {
     });
     
     env = new Environment();
-    evaluator = new Evaluator(env, { vga: screen, io: io, memory: memory });
-    
+    const hardware = { vga: screen, io: io, memory: memory };
+    evaluator = new Evaluator(env, hardware);
+
     ui.forcePlayState(); // Ensure UI reflects the running state
 }
 

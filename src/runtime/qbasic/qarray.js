@@ -1,4 +1,4 @@
-// src/runtime/qarray.js
+// src/runtime/qbasic/qarray.js
 
 /**
  * Flattens multi-dimensional QBasic arrays with custom bounds into a 1D context.

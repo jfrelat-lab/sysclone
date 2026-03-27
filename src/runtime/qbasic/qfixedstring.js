@@ -1,4 +1,4 @@
-// src/runtime/qfixedstring.js
+// src/runtime/qbasic/qfixedstring.js
 
 /**
  * Emulates a MS-DOS Fixed-Length String (STRING * N).

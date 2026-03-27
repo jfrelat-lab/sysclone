@@ -1,6 +1,6 @@
 // src/runtime/qbasic/qbasic_environment.js
 import { BaseEnvironment } from '../base_environment.js';
-import { QFixedString } from '../qfixedstring.js';
+import { QFixedString } from './qfixedstring.js';
 import { bankersRound } from './builtins.js';
 
 /**
@@ -46,8 +46,6 @@ class VariableVault {
 export class QBasicEnvironment extends BaseEnvironment {
     constructor(parent = null, staticScope = null) {
         super(parent);
-        this.parent = parent;
-        this.sharedEnv = parent ? parent.sharedEnv : this;
 
         // The vault for persistent local variables across calls
         this.staticScope = staticScope; 

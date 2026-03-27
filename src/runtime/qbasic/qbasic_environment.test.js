@@ -1,4 +1,4 @@
-// src/runtime/environment.test.js
+// src/runtime/qbasic/qbasic_environment.test.js
 
 import { QBasicEnvironment as Environment } from './qbasic_environment.js';
 import { test, assertEqual, registerSuite } from '../../test_runner.js';

@@ -1,8 +1,8 @@
-// src/runtime/types.test.js
+// src/runtime/qbasic/types.test.js
 
 import { QFixedString } from './qfixedstring.js';
 import { QArray } from './qarray.js';
-import { test, assertEqual, registerSuite } from '../test_runner.js';
+import { test, assertEqual, registerSuite } from '../../test_runner.js';
 
 registerSuite('Virtual Memory Types (QArray & QFixedString)', () => {
 
