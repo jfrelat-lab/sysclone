@@ -5,6 +5,7 @@ import { Memory } from './hardware/memory.js';
 import { QBasicEnvironment as Environment } from './runtime/qbasic/qbasic_environment.js';
 import { QBasicEvaluator as Evaluator } from './runtime/qbasic/qbasic_evaluator.js';
 import { block } from './parser/qbasic/controlFlow.js';
+import { QBasicLinter } from './parser/qbasic/linter/qbasic_linter.js';
 import { autoDecodeSource } from './hardware/encoding.js';
 import { WebUI } from './ui.js';
 
@@ -22,7 +23,7 @@ let isPaused = false;
 let gifEncoder = null;
 let lastCaptureTime = 0;
 
-// 24 FPS : The cinematic sweet spot. 
+// 24 FPS: The cinematic sweet spot. 
 // Fast enough to catch XOR sprites, slow enough to save file size.
 const GIF_FPS = 24; 
 const GIF_DELAY_MS = 1000 / GIF_FPS;
@@ -195,26 +196,53 @@ function finalizeExecution() {
     }
 }
 
-async function boot(filename) {
+/**
+ * Core boot logic: Takes raw binary MS-DOS bytes, decodes them, lints them, and executes.
+ */
+async function bootBuffer(filename, buffer) {
     console.log(`📥 Booting ROM: ${filename}...`);
     resetHardware();
 
     try {
-        const response = await fetch(`./examples/${filename}`);
-        if (!response.ok) throw new Error("HTTP Error: " + response.status);
-        
-        const buffer = await response.arrayBuffer();
+        // Smart decoding (CP437 vs Windows-1252)
         const sourceCode = autoDecodeSource(new Uint8Array(buffer));
         
         ui.setSourceCode(filename, sourceCode);
         
+        // 1. Parsing
         const parsed = block.run(sourceCode);
         if (parsed.isError) throw new Error(`Parser failed at index ${parsed.index}`);
         
+        // 2. Linter (Phase 12.3: Prevent corrupted code from launching the CPU)
+        const linter = new QBasicLinter();
+        const linterErrors = linter.lint(parsed.result);
+        if (linterErrors.length > 0) {
+            const errorMsg = "Static Analysis Failed:\n" + linterErrors.join('\n');
+            console.error(errorMsg);
+            alert(errorMsg);
+            return; // Immediate block
+        }
+        
+        // 3. Execution
         currentProcess = evaluator.evaluate(parsed.result);
         cpuLoop();
     } catch (error) {
         console.error(`❌ Boot Failure: ${error.message}`);
+        alert(`Boot Failure: ${error.message}`);
+    }
+}
+
+/**
+ * Fetches a ROM from the server and boots it.
+ */
+async function boot(filename) {
+    try {
+        const response = await fetch(`./examples/${filename}`);
+        if (!response.ok) throw new Error("HTTP Error: " + response.status);
+        const buffer = await response.arrayBuffer();
+        await bootBuffer(filename, buffer);
+    } catch (error) {
+        console.error(`❌ Fetch Failure for ${filename}: ${error.message}`);
     }
 }
 
@@ -236,6 +264,10 @@ async function loadGifLibrary() {
 
 // --- UI LIFECYCLE HOOKS ---
 
+// "Virtual Cartridge Slot" to keep the local ROM in memory
+let currentCustomFilename = null;
+let currentCustomBuffer = null;
+
 ui.onActionRequested = (action) => {
     if (action === 'pause') {
         isPaused = true;
@@ -249,7 +281,12 @@ ui.onActionRequested = (action) => {
     }
     else if (action === 'restart') {
         // Hard reboot of the current ROM
-        boot(getFilenameFromHash());
+        const hash = window.location.hash.substring(1);
+        if (hash === 'custom' && currentCustomBuffer) {
+            bootBuffer(currentCustomFilename, currentCustomBuffer);
+        } else {
+            boot(getFilenameFromHash());
+        }
     }
 };
 
@@ -306,14 +343,59 @@ ui.onRecordRequested = async (startRecording) => {
     }
 };
 
+ui.onFileUploaded = (filename, buffer) => {
+    // 1. Save to the Virtual Cartridge Slot
+    currentCustomFilename = filename;
+    currentCustomBuffer = buffer.slice(0); // Deep copy of the array buffer
+
+    // 2. Add temporarily to the DOM selector
+    const selector = document.getElementById('rom-selector');
+    if (selector) {
+        const existing = selector.querySelector('option[value="custom"]');
+        if (existing) selector.removeChild(existing);
+        
+        const customOption = document.createElement('option');
+        customOption.value = 'custom';
+        customOption.textContent = `📁 Local: ${filename}`;
+        selector.insertBefore(customOption, selector.firstChild);
+    }
+    
+    // 3. Smart Routing & Booting
+    // If we are already on the #custom hash, the 'hashchange' event won't fire.
+    // We must manually bypass the router and boot the new buffer directly.
+    if (window.location.hash === '#custom') {
+        ui.setRomSelection('custom');
+        bootBuffer(currentCustomFilename, currentCustomBuffer);
+    } else {
+        // If we are coming from a standard ROM, changing the hash will naturally trigger the boot.
+        window.location.hash = 'custom';
+    }
+};
+
 // --- ROUTING & DEEP LINKING ---
 
 function getFilenameFromHash() {
     const hash = window.location.hash.substring(1);
+    if (hash === 'custom') return 'custom';
     return hash ? `${hash}.bas` : 'nibbles.bas'; 
 }
 
 window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.substring(1);
+    
+    // Custom Local ROM branch
+    if (hash === 'custom') {
+        if (currentCustomBuffer) {
+            ui.setRomSelection('custom');
+            bootBuffer(currentCustomFilename, currentCustomBuffer);
+        } else {
+            // Failsafe: User manually typed #custom in URL but no file is uploaded
+            window.location.hash = 'nibbles';
+        }
+        return;
+    }
+
+    // Standard Server ROM branch
     const filename = getFilenameFromHash();
     ui.setRomSelection(filename); 
     boot(filename);
@@ -321,8 +403,20 @@ window.addEventListener('hashchange', () => {
 
 // --- SYSTEM IGNITION ---
 async function start() {
+    // 1. Always load the catalog first to ensure the UI is populated
+    await ui.loadCatalog('nibbles.bas'); 
+
     const initialRom = getFilenameFromHash();
-    await ui.loadCatalog(initialRom); 
+    
+    // 2. Failsafe: If the user reloads on "#custom", the RAM buffer is cleared by the browser.
+    // Redirect to the default ROM. The 'hashchange' listener will handle the boot.
+    if (initialRom === 'custom') {
+        window.location.hash = 'nibbles';
+        return;
+    }
+    
+    // 3. Standard boot sequence
+    ui.setRomSelection(initialRom);
     boot(initialRom);
 }
 

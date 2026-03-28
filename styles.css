@@ -61,6 +61,12 @@ select {
 .cpu-badge { background: #007acc; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8rem; font-weight: bold; width: 60px; text-align: center;}
 .turbo-label { display: flex; align-items: center; gap: 4px; color: #ff5555; font-weight: bold; font-size: 0.8rem; cursor: pointer; }
 
+.control-group { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+}
+
 /* Main Workspace (Split Screen) */
 .ide-workspace {
     display: flex;
@@ -231,4 +237,21 @@ select {
 @keyframes rec-blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
+}
+
+/* --- Overlay Drag & Drop --- */
+body.drag-active::after {
+    content: "Drop .BAS file here to load";
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 122, 204, 0.8);
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
 }

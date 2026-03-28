@@ -18,7 +18,10 @@ export class WebUI {
         this.btnScreenshot = document.getElementById('btn-screenshot');
         this.btnFullscreen = document.getElementById('btn-fullscreen');
         this.btnRecord = document.getElementById('btn-record'); // GIF Recording Button
-        
+        this.btnUpload = document.getElementById('btn-upload-rom');
+        this.fileUpload = document.getElementById('file-upload');
+        this.onFileUploaded = null;
+
         this.sourceViewer = document.getElementById('source-viewer');
         this.sourceFilename = document.getElementById('source-filename');
 
@@ -59,12 +62,22 @@ export class WebUI {
     }
 
     /**
-     * Updates the combobox visually to match the URL hash
+     * Updates the combobox visually to match the URL hash.
+     * Uses case-insensitive matching to prevent the HTML <select> from blanking out.
      */
     setRomSelection(filename) {
-        if (this.romSelector) {
-            this.romSelector.value = filename;
+        if (!this.romSelector) return;
+        
+        const target = filename.toLowerCase();
+        for (let i = 0; i < this.romSelector.options.length; i++) {
+            if (this.romSelector.options[i].value.toLowerCase() === target) {
+                this.romSelector.selectedIndex = i;
+                return;
+            }
         }
+        
+        // Fallback if not found in catalog
+        this.romSelector.value = filename;
     }
 
     /**
@@ -196,6 +209,29 @@ export class WebUI {
             });
         }
         
+        // --- UPLOAD MANUAL ---
+        if (this.btnUpload && this.fileUpload) {
+            this.btnUpload.addEventListener('click', () => this.fileUpload.click());
+            this.fileUpload.addEventListener('change', (e) => this._handleFileUpload(e));
+        }
+
+        // --- DRAG AND DROP OVERLAY ---
+        document.body.addEventListener('dragover', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            document.body.classList.add('drag-active');
+        });
+        document.body.addEventListener('dragleave', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            document.body.classList.remove('drag-active');
+        });
+        document.body.addEventListener('drop', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            document.body.classList.remove('drag-active');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                this._processFile(e.dataTransfer.files[0]);
+            }
+        });
+
         if (this.btnTogglePlay) this.btnTogglePlay.addEventListener('click', () => this._togglePlayPause());
         if (this.btnRestart) this.btnRestart.addEventListener('click', () => this.onActionRequested?.('restart'));
         if (this.btnScreenshot) this.btnScreenshot.addEventListener('click', () => this._takeScreenshot());
@@ -222,5 +258,24 @@ export class WebUI {
             const mhz = (this.cyclesPerFrame / 10).toFixed(2);
             this.speedDisplay.innerText = `${mhz} MHz`;
         }
+    }
+
+    _handleFileUpload(e) {
+        if (e.target.files && e.target.files.length > 0) {
+            this._processFile(e.target.files[0]);
+        }
+        e.target.value = '';
+    }
+
+    _processFile(file) {
+        if (!file.name.toLowerCase().endsWith('.bas')) {
+            alert("Please select a valid .BAS source file.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            this.onFileUploaded?.(file.name, event.target.result);
+        };
+        reader.readAsArrayBuffer(file);
     }
 }
