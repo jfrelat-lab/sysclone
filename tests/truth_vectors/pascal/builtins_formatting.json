@@ -1,0 +1,139 @@
+{
+  "suite": "STDLIB: Formatting Engine (Str)",
+  "vectors": [
+    {
+      "name": "Str (Integer Basic Conversion)",
+      "syntax": "procedure Str(X: Integer; var S: String);",
+      "description": "Converts an integer to its string representation. Unlike some other dialects, Turbo Pascal does not prepend a leading space for positive numbers. Negative numbers are strictly prefixed with a minus sign.",
+      "example": {
+        "code": [
+          "Str(42, S);",
+          "WriteLn(S);"
+        ],
+        "output": "42"
+      },
+      "quirks_and_tests": {
+        "description": "Validates that basic conversion handles sign characters correctly without implicit padding.",
+        "setup": [
+          "Str(42, StrIntPos);",
+          "Str(-42, StrIntNeg);"
+        ],
+        "assertions": [
+          { "var": "StrIntPos", "val": "42", "type": "string" },
+          { "var": "StrIntNeg", "val": "-42", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Str (Integer Width Padding)",
+      "syntax": "procedure Str(X: Integer : Width; var S: String);",
+      "description": "When a Width parameter is provided (X:Width), the resulting string is right-aligned and padded with leading spaces if the number's length is less than the specified Width. The minus sign of a negative number is included in this width calculation.",
+      "example": {
+        "code": [
+          "Str(42:5, S);",
+          "WriteLn(S);"
+        ],
+        "output": "   42"
+      },
+      "quirks_and_tests": {
+        "description": "Validates right-alignment and space padding for both positive and negative integers.",
+        "setup": [
+          "Str(42:5, StrPadPos);",
+          "Str(-42:5, StrPadNeg);"
+        ],
+        "assertions": [
+          { "var": "StrPadPos", "val": "   42", "type": "string" },
+          { "var": "StrPadNeg", "val": "  -42", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Str (Integer Width Overflow)",
+      "syntax": "procedure Str(X: Integer : Width; var S: String);",
+      "description": "If the specified Width is smaller than the actual number of characters required to represent the integer, Turbo Pascal ignores the Width constraint and outputs the full number without truncation.",
+      "example": {
+        "code": [
+          "Str(12345:2, S);",
+          "WriteLn(S);"
+        ],
+        "output": "12345"
+      },
+      "quirks_and_tests": {
+        "description": "Validates that data integrity takes precedence over the formatting width constraint.",
+        "setup": [
+          "Str(12345:2, StrIntOverflow);"
+        ],
+        "assertions": [
+          { "var": "StrIntOverflow", "val": "12345", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Str (Real Fixed-Point Conversion)",
+      "syntax": "procedure Str(X: Real : Width : Decimals; var S: String);",
+      "description": "By default, Real numbers are converted using scientific notation. Adding a second colon and a Decimals parameter forces fixed-point notation. A Width of 0 instructs the engine to use exactly as much space as needed, without leading padding.",
+      "example": {
+        "code": [
+          "Str(3.14159:0:2, S);",
+          "WriteLn(S);"
+        ],
+        "output": "3.14"
+      },
+      "quirks_and_tests": {
+        "description": "Validates the override of scientific notation to standard fixed-point decimal string representation.",
+        "setup": [
+          "Str(3.14159:0:2, StrRealFix);"
+        ],
+        "assertions": [
+          { "var": "StrRealFix", "val": "3.14", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Str (Real Fixed-Point Padding)",
+      "syntax": "procedure Str(X: Real : Width : Decimals; var S: String);",
+      "description": "When both Width and Decimals are provided, the total length of the resulting string (including the integer part, the decimal point, and the decimal digits) is padded with leading spaces to meet the Width requirement.",
+      "example": {
+        "code": [
+          "Str(3.14:6:2, S);",
+          "WriteLn(S);"
+        ],
+        "output": "  3.14"
+      },
+      "quirks_and_tests": {
+        "description": "Validates the global width calculation for real numbers (3 chars for '3.1', plus 1 for '4' = 4 chars. Padded to 6 results in 2 leading spaces).",
+        "setup": [
+          "Str(3.14:6:2, StrRealPad);"
+        ],
+        "assertions": [
+          { "var": "StrRealPad", "val": "  3.14", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Str (Real Fixed-Point Rounding)",
+      "syntax": "procedure Str(X: Real : Width : Decimals; var S: String);",
+      "description": "When formatting constraints reduce the number of visible decimals, the Str procedure mathematically rounds the last visible digit (rounding half away from zero) rather than simply truncating the string.",
+      "example": {
+        "code": [
+          "Str(3.8:0:0, S);",
+          "WriteLn(S);"
+        ],
+        "output": "4"
+      },
+      "quirks_and_tests": {
+        "description": "Validates that formatting is not just string manipulation, but involves arithmetic rounding.",
+        "setup": [
+          "Str(3.15:0:1, StrRealRoundUp);",
+          "Str(3.14:0:1, StrRealRoundDown);",
+          "Str(3.8:0:0, StrRealNoDecimals);"
+        ],
+        "assertions": [
+          { "var": "StrRealRoundUp", "val": "3.2", "type": "string" },
+          { "var": "StrRealRoundDown", "val": "3.1", "type": "string" },
+          { "var": "StrRealNoDecimals", "val": "4", "type": "string" }
+        ]
+      }
+    }
+  ]
+}

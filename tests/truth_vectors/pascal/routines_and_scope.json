@@ -1,0 +1,190 @@
+{
+  "suite": "CORE: Procedures, Functions & Scope",
+  "vectors": [
+    {
+      "name": "Procedure (Declaration and Call)",
+      "syntax": "procedure Name[(ParameterList)];\n[Local Declarations]\nbegin\n  Statements;\nend;",
+      "description": "A procedure is a subprogram that performs a specific task but does not return a value. It is invoked as a standalone statement.",
+      "example": {
+        "code": [
+          "procedure Greet;",
+          "begin",
+          "  WriteLn('Hello World');",
+          "end;",
+          "",
+          "Greet; { Call the procedure }"
+        ],
+        "output": "Hello World"
+      },
+      "quirks_and_tests": {
+        "description": "Validates basic procedure declaration, invocation, and execution flow.",
+        "declarations": [
+          "PROCEDURE Ref_BasicProc;",
+          "BEGIN",
+          "  ProcCalled := True;",
+          "END;"
+        ],
+        "setup": [
+          "ProcCalled := False;",
+          "Ref_BasicProc;"
+        ],
+        "assertions": [
+          { "var": "ProcCalled", "val": true, "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "name": "Function (Declaration and Return)",
+      "syntax": "function Name[(ParameterList)]: ReturnType;\n[Local Declarations]\nbegin\n  Name := ReturnValue;\nend;",
+      "description": "A function is a subprogram that computes and returns a single value. In Turbo Pascal, there is no 'return' keyword. The return value is specified by assigning a value to the function's own identifier before it exits.",
+      "example": {
+        "code": [
+          "function GetTen: Integer;",
+          "begin",
+          "  GetTen := 10;",
+          "end;",
+          "",
+          "WriteLn(GetTen);"
+        ],
+        "output": "10"
+      },
+      "quirks_and_tests": {
+        "description": "Validates function execution and the assignment to the function identifier for returning a value.",
+        "declarations": [
+          "FUNCTION Ref_BasicFunc: Integer;",
+          "BEGIN",
+          "  Ref_BasicFunc := 42;",
+          "END;"
+        ],
+        "setup": [
+          "FuncRes := Ref_BasicFunc;"
+        ],
+        "assertions": [
+          { "var": "FuncRes", "val": 42, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Parameters (Pass by Value)",
+      "syntax": "procedure RoutineName(Param: Type);",
+      "description": "In Turbo Pascal, parameters are passed by value by default. The procedure or function receives a copy of the argument. Any modifications made to the parameter within the routine are strictly local and do not affect the original variable passed by the caller.",
+      "example": {
+        "code": [
+          "procedure AddTen(X: Integer);",
+          "begin",
+          "  X := X + 10;",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validation of memory isolation for value parameters.",
+        "declarations": [
+          "PROCEDURE Ref_PassByValue(X: Integer);",
+          "BEGIN",
+          "  X := X + 10;",
+          "END;"
+        ],
+        "setup": [
+          "OriginalVal := 5;",
+          "Ref_PassByValue(OriginalVal);"
+        ],
+        "assertions": [
+          { "var": "OriginalVal", "val": 5, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "VAR Parameters (Pass by Reference)",
+      "syntax": "procedure RoutineName(VAR Param: Type);",
+      "description": "To pass a parameter by reference, the VAR keyword must precede the parameter declaration. The routine accesses the actual memory address of the argument. Any changes made to the parameter inside the routine will directly modify the original variable.",
+      "example": {
+        "code": [
+          "procedure AddTen(VAR X: Integer);",
+          "begin",
+          "  X := X + 10;",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validation of memory mutation for reference parameters.",
+        "declarations": [
+          "PROCEDURE Ref_PassByRef(VAR X: Integer);",
+          "BEGIN",
+          "  X := X + 10;",
+          "END;"
+        ],
+        "setup": [
+          "OriginalRef := 5;",
+          "Ref_PassByRef(OriginalRef);"
+        ],
+        "assertions": [
+          { "var": "OriginalRef", "val": 15, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Scope (Global Visibility)",
+      "syntax": "var GlobalVar: Type;",
+      "description": "Variables declared in the main VAR block of a program are global. They are visible and can be directly accessed or modified by any procedure or function, provided they are declared before the routine in the source code.",
+      "example": {
+        "code": [
+          "procedure MutateGlobal;",
+          "begin",
+          "  GlobalVar := 99;",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validation of outer scope traversal and mutation.",
+        "declarations": [
+          "PROCEDURE Ref_GlobalAccess;",
+          "BEGIN",
+          "  GlobalTarget := GlobalTarget * 2;",
+          "END;"
+        ],
+        "setup": [
+          "GlobalTarget := 21;",
+          "Ref_GlobalAccess;"
+        ],
+        "assertions": [
+          { "var": "GlobalTarget", "val": 42, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "Scope (Local and Variable Shadowing)",
+      "syntax": "procedure RoutineName;\nvar LocalVar: Type;\nbegin ... end;",
+      "description": "Variables declared within a procedure or function are local to that routine. If a local variable has the exact same name as a global variable, the local declaration 'shadows' (hides) the global one. Any operations on that identifier within the routine will only affect the local instance.",
+      "example": {
+        "code": [
+          "procedure ShadowGlobal;",
+          "var X: Integer;",
+          "begin",
+          "  X := 99; { Modifies local X, not global X }",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validation of scope priority (Local over Global) during identifier resolution.",
+        "declarations": [
+          "PROCEDURE Ref_Shadowing;",
+          "VAR ShadowTarget: Integer;",
+          "BEGIN",
+          "  ShadowTarget := 99;",
+          "END;"
+        ],
+        "setup": [
+          "ShadowTarget := 10;",
+          "Ref_Shadowing;"
+        ],
+        "assertions": [
+          { "var": "ShadowTarget", "val": 10, "type": "integer" }
+        ]
+      }
+    }
+  ]
+}

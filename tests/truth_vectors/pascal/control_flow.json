@@ -1,0 +1,172 @@
+{
+  "suite": "CORE: Control Flow & Loops",
+  "vectors": [
+    {
+      "name": "CASE..OF (Multiple Branching)",
+      "syntax": "CASE Selector OF\n  Label1: Statement1;\n  Label2, Label3: Statement2;\n  Label4..Label5: Statement3;\n  [ELSE Statement4;]\nEND;",
+      "description": "Executes one of several statements based on the value of an ordinal selector expression. Turbo Pascal extends standard Pascal by allowing comma-separated lists, ranges (..), and an explicit ELSE fallback clause.",
+      "example": {
+        "code": [
+          "CASE X OF",
+          "  1: WriteLn('One');",
+          "  2..9: WriteLn('Multiple');",
+          "  ELSE WriteLn('Other');",
+          "END;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validates the evaluation of exact matches, ranges, and the ELSE fallback.",
+        "setup": [
+          "CaseRange := 0;",
+          "CaseTarget1 := 4;",
+          "CASE CaseTarget1 OF",
+          "  1, 2: CaseRange := 10;",
+          "  3..5: CaseRange := 20;",
+          "  ELSE CaseRange := 30;",
+          "END;",
+          "CaseElse := 0;",
+          "CaseTarget2 := 99;",
+          "CASE CaseTarget2 OF",
+          "  1: CaseElse := 10;",
+          "  ELSE CaseElse := 30;",
+          "END;"
+        ],
+        "assertions": [
+          { "var": "CaseRange", "val": 20, "type": "integer" },
+          { "var": "CaseTarget1", "val": 4, "type": "integer" },
+          { "var": "CaseElse", "val": 30, "type": "integer" },
+          { "var": "CaseTarget2", "val": 99, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "FOR..DOWNTO (Decrementing Loop)",
+      "syntax": "FOR Counter := Start DOWNTO End DO Statement;",
+      "description": "Executes a statement a fixed number of times, strictly decrementing an ordinal control variable by 1 on each iteration. If the Start value is less than the End value, the loop body is bypassed entirely.",
+      "example": {
+        "code": [
+          "FOR I := 3 DOWNTO 1 DO WriteLn(I);"
+        ],
+        "output": "3\n2\n1"
+      },
+      "quirks_and_tests": {
+        "description": "Uses the DOWNTO keyword instead of a dynamic step. Validates decrementing and bypass logic.",
+        "setup": [
+          "DownSum := 0;",
+          "FOR J := 5 DOWNTO 1 DO Inc(DownSum, J);",
+          "DownSkip := 0;",
+          "FOR J := 1 DOWNTO 5 DO Inc(DownSkip, J);"
+        ],
+        "assertions": [
+          { "var": "DownSum", "val": 15, "type": "integer" },
+          { "var": "DownSkip", "val": 0, "type": "integer" },
+          { "var": "J", "val": 1, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "FOR..TO (Incrementing Loop)",
+      "syntax": "FOR Counter := Start TO End DO Statement;",
+      "description": "Executes a statement a fixed number of times, strictly incrementing an ordinal control variable by 1 on each iteration. The Start and End limits are evaluated exactly once before the loop begins.",
+      "example": {
+        "code": [
+          "FOR I := 1 TO 3 DO WriteLn(I);"
+        ],
+        "output": "1\n2\n3"
+      },
+      "quirks_and_tests": {
+        "description": "Validates incrementing logic and ensures the loop is skipped if Start > End.",
+        "setup": [
+          "ForSum := 0;",
+          "FOR I := 1 TO 5 DO Inc(ForSum, I);",
+          "ForSkip := 0;",
+          "FOR I := 5 TO 1 DO Inc(ForSkip, I);"
+        ],
+        "assertions": [
+          { "var": "ForSum", "val": 15, "type": "integer" },
+          { "var": "ForSkip", "val": 0, "type": "integer" },
+          { "var": "I", "val": 5, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "IF..THEN..ELSE (Conditional Branching)",
+      "syntax": "IF Condition THEN Statement1 [ ELSE Statement2 ];",
+      "description": "Branches execution based on a boolean condition. Turbo Pascal strictly forbids placing a semicolon immediately before the ELSE keyword.",
+      "example": {
+        "code": [
+          "IF True THEN",
+          "  WriteLn('Yes')",
+          "ELSE",
+          "  WriteLn('No');"
+        ],
+        "output": "Yes"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL PARSING QUIRK: Turbo Pascal resolves the 'dangling ELSE' ambiguity by strictly binding the ELSE clause to the closest preceding IF statement.",
+        "setup": [
+          "IfRes := 0;",
+          "IF True THEN",
+          "  IF False THEN IfRes := 1",
+          "  ELSE IfRes := 2;"
+        ],
+        "assertions": [
+          { "var": "IfRes", "val": 2, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "REPEAT..UNTIL (Post-Condition Loop)",
+      "syntax": "REPEAT Statement1; [Statement2;] UNTIL Condition;",
+      "description": "Repeats a sequence of statements until a boolean condition evaluates to True. Because the condition is evaluated after the loop body, the statements are guaranteed to execute AT LEAST ONCE.",
+      "example": {
+        "code": [
+          "REPEAT",
+          "  Inc(X);",
+          "UNTIL X = 5;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL SYNTAX QUIRK: Unlike WHILE or FOR, REPEAT..UNTIL acts as a natural block envelope and does not require BEGIN..END to wrap multiple statements.",
+        "setup": [
+          "RepCount := 0;",
+          "REPEAT",
+          "  Inc(RepCount);",
+          "UNTIL RepCount >= 5;"
+        ],
+        "assertions": [
+          { "var": "RepCount", "val": 5, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "WHILE..DO (Pre-Condition Loop)",
+      "syntax": "WHILE Condition DO Statement;",
+      "description": "Repeats a statement as long as a boolean condition evaluates to True. The condition is evaluated before entering the loop body. If it is initially False, the body is completely bypassed.",
+      "example": {
+        "code": [
+          "WHILE X < 5 DO",
+          "begin",
+          "  Inc(X);",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validates the pre-condition check and loop execution.",
+        "setup": [
+          "WhileCount := 0;",
+          "WHILE WhileCount < 5 DO Inc(WhileCount);",
+          "WhileSkip := 0;",
+          "WHILE False DO Inc(WhileSkip);"
+        ],
+        "assertions": [
+          { "var": "WhileCount", "val": 5, "type": "integer" },
+          { "var": "WhileSkip", "val": 0, "type": "integer" }
+        ]
+      }
+    }
+  ]
+}

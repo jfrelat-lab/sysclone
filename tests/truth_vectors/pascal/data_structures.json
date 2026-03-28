@@ -1,0 +1,158 @@
+{
+  "suite": "CORE: Data Structures (Arrays & Records)",
+  "vectors": [
+    {
+      "name": "ARRAY (Arbitrary Integer Bounds)",
+      "syntax": "array[Start..End] of Type;",
+      "description": "Unlike C or JavaScript where arrays always start at index 0, Turbo Pascal arrays can have arbitrary ordinal bounds, including negative numbers.",
+      "example": {
+        "code": [
+          "var Temp: array[-5..5] of Integer;",
+          "begin",
+          "  Temp[-2] := 42;",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validates that negative bounds are correctly allocated and accessed in memory without shifting offsets incorrectly.",
+        "declarations": [
+          "VAR ArrNegative: ARRAY[-5..5] OF Integer;"
+        ],
+        "setup": [
+          "ArrNegative[-2] := 42;",
+          "ArrNegRes := ArrNegative[-2];"
+        ],
+        "assertions": [
+          { "var": "ArrNegRes", "val": 42, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "ARRAY (Character Bounds)",
+      "syntax": "array['A'..'Z'] of Type;",
+      "description": "The index type of an array is not limited to integers. Any ordinal type can be used as an index, including characters or enumerations.",
+      "example": {
+        "code": [
+          "var Letters: array['a'..'z'] of Integer;",
+          "begin",
+          "  Letters['x'] := 99;",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL PARSER QUIRK: The AST must resolve the character literal to its ASCII ordinal value to correctly compute the memory offset.",
+        "declarations": [
+          "VAR ArrChar: ARRAY['A'..'C'] OF Integer;"
+        ],
+        "setup": [
+          "ArrChar['B'] := 77;",
+          "ArrCharRes := ArrChar['B'];"
+        ],
+        "assertions": [
+          { "var": "ArrCharRes", "val": 77, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "ARRAY (Multi-Dimensional)",
+      "syntax": "array[Dim1Start..Dim1End, Dim2Start..Dim2End] of Type;",
+      "description": "Multi-dimensional arrays can be defined either as arrays of arrays or using a comma-separated syntax for dimensions.",
+      "example": {
+        "code": [
+          "var Matrix: array[1..3, 1..3] of Integer;",
+          "begin",
+          "  Matrix[2, 3] := 88;",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validates 2D array parsing and contiguous memory access.",
+        "declarations": [
+          "VAR ArrMulti: ARRAY[1..3, 1..3] OF Integer;"
+        ],
+        "setup": [
+          "ArrMulti[2, 3] := 88;",
+          "ArrMultiRes := ArrMulti[2, 3];"
+        ],
+        "assertions": [
+          { "var": "ArrMultiRes", "val": 88, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "RECORD (Basic Field Access)",
+      "syntax": "Type Name = RECORD\n  Field1: Type;\n  Field2: Type;\nEND;",
+      "description": "A Record groups heterogeneous data fields under a single identifier. Fields are accessed using dot notation.",
+      "example": {
+        "code": [
+          "Type TPoint = RECORD X, Y: Integer; END;",
+          "var P: TPoint;",
+          "begin",
+          "  P.X := 10;",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "Validates custom TYPE declaration, record instantiation, and member access.",
+        "declarations": [
+          "TYPE TPoint = RECORD",
+          "  X, Y: Integer;",
+          "END;",
+          "VAR MyPoint: TPoint;"
+        ],
+        "setup": [
+          "MyPoint.X := 10;",
+          "MyPoint.Y := 20;",
+          "RecResX := MyPoint.X;",
+          "RecResY := MyPoint.Y;"
+        ],
+        "assertions": [
+          { "var": "RecResX", "val": 10, "type": "integer" },
+          { "var": "RecResY", "val": 20, "type": "integer" }
+        ]
+      }
+    },
+    {
+      "name": "WITH (Record Scope Resolution)",
+      "syntax": "WITH RecordVariable DO Statement;",
+      "description": "The WITH statement temporarily opens a record's namespace. Within its block, the record's fields can be accessed directly without prefixing them with the record variable name.",
+      "example": {
+        "code": [
+          "WITH P DO",
+          "begin",
+          "  X := 10;",
+          "  Y := 20;",
+          "end;"
+        ],
+        "output": ""
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL SCOPE QUIRK: The environment evaluator must temporarily push the record's fields to the top of the symbol resolution stack.",
+        "declarations": [
+          "TYPE TPlayer = RECORD",
+          "  Score: Integer;",
+          "  Alive: Boolean;",
+          "END;",
+          "VAR Player1: TPlayer;"
+        ],
+        "setup": [
+          "WITH Player1 DO",
+          "BEGIN",
+          "  Score := 100;",
+          "  Alive := True;",
+          "END;",
+          "WithResScore := Player1.Score;",
+          "WithResAlive := Player1.Alive;"
+        ],
+        "assertions": [
+          { "var": "WithResScore", "val": 100, "type": "integer" },
+          { "var": "WithResAlive", "val": true, "type": "boolean" }
+        ]
+      }
+    }
+  ]
+}

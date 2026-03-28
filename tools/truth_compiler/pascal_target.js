@@ -18,38 +18,48 @@ function formatValue(val, type) {
 export function buildPascal(suites, rootDir) {
     const OUT_PAS = path.resolve(rootDir, '../examples/compat.pas');
     
-    // 1. Gather all variables to declare them dynamically in the VAR block
-    const longintVars = new Set();
-    const integerVars = new Set(); 
-    const realVars = new Set();
-    const stringVars = new Set();
-    const charVars = new Set();
-    const booleanVars = new Set();
+    // 1. Gather variables and track used types to inject only necessary Assert procedures
+    const varMaps = {
+        'Longint': new Set(),
+        'Integer': new Set(),
+        'Real': new Set(),
+        'String': new Set(),
+        'Char': new Set(),
+        'Boolean': new Set()
+    };
     const customTypeVars = new Map();
+    const globalDeclarations = [];
+    const usedAsserts = new Set(); // Tracks which Assert methods are actually needed
 
     suites.forEach(suite => {
         suite.vectors.forEach(vec => {
             if (vec.quirks_and_tests) {
+                if (vec.quirks_and_tests.declarations) {
+                    globalDeclarations.push(...vec.quirks_and_tests.declarations);
+                }
                 vec.quirks_and_tests.assertions.forEach(assert => {
-                    // Type Routing
                     if (assert.type === 'string') {
-                        stringVars.add(assert.var);
+                        varMaps['String'].add(assert.var);
+                        usedAsserts.add('Str');
                     } else if (assert.type === 'char') {
-                        charVars.add(assert.var);
+                        varMaps['Char'].add(assert.var);
+                        usedAsserts.add('Str'); // Char can be implicitly cast to string in our assert
                     } else if (assert.type === 'boolean') {
-                        booleanVars.add(assert.var);
+                        varMaps['Boolean'].add(assert.var);
+                        usedAsserts.add('Bool');
                     } else if (assert.type.startsWith('^')) {
-                        if (!customTypeVars.has(assert.type))
-                            customTypeVars.set(assert.type, new Set());
+                        if (!customTypeVars.has(assert.type)) customTypeVars.set(assert.type, new Set());
                         customTypeVars.get(assert.type).add(assert.var);
+                        usedAsserts.add('Ptr');
                     } else if (assert.type === 'float' || (assert.type === 'number' && assert.val.toString().includes('.'))) {
-                        realVars.add(assert.var);
+                        varMaps['Real'].add(assert.var);
+                        usedAsserts.add('Real');
                     } else if (assert.type === 'integer') {
-                        // Catch explicit 16-bit integers
-                        integerVars.add(assert.var);
+                        varMaps['Integer'].add(assert.var);
+                        usedAsserts.add('Int');
                     } else {
-                        // Default fallback for numbers without decimals (32-bit integer)
-                        longintVars.add(assert.var);
+                        varMaps['Longint'].add(assert.var);
+                        usedAsserts.add('Int');
                     }
                 });
             }
@@ -95,17 +105,93 @@ export function buildPascal(suites, rootDir) {
         "  TotalTests, PassedTests, FailedTests: Integer;"
     ];
 
-    // 2. Write Variable Declarations cleanly with chunking
-    lines.push(...getVarDeclarationLines(integerVars, 'Integer'));
-    lines.push(...getVarDeclarationLines(longintVars, 'Longint'));
-    lines.push(...getVarDeclarationLines(realVars, 'Real'));
-    lines.push(...getVarDeclarationLines(charVars, 'Char'));
-    lines.push(...getVarDeclarationLines(booleanVars, 'Boolean'));
-    lines.push(...getVarDeclarationLines(stringVars, 'String'));
+    // 2. Write Variable Declarations
+    for (const [typeName, varSet] of Object.entries(varMaps)) {
+        lines.push(...getVarDeclarationLines(varSet, typeName));
+    }
     for (const [customType, varSet] of customTypeVars.entries()) {
         lines.push(...getVarDeclarationLines(varSet, customType));
     }
 
+    // 3. Inject Global Declarations (from Truth Vectors)
+    if (globalDeclarations.length > 0) {
+        lines.push('');
+        lines.push(...globalDeclarations);
+    }
+
+    // 4. Inject "SyscloneUnit" Test Framework Procedures
+    lines.push('', '{ --- SYSCLONE TEST FRAMEWORK --- }');
+    
+    if (usedAsserts.has('Int')) {
+        lines.push(
+            "PROCEDURE AssertInt(TestName: String; Expected, Actual: Longint);",
+            "BEGIN",
+            "  Inc(TotalTests);",
+            "  IF Expected = Actual THEN Inc(PassedTests)",
+            "  ELSE BEGIN",
+            "    Inc(FailedTests);",
+            "    WriteLn('FAIL: [', TestName, '] expected ', Expected, ' but got ', Actual);",
+            "  END;",
+            "END;"
+        );
+    }
+    if (usedAsserts.has('Real')) {
+        lines.push(
+            "PROCEDURE AssertReal(TestName: String; Expected, Actual: Real);",
+            "BEGIN",
+            "  Inc(TotalTests);",
+            "  IF Abs(Expected - Actual) < 0.0001 THEN Inc(PassedTests)",
+            "  ELSE BEGIN",
+            "    Inc(FailedTests);",
+            "    WriteLn('FAIL: [', TestName, '] expected ', Expected:0:2, ' but got ', Actual:0:2);",
+            "  END;",
+            "END;"
+        );
+    }
+    if (usedAsserts.has('Str')) {
+        lines.push(
+            "PROCEDURE AssertStr(TestName: String; Expected, Actual: String);",
+            "BEGIN",
+            "  Inc(TotalTests);",
+            "  IF Expected = Actual THEN Inc(PassedTests)",
+            "  ELSE BEGIN",
+            "    Inc(FailedTests);",
+            "    WriteLn('FAIL: [', TestName, '] expected ''', Expected, ''' but got ''', Actual, '''');",
+            "  END;",
+            "END;"
+        );
+    }
+    if (usedAsserts.has('Bool')) {
+        lines.push(
+            "PROCEDURE AssertBool(TestName: String; Expected, Actual: Boolean);",
+            "BEGIN",
+            "  Inc(TotalTests);",
+            "  IF Expected = Actual THEN Inc(PassedTests)",
+            "  ELSE BEGIN",
+            "    Inc(FailedTests);",
+            "    Write('FAIL: [', TestName, '] expected ');",
+            "    IF Expected THEN Write('True') ELSE Write('False');",
+            "    Write(' but got ');",
+            "    IF Actual THEN WriteLn('True') ELSE WriteLn('False');",
+            "  END;",
+            "END;"
+        );
+    }
+    if (usedAsserts.has('Ptr')) {
+        lines.push(
+            "PROCEDURE AssertPtr(TestName: String; Expected, Actual: Pointer);",
+            "BEGIN",
+            "  Inc(TotalTests);",
+            "  IF Expected = Actual THEN Inc(PassedTests)",
+            "  ELSE BEGIN",
+            "    Inc(FailedTests);",
+            "    WriteLn('FAIL: [', TestName, '] expected ', Longint(Expected), ' but got ', Longint(Actual));",
+            "  END;",
+            "END;"
+        );
+    }
+
+    // 5. Main Program Body
     lines.push(
         "",
         "BEGIN",
@@ -117,14 +203,14 @@ export function buildPascal(suites, rootDir) {
         "  WriteLn('---------------------------------');"
     );
 
-    // 3. Generate the logic
+    // 6. Generate the logic execution and assert calls
     suites.forEach(suite => {
         lines.push("", `  { --- SUITE: ${suite.suite} --- }`);
         
         suite.vectors.forEach(vec => {
             if (!vec.quirks_and_tests) return;
 
-            lines.push("", `  { Vector: ${vec.name} }`);
+            lines.push(`  { Vector: ${vec.name} }`);
             
             // Add indentation to setup lines
             vec.quirks_and_tests.setup.forEach(line => {
@@ -133,50 +219,40 @@ export function buildPascal(suites, rootDir) {
 
             vec.quirks_and_tests.assertions.forEach(assert => {
                 let expected = formatValue(assert.val, assert.type);
-                const isReal = realVars.has(assert.var);
+                const isReal = varMaps['Real'].has(assert.var);
                 const isPointer = assert.type.startsWith('^');
                 
-                // CRITICAL: Force the expected value to become a floating literal
-                // for Pascal if it lacks a decimal point (e.g., transform "2" into "2.0")
-                if (isReal && !String(expected).includes('.')) {
-                    expected = `${expected}.0`;
-                }
+                if (isReal && !String(expected).includes('.')) expected = `${expected}.0`;
                 
-                // Real number equality check in Pascal needs a small epsilon due to IEEE 754 precision limitations
-                const condition = isReal 
-                    ? `Abs(${assert.var} - ${expected}) < 0.0001`
-                    : `${assert.var} = ${expected}`;
+                // Determine which Assert procedure to call based on type
+                let assertCall = "";
 
-                let printVar = assert.var;
-                let printExpected = expected;
+                // Format the test name to avoid MS-DOS 126 char limit
+                let safeName = vec.name.replace(/'/g, "''");
+                if (safeName.length > 60) {
+                    safeName = safeName.substring(0, 57) + '...';
+                }
 
                 if (isReal) {
-                    // Pascal formatting for WriteLn floats: Variable:Width:Decimals
-                    printVar = `${assert.var}:0:2`;
-                    printExpected = `${expected}:0:2`;
+                    assertCall = `  AssertReal('${safeName}', ${expected}, ${assert.var});`;
                 } else if (isPointer) {
-                    // Turbo Pascal prohibits printing raw pointers directly via WriteLn.
-                    // We must cast them to a 32-bit Longint to safely display their memory address.
-                    printVar = `Longint(${assert.var})`;
-                    printExpected = `Longint(${expected})`;
+                    // Cast the variables to raw Pointer type to pass them to our generic AssertPtr
+                    assertCall = `  AssertPtr('${safeName}', Pointer(${expected}), Pointer(${assert.var}));`;
+                } else if (varMaps['Boolean'].has(assert.var)) {
+                    assertCall = `  AssertBool('${safeName}', ${expected}, ${assert.var});`;
+                } else if (varMaps['String'].has(assert.var) || varMaps['Char'].has(assert.var)) {
+                    assertCall = `  AssertStr('${safeName}', ${expected}, ${assert.var});`;
+                } else {
+                    assertCall = `  AssertInt('${safeName}', ${expected}, ${assert.var});`;
                 }
 
-                lines.push(
-                    `  Inc(TotalTests);`,
-                    `  IF ${condition} THEN`,
-                    `    Inc(PassedTests)`,
-                    `  ELSE BEGIN`,
-                    `    Inc(FailedTests);`,
-                    `    Write('FAIL: [${vec.name}] ${assert.var} expected ', ${printExpected});`,
-                    `    WriteLn(' but got ', ${printVar});`,
-                    `  END;`
-                );
+                lines.push(assertCall);
             });
+            lines.push(""); // Spacing between vectors
         });
     });
 
     lines.push(
-        "",
         "  { --- FINAL REPORT --- }",
         "  WriteLn('---------------------------------');",
         "  IF FailedTests = 0 THEN TextColor(LightGreen) ELSE TextColor(LightRed);",

@@ -4,12 +4,19 @@
 
 ## 🔠 Alphabetical Index
 
-[Addition Operator (+)](#addition-operator-) • [Address Operator (@)](#address-operator-) • [Bit Shift Left (SHL)](#bit-shift-left-shl-) • [Bit Shift Right (SHR)](#bit-shift-right-shr-) • [Bitwise AND Operator](#bitwise-and-operator) • [Bitwise NOT Operator](#bitwise-not-operator) • [Bitwise OR Operator](#bitwise-or-operator) • [Bitwise XOR Operator](#bitwise-xor-operator) • [Boolean Type Fundamentals](#boolean-type-fundamentals) • [Chr Function](#chr-function) • [Copy Function](#copy-function) • [Dec Procedure](#dec-procedure) • [Delete Procedure](#delete-procedure) • [Dereference Operator (^)](#dereference-operator-) • [Direct Index Access & Length Byte](#direct-index-access-length-byte) • [Equality Operator (=)](#equality-operator-) • [Greater Than Operator (>)](#greater-than-operator-) • [Greater Than or Equal Operator (>=)](#greater-than-or-equal-operator-) • [Inc Procedure](#inc-procedure) • [Inequality Operator (<>)](#inequality-operator-) • [Insert Procedure](#insert-procedure) • [Int Function](#int-function) • [Integer Division (DIV)](#integer-division-div-) • [Length Function](#length-function) • [Less Than Operator (<)](#less-than-operator-) • [Less Than or Equal Operator (<=)](#less-than-or-equal-operator-) • [Logical AND Operator](#logical-and-operator) • [Logical NOT Operator](#logical-not-operator) • [Logical OR Operator](#logical-or-operator) • [Logical XOR Operator](#logical-xor-operator) • [Modulo Operator (MOD)](#modulo-operator-mod-) • [Multiplication Operator (*)](#multiplication-operator-) • [Operator Precedence Matrix](#operator-precedence-matrix) • [Ord Function](#ord-function) • [Pos Function](#pos-function) • [Real Division Operator (/)](#real-division-operator-) • [Round Function](#round-function) • [Set Membership Operator (IN)](#set-membership-operator-in-) • [SizeOf Function](#sizeof-function) • [Str Procedure (Number to String)](#str-procedure-number-to-string-) • [String Concatenation Operator (+)](#string-concatenation-operator-) • [Subtraction Operator (-)](#subtraction-operator-) • [Succ and Pred Functions](#succ-and-pred-functions) • [Trunc Function](#trunc-function) • [Unary Minus Operator (-)](#unary-minus-operator-) • [Val Procedure (String to Number)](#val-procedure-string-to-number-)
+[Addition Operator (+)](#addition-operator-) • [Address Operator (@)](#address-operator-) • [ARRAY (Arbitrary Integer Bounds)](#array-arbitrary-integer-bounds-) • [ARRAY (Character Bounds)](#array-character-bounds-) • [ARRAY (Multi-Dimensional)](#array-multi-dimensional-) • [Bit Shift Left (SHL)](#bit-shift-left-shl-) • [Bit Shift Right (SHR)](#bit-shift-right-shr-) • [Bitwise AND Operator](#bitwise-and-operator) • [Bitwise NOT Operator](#bitwise-not-operator) • [Bitwise OR Operator](#bitwise-or-operator) • [Bitwise XOR Operator](#bitwise-xor-operator) • [Boolean Type Fundamentals](#boolean-type-fundamentals) • [CASE..OF (Multiple Branching)](#case-of-multiple-branching-) • [Chr Function](#chr-function) • [Copy (Function)](#copy-function-) • [Dec Procedure](#dec-procedure) • [Delete (Procedure)](#delete-procedure-) • [Dereference Operator (^)](#dereference-operator-) • [Equality Operator (=)](#equality-operator-) • [FOR..DOWNTO (Decrementing Loop)](#for-downto-decrementing-loop-) • [FOR..TO (Incrementing Loop)](#for-to-incrementing-loop-) • [Function (Declaration and Return)](#function-declaration-and-return-) • [Greater Than Operator (>)](#greater-than-operator-) • [Greater Than or Equal Operator (>=)](#greater-than-or-equal-operator-) • [IF..THEN..ELSE (Conditional Branching)](#if-then-else-conditional-branching-) • [Inc Procedure](#inc-procedure) • [Inequality Operator (<>)](#inequality-operator-) • [Insert (Procedure)](#insert-procedure-) • [Int Function](#int-function) • [Integer Division (DIV)](#integer-division-div-) • [Length (Function)](#length-function-) • [Less Than Operator (<)](#less-than-operator-) • [Less Than or Equal Operator (<=)](#less-than-or-equal-operator-) • [Logical AND Operator](#logical-and-operator) • [Logical NOT Operator](#logical-not-operator) • [Logical OR Operator](#logical-or-operator) • [Logical XOR Operator](#logical-xor-operator) • [Modulo Operator (MOD)](#modulo-operator-mod-) • [Multiplication Operator (*)](#multiplication-operator-) • [Operator Precedence Matrix](#operator-precedence-matrix) • [Ord Function](#ord-function) • [Parameters (Pass by Value)](#parameters-pass-by-value-) • [Pos (Function)](#pos-function-) • [Procedure (Declaration and Call)](#procedure-declaration-and-call-) • [Real Division Operator (/)](#real-division-operator-) • [RECORD (Basic Field Access)](#record-basic-field-access-) • [REPEAT..UNTIL (Post-Condition Loop)](#repeat-until-post-condition-loop-) • [Round Function](#round-function) • [Scope (Global Visibility)](#scope-global-visibility-) • [Scope (Local and Variable Shadowing)](#scope-local-and-variable-shadowing-) • [Set Membership Operator (IN)](#set-membership-operator-in-) • [SizeOf Function](#sizeof-function) • [Str (Integer Basic Conversion)](#str-integer-basic-conversion-) • [Str (Integer Width Overflow)](#str-integer-width-overflow-) • [Str (Integer Width Padding)](#str-integer-width-padding-) • [Str (Real Fixed-Point Conversion)](#str-real-fixed-point-conversion-) • [Str (Real Fixed-Point Padding)](#str-real-fixed-point-padding-) • [Str (Real Fixed-Point Rounding)](#str-real-fixed-point-rounding-) • [String (1-Based Access & Length Byte)](#string-1-based-access-length-byte-) • [String Concatenation Operator (+)](#string-concatenation-operator-) • [Subtraction Operator (-)](#subtraction-operator-) • [Succ and Pred Functions](#succ-and-pred-functions) • [Trunc Function](#trunc-function) • [Unary Minus Operator (-)](#unary-minus-operator-) • [Val (Procedure: String to Number)](#val-procedure-string-to-number-) • [VAR Parameters (Pass by Reference)](#var-parameters-pass-by-reference-) • [WHILE..DO (Pre-Condition Loop)](#while-do-pre-condition-loop-) • [WITH (Record Scope Resolution)](#with-record-scope-resolution-)
 
 ---
 
 ## 📚 Thematic Contents
 
+- **STDLIB: Formatting Engine (Str)**
+  - [Str (Integer Basic Conversion)](#str-integer-basic-conversion-)
+  - [Str (Integer Width Padding)](#str-integer-width-padding-)
+  - [Str (Integer Width Overflow)](#str-integer-width-overflow-)
+  - [Str (Real Fixed-Point Conversion)](#str-real-fixed-point-conversion-)
+  - [Str (Real Fixed-Point Padding)](#str-real-fixed-point-padding-)
+  - [Str (Real Fixed-Point Rounding)](#str-real-fixed-point-rounding-)
 - **CORE: Logic, Boolean & Bitwise**
   - [Boolean Type Fundamentals](#boolean-type-fundamentals)
   - [Logical NOT Operator](#logical-not-operator)
@@ -45,15 +52,14 @@
   - [Greater Than or Equal Operator (>=)](#greater-than-or-equal-operator-)
   - [Set Membership Operator (IN)](#set-membership-operator-in-)
   - [Operator Precedence Matrix](#operator-precedence-matrix)
-- **STDLIB: Strings & Type Casting**
-  - [Length Function](#length-function)
-  - [Copy Function](#copy-function)
-  - [Pos Function](#pos-function)
-  - [Delete Procedure](#delete-procedure)
-  - [Insert Procedure](#insert-procedure)
-  - [Str Procedure (Number to String)](#str-procedure-number-to-string-)
-  - [Val Procedure (String to Number)](#val-procedure-string-to-number-)
-  - [Direct Index Access & Length Byte](#direct-index-access-length-byte)
+- **STDLIB: String Manipulation & Casting**
+  - [Copy (Function)](#copy-function-)
+  - [Delete (Procedure)](#delete-procedure-)
+  - [Insert (Procedure)](#insert-procedure-)
+  - [Length (Function)](#length-function-)
+  - [Pos (Function)](#pos-function-)
+  - [String (1-Based Access & Length Byte)](#string-1-based-access-length-byte-)
+  - [Val (Procedure: String to Number)](#val-procedure-string-to-number-)
 - **STDLIB: System & Ordinal Routines**
   - [Inc Procedure](#inc-procedure)
   - [Dec Procedure](#dec-procedure)
@@ -61,6 +67,216 @@
   - [Ord Function](#ord-function)
   - [Chr Function](#chr-function)
   - [SizeOf Function](#sizeof-function)
+- **CORE: Control Flow & Loops**
+  - [CASE..OF (Multiple Branching)](#case-of-multiple-branching-)
+  - [FOR..DOWNTO (Decrementing Loop)](#for-downto-decrementing-loop-)
+  - [FOR..TO (Incrementing Loop)](#for-to-incrementing-loop-)
+  - [IF..THEN..ELSE (Conditional Branching)](#if-then-else-conditional-branching-)
+  - [REPEAT..UNTIL (Post-Condition Loop)](#repeat-until-post-condition-loop-)
+  - [WHILE..DO (Pre-Condition Loop)](#while-do-pre-condition-loop-)
+- **CORE: Data Structures (Arrays & Records)**
+  - [ARRAY (Arbitrary Integer Bounds)](#array-arbitrary-integer-bounds-)
+  - [ARRAY (Character Bounds)](#array-character-bounds-)
+  - [ARRAY (Multi-Dimensional)](#array-multi-dimensional-)
+  - [RECORD (Basic Field Access)](#record-basic-field-access-)
+  - [WITH (Record Scope Resolution)](#with-record-scope-resolution-)
+- **CORE: Procedures, Functions & Scope**
+  - [Procedure (Declaration and Call)](#procedure-declaration-and-call-)
+  - [Function (Declaration and Return)](#function-declaration-and-return-)
+  - [Parameters (Pass by Value)](#parameters-pass-by-value-)
+  - [VAR Parameters (Pass by Reference)](#var-parameters-pass-by-reference-)
+  - [Scope (Global Visibility)](#scope-global-visibility-)
+  - [Scope (Local and Variable Shadowing)](#scope-local-and-variable-shadowing-)
+
+---
+
+## STDLIB: Formatting Engine (Str)
+
+### Str (Integer Basic Conversion)
+
+**Syntax:** `procedure Str(X: Integer; var S: String);`
+
+Converts an integer to its string representation. Unlike some other dialects, Turbo Pascal does not prepend a leading space for positive numbers. Negative numbers are strictly prefixed with a minus sign.
+
+**Example:**
+```pascal
+Str(42, S);
+WriteLn(S);
+```
+**Output:**
+```text
+42
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates that basic conversion handles sign characters correctly without implicit padding.
+
+```pascal
+Str(42, StrIntPos);
+Str(-42, StrIntNeg);
+```
+**Memory State (End of Execution):**
+```text
+StrIntPos = "42"         (string)
+StrIntNeg = "-42"        (string)
+```
+
+---
+
+### Str (Integer Width Padding)
+
+**Syntax:** `procedure Str(X: Integer : Width; var S: String);`
+
+When a Width parameter is provided (X:Width), the resulting string is right-aligned and padded with leading spaces if the number's length is less than the specified Width. The minus sign of a negative number is included in this width calculation.
+
+**Example:**
+```pascal
+Str(42:5, S);
+WriteLn(S);
+```
+**Output:**
+```text
+   42
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates right-alignment and space padding for both positive and negative integers.
+
+```pascal
+Str(42:5, StrPadPos);
+Str(-42:5, StrPadNeg);
+```
+**Memory State (End of Execution):**
+```text
+StrPadPos = "   42"      (string)
+StrPadNeg = "  -42"      (string)
+```
+
+---
+
+### Str (Integer Width Overflow)
+
+**Syntax:** `procedure Str(X: Integer : Width; var S: String);`
+
+If the specified Width is smaller than the actual number of characters required to represent the integer, Turbo Pascal ignores the Width constraint and outputs the full number without truncation.
+
+**Example:**
+```pascal
+Str(12345:2, S);
+WriteLn(S);
+```
+**Output:**
+```text
+12345
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates that data integrity takes precedence over the formatting width constraint.
+
+```pascal
+Str(12345:2, StrIntOverflow);
+```
+**Memory State (End of Execution):**
+```text
+StrIntOverflow = "12345"      (string)
+```
+
+---
+
+### Str (Real Fixed-Point Conversion)
+
+**Syntax:** `procedure Str(X: Real : Width : Decimals; var S: String);`
+
+By default, Real numbers are converted using scientific notation. Adding a second colon and a Decimals parameter forces fixed-point notation. A Width of 0 instructs the engine to use exactly as much space as needed, without leading padding.
+
+**Example:**
+```pascal
+Str(3.14159:0:2, S);
+WriteLn(S);
+```
+**Output:**
+```text
+3.14
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates the override of scientific notation to standard fixed-point decimal string representation.
+
+```pascal
+Str(3.14159:0:2, StrRealFix);
+```
+**Memory State (End of Execution):**
+```text
+StrRealFix = "3.14"       (string)
+```
+
+---
+
+### Str (Real Fixed-Point Padding)
+
+**Syntax:** `procedure Str(X: Real : Width : Decimals; var S: String);`
+
+When both Width and Decimals are provided, the total length of the resulting string (including the integer part, the decimal point, and the decimal digits) is padded with leading spaces to meet the Width requirement.
+
+**Example:**
+```pascal
+Str(3.14:6:2, S);
+WriteLn(S);
+```
+**Output:**
+```text
+  3.14
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates the global width calculation for real numbers (3 chars for '3.1', plus 1 for '4' = 4 chars. Padded to 6 results in 2 leading spaces).
+
+```pascal
+Str(3.14:6:2, StrRealPad);
+```
+**Memory State (End of Execution):**
+```text
+StrRealPad = "  3.14"     (string)
+```
+
+---
+
+### Str (Real Fixed-Point Rounding)
+
+**Syntax:** `procedure Str(X: Real : Width : Decimals; var S: String);`
+
+When formatting constraints reduce the number of visible decimals, the Str procedure mathematically rounds the last visible digit (rounding half away from zero) rather than simply truncating the string.
+
+**Example:**
+```pascal
+Str(3.8:0:0, S);
+WriteLn(S);
+```
+**Output:**
+```text
+4
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates that formatting is not just string manipulation, but involves arithmetic rounding.
+
+```pascal
+Str(3.15:0:1, StrRealRoundUp);
+Str(3.14:0:1, StrRealRoundDown);
+Str(3.8:0:0, StrRealNoDecimals);
+```
+**Memory State (End of Execution):**
+```text
+StrRealRoundUp    = "3.2"        (string)
+StrRealRoundDown  = "3.1"        (string)
+StrRealNoDecimals = "4"          (string)
+```
 
 ---
 
@@ -1048,40 +1264,9 @@ PrecChainFull = true         (boolean)
 
 ---
 
-## STDLIB: Strings & Type Casting
+## STDLIB: String Manipulation & Casting
 
-### Length Function
-
-**Syntax:** `function Length(S: String): Integer;`
-
-Returns the dynamic length of a string.
-
-**Example:**
-```pascal
-WriteLn(Length('Turbo'));
-```
-**Output:**
-```text
-5
-```
-
-#### 🔬 Hardware Quirks & Edge Cases
-
-Standard length evaluation. Note that in memory, this dynamically reads the byte value at index 0 of the string array.
-
-```pascal
-LenNorm := Length('Hello');
-LenEmpty := Length('');
-```
-**Memory State (End of Execution):**
-```text
-LenNorm  = 5            (number)
-LenEmpty = 0            (number)
-```
-
----
-
-### Copy Function
+### Copy (Function)
 
 **Syntax:** `function Copy(S: String; Index: Integer; Count: Integer): String;`
 
@@ -1114,40 +1299,7 @@ CopyTrunc = "cal"        (string)
 
 ---
 
-### Pos Function
-
-**Syntax:** `function Pos(Substr: String; S: String): Byte;`
-
-Searches for a substring and returns the 1-based index of its first occurrence.
-
-**Example:**
-```pascal
-WriteLn(Pos('cal', 'Pascal'));
-```
-**Output:**
-```text
-4
-```
-
-#### 🔬 Hardware Quirks & Edge Cases
-
-The arguments are ordered as Substring first, Target second. It is strictly case-sensitive. Returns 0 if not found.
-
-```pascal
-PosFound := Pos('cal', 'Pascal');
-PosNotFound := Pos('Basic', 'Pascal');
-PosCase := Pos('pascal', 'Pascal');
-```
-**Memory State (End of Execution):**
-```text
-PosFound    = 4            (number)
-PosNotFound = 0            (number)
-PosCase     = 0            (number)
-```
-
----
-
-### Delete Procedure
+### Delete (Procedure)
 
 **Syntax:** `procedure Delete(var S: String; Index: Integer; Count: Integer);`
 
@@ -1182,7 +1334,7 @@ DelOOB = "Test"       (string)
 
 ---
 
-### Insert Procedure
+### Insert (Procedure)
 
 **Syntax:** `procedure Insert(Source: String; var S: String; Index: Integer);`
 
@@ -1217,41 +1369,105 @@ InsOOB = "Hi!"        (string)
 
 ---
 
-### Str Procedure (Number to String)
+### Length (Function)
 
-**Syntax:** `procedure Str(X [: Width [: Decimals]]; var S: String);`
+**Syntax:** `function Length(S: String): Integer;`
 
-Converts a numeric value to its string representation.
+Returns the dynamic length of a string.
 
 **Example:**
 ```pascal
-Str(42, S);
-WriteLn(S);
+WriteLn(Length('Turbo'));
 ```
 **Output:**
 ```text
-42
+5
 ```
 
 #### 🔬 Hardware Quirks & Edge Cases
 
-This is a procedure that populates a target variable. Crucially, it does not prepend a leading space for positive numbers. It supports standard WriteLn-style formatting constraints.
+Standard length evaluation. Note that in memory, this dynamically reads the byte value at index 0 of the string array.
 
 ```pascal
-Str(42, StrInt);
-Str(-42, StrNeg);
-Str(3.14159:0:2, StrFloat);
+LenNorm := Length('Hello');
+LenEmpty := Length('');
 ```
 **Memory State (End of Execution):**
 ```text
-StrInt   = "42"         (string)
-StrNeg   = "-42"        (string)
-StrFloat = "3.14"       (string)
+LenNorm  = 5            (integer)
+LenEmpty = 0            (integer)
 ```
 
 ---
 
-### Val Procedure (String to Number)
+### Pos (Function)
+
+**Syntax:** `function Pos(Substr: String; S: String): Byte;`
+
+Searches for a substring and returns the 1-based index of its first occurrence.
+
+**Example:**
+```pascal
+WriteLn(Pos('cal', 'Pascal'));
+```
+**Output:**
+```text
+4
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+The arguments are ordered as Substring first, Target second. It is strictly case-sensitive. Returns 0 if not found.
+
+```pascal
+PosFound := Pos('cal', 'Pascal');
+PosNotFound := Pos('Basic', 'Pascal');
+PosCase := Pos('pascal', 'Pascal');
+```
+**Memory State (End of Execution):**
+```text
+PosFound    = 4            (integer)
+PosNotFound = 0            (integer)
+PosCase     = 0            (integer)
+```
+
+---
+
+### String (1-Based Access & Length Byte)
+
+**Syntax:** `S[Index: Byte]: Char;`
+
+Characters in a string can be accessed directly as an array. Index 0 holds the length.
+
+**Example:**
+```pascal
+S := 'ABC';
+WriteLn(Ord(S[0]));
+```
+**Output:**
+```text
+3
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL QUIRK: In Turbo Pascal, a String is an array of characters from 0 to 255. Index 0 stores the dynamic length of the string as a character byte. Reading the Ord() of index 0 is functionally equivalent to calling Length().
+
+```pascal
+LenByteStr := 'ABC';
+FirstChar := LenByteStr[1];
+LenByteVal := Ord(LenByteStr[0]);
+```
+**Memory State (End of Execution):**
+```text
+LenByteStr = "ABC"        (string)
+FirstChar  = A            (char)
+LenByteVal = 3            (integer)
+```
+
+---
+
+### Val (Procedure: String to Number)
 
 **Syntax:** `procedure Val(S: String; var V; var Code: Integer);`
 
@@ -1281,46 +1497,12 @@ Val('42X', ValErr, ValCode3);
 ```
 **Memory State (End of Execution):**
 ```text
-ValInt   = 42           (number)
+ValInt   = 42           (integer)
 ValCode1 = 0            (integer)
 ValFloat = 42.5         (float)
 ValCode2 = 0            (integer)
-ValErr   = 0            (number)
+ValErr   = 0            (integer)
 ValCode3 = 3            (integer)
-```
-
----
-
-### Direct Index Access & Length Byte
-
-**Syntax:** `S[Index: Byte]: Char;`
-
-Characters in a string can be accessed directly as an array. Index 0 holds the length.
-
-**Example:**
-```pascal
-S := 'ABC';
-WriteLn(Ord(S[0]));
-```
-**Output:**
-```text
-3
-```
-
-#### 🔬 Hardware Quirks & Edge Cases
-
-CRITICAL QUIRK: In Turbo Pascal, a String is an array of characters from 0 to 255. Index 0 stores the dynamic length of the string as a character byte. Reading the Ord() of index 0 is functionally equivalent to calling Length().
-
-```pascal
-LenByteStr := 'ABC';
-FirstChar := LenByteStr[1];
-LenByteVal := Ord(LenByteStr[0]);
-```
-**Memory State (End of Execution):**
-```text
-LenByteStr = "ABC"        (string)
-FirstChar  = A            (char)
-LenByteVal = 3            (number)
 ```
 
 ---
@@ -1530,6 +1712,633 @@ SizeLong = 4            (integer)
 SizeReal = 6            (integer)
 SizeStr  = 256          (integer)
 SizeChar = 1            (integer)
+```
+
+---
+
+## CORE: Control Flow & Loops
+
+### CASE..OF (Multiple Branching)
+
+**Syntax:** `CASE Selector OF
+  Label1: Statement1;
+  Label2, Label3: Statement2;
+  Label4..Label5: Statement3;
+  [ELSE Statement4;]
+END;`
+
+Executes one of several statements based on the value of an ordinal selector expression. Turbo Pascal extends standard Pascal by allowing comma-separated lists, ranges (..), and an explicit ELSE fallback clause.
+
+**Example:**
+```pascal
+CASE X OF
+  1: WriteLn('One');
+  2..9: WriteLn('Multiple');
+  ELSE WriteLn('Other');
+END;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates the evaluation of exact matches, ranges, and the ELSE fallback.
+
+```pascal
+CaseRange := 0;
+CaseTarget1 := 4;
+CASE CaseTarget1 OF
+  1, 2: CaseRange := 10;
+  3..5: CaseRange := 20;
+  ELSE CaseRange := 30;
+END;
+CaseElse := 0;
+CaseTarget2 := 99;
+CASE CaseTarget2 OF
+  1: CaseElse := 10;
+  ELSE CaseElse := 30;
+END;
+```
+**Memory State (End of Execution):**
+```text
+CaseRange   = 20           (integer)
+CaseTarget1 = 4            (integer)
+CaseElse    = 30           (integer)
+CaseTarget2 = 99           (integer)
+```
+
+---
+
+### FOR..DOWNTO (Decrementing Loop)
+
+**Syntax:** `FOR Counter := Start DOWNTO End DO Statement;`
+
+Executes a statement a fixed number of times, strictly decrementing an ordinal control variable by 1 on each iteration. If the Start value is less than the End value, the loop body is bypassed entirely.
+
+**Example:**
+```pascal
+FOR I := 3 DOWNTO 1 DO WriteLn(I);
+```
+**Output:**
+```text
+3
+2
+1
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Uses the DOWNTO keyword instead of a dynamic step. Validates decrementing and bypass logic.
+
+```pascal
+DownSum := 0;
+FOR J := 5 DOWNTO 1 DO Inc(DownSum, J);
+DownSkip := 0;
+FOR J := 1 DOWNTO 5 DO Inc(DownSkip, J);
+```
+**Memory State (End of Execution):**
+```text
+DownSum  = 15           (integer)
+DownSkip = 0            (integer)
+J        = 1            (integer)
+```
+
+---
+
+### FOR..TO (Incrementing Loop)
+
+**Syntax:** `FOR Counter := Start TO End DO Statement;`
+
+Executes a statement a fixed number of times, strictly incrementing an ordinal control variable by 1 on each iteration. The Start and End limits are evaluated exactly once before the loop begins.
+
+**Example:**
+```pascal
+FOR I := 1 TO 3 DO WriteLn(I);
+```
+**Output:**
+```text
+1
+2
+3
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates incrementing logic and ensures the loop is skipped if Start > End.
+
+```pascal
+ForSum := 0;
+FOR I := 1 TO 5 DO Inc(ForSum, I);
+ForSkip := 0;
+FOR I := 5 TO 1 DO Inc(ForSkip, I);
+```
+**Memory State (End of Execution):**
+```text
+ForSum  = 15           (integer)
+ForSkip = 0            (integer)
+I       = 5            (integer)
+```
+
+---
+
+### IF..THEN..ELSE (Conditional Branching)
+
+**Syntax:** `IF Condition THEN Statement1 [ ELSE Statement2 ];`
+
+Branches execution based on a boolean condition. Turbo Pascal strictly forbids placing a semicolon immediately before the ELSE keyword.
+
+**Example:**
+```pascal
+IF True THEN
+  WriteLn('Yes')
+ELSE
+  WriteLn('No');
+```
+**Output:**
+```text
+Yes
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL PARSING QUIRK: Turbo Pascal resolves the 'dangling ELSE' ambiguity by strictly binding the ELSE clause to the closest preceding IF statement.
+
+```pascal
+IfRes := 0;
+IF True THEN
+  IF False THEN IfRes := 1
+  ELSE IfRes := 2;
+```
+**Memory State (End of Execution):**
+```text
+IfRes = 2            (integer)
+```
+
+---
+
+### REPEAT..UNTIL (Post-Condition Loop)
+
+**Syntax:** `REPEAT Statement1; [Statement2;] UNTIL Condition;`
+
+Repeats a sequence of statements until a boolean condition evaluates to True. Because the condition is evaluated after the loop body, the statements are guaranteed to execute AT LEAST ONCE.
+
+**Example:**
+```pascal
+REPEAT
+  Inc(X);
+UNTIL X = 5;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL SYNTAX QUIRK: Unlike WHILE or FOR, REPEAT..UNTIL acts as a natural block envelope and does not require BEGIN..END to wrap multiple statements.
+
+```pascal
+RepCount := 0;
+REPEAT
+  Inc(RepCount);
+UNTIL RepCount >= 5;
+```
+**Memory State (End of Execution):**
+```text
+RepCount = 5            (integer)
+```
+
+---
+
+### WHILE..DO (Pre-Condition Loop)
+
+**Syntax:** `WHILE Condition DO Statement;`
+
+Repeats a statement as long as a boolean condition evaluates to True. The condition is evaluated before entering the loop body. If it is initially False, the body is completely bypassed.
+
+**Example:**
+```pascal
+WHILE X < 5 DO
+begin
+  Inc(X);
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates the pre-condition check and loop execution.
+
+```pascal
+WhileCount := 0;
+WHILE WhileCount < 5 DO Inc(WhileCount);
+WhileSkip := 0;
+WHILE False DO Inc(WhileSkip);
+```
+**Memory State (End of Execution):**
+```text
+WhileCount = 5            (integer)
+WhileSkip  = 0            (integer)
+```
+
+---
+
+## CORE: Data Structures (Arrays & Records)
+
+### ARRAY (Arbitrary Integer Bounds)
+
+**Syntax:** `array[Start..End] of Type;`
+
+Unlike C or JavaScript where arrays always start at index 0, Turbo Pascal arrays can have arbitrary ordinal bounds, including negative numbers.
+
+**Example:**
+```pascal
+var Temp: array[-5..5] of Integer;
+begin
+  Temp[-2] := 42;
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates that negative bounds are correctly allocated and accessed in memory without shifting offsets incorrectly.
+
+```pascal
+ArrNegative[-2] := 42;
+ArrNegRes := ArrNegative[-2];
+```
+**Memory State (End of Execution):**
+```text
+ArrNegRes = 42           (integer)
+```
+
+---
+
+### ARRAY (Character Bounds)
+
+**Syntax:** `array['A'..'Z'] of Type;`
+
+The index type of an array is not limited to integers. Any ordinal type can be used as an index, including characters or enumerations.
+
+**Example:**
+```pascal
+var Letters: array['a'..'z'] of Integer;
+begin
+  Letters['x'] := 99;
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL PARSER QUIRK: The AST must resolve the character literal to its ASCII ordinal value to correctly compute the memory offset.
+
+```pascal
+ArrChar['B'] := 77;
+ArrCharRes := ArrChar['B'];
+```
+**Memory State (End of Execution):**
+```text
+ArrCharRes = 77           (integer)
+```
+
+---
+
+### ARRAY (Multi-Dimensional)
+
+**Syntax:** `array[Dim1Start..Dim1End, Dim2Start..Dim2End] of Type;`
+
+Multi-dimensional arrays can be defined either as arrays of arrays or using a comma-separated syntax for dimensions.
+
+**Example:**
+```pascal
+var Matrix: array[1..3, 1..3] of Integer;
+begin
+  Matrix[2, 3] := 88;
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates 2D array parsing and contiguous memory access.
+
+```pascal
+ArrMulti[2, 3] := 88;
+ArrMultiRes := ArrMulti[2, 3];
+```
+**Memory State (End of Execution):**
+```text
+ArrMultiRes = 88           (integer)
+```
+
+---
+
+### RECORD (Basic Field Access)
+
+**Syntax:** `Type Name = RECORD
+  Field1: Type;
+  Field2: Type;
+END;`
+
+A Record groups heterogeneous data fields under a single identifier. Fields are accessed using dot notation.
+
+**Example:**
+```pascal
+Type TPoint = RECORD X, Y: Integer; END;
+var P: TPoint;
+begin
+  P.X := 10;
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates custom TYPE declaration, record instantiation, and member access.
+
+```pascal
+MyPoint.X := 10;
+MyPoint.Y := 20;
+RecResX := MyPoint.X;
+RecResY := MyPoint.Y;
+```
+**Memory State (End of Execution):**
+```text
+RecResX = 10           (integer)
+RecResY = 20           (integer)
+```
+
+---
+
+### WITH (Record Scope Resolution)
+
+**Syntax:** `WITH RecordVariable DO Statement;`
+
+The WITH statement temporarily opens a record's namespace. Within its block, the record's fields can be accessed directly without prefixing them with the record variable name.
+
+**Example:**
+```pascal
+WITH P DO
+begin
+  X := 10;
+  Y := 20;
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+CRITICAL SCOPE QUIRK: The environment evaluator must temporarily push the record's fields to the top of the symbol resolution stack.
+
+```pascal
+WITH Player1 DO
+BEGIN
+  Score := 100;
+  Alive := True;
+END;
+WithResScore := Player1.Score;
+WithResAlive := Player1.Alive;
+```
+**Memory State (End of Execution):**
+```text
+WithResScore = 100          (integer)
+WithResAlive = true         (boolean)
+```
+
+---
+
+## CORE: Procedures, Functions & Scope
+
+### Procedure (Declaration and Call)
+
+**Syntax:** `procedure Name[(ParameterList)];
+[Local Declarations]
+begin
+  Statements;
+end;`
+
+A procedure is a subprogram that performs a specific task but does not return a value. It is invoked as a standalone statement.
+
+**Example:**
+```pascal
+procedure Greet;
+begin
+  WriteLn('Hello World');
+end;
+
+Greet; { Call the procedure }
+```
+**Output:**
+```text
+Hello World
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates basic procedure declaration, invocation, and execution flow.
+
+```pascal
+ProcCalled := False;
+Ref_BasicProc;
+```
+**Memory State (End of Execution):**
+```text
+ProcCalled = true         (boolean)
+```
+
+---
+
+### Function (Declaration and Return)
+
+**Syntax:** `function Name[(ParameterList)]: ReturnType;
+[Local Declarations]
+begin
+  Name := ReturnValue;
+end;`
+
+A function is a subprogram that computes and returns a single value. In Turbo Pascal, there is no 'return' keyword. The return value is specified by assigning a value to the function's own identifier before it exits.
+
+**Example:**
+```pascal
+function GetTen: Integer;
+begin
+  GetTen := 10;
+end;
+
+WriteLn(GetTen);
+```
+**Output:**
+```text
+10
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validates function execution and the assignment to the function identifier for returning a value.
+
+```pascal
+FuncRes := Ref_BasicFunc;
+```
+**Memory State (End of Execution):**
+```text
+FuncRes = 42           (integer)
+```
+
+---
+
+### Parameters (Pass by Value)
+
+**Syntax:** `procedure RoutineName(Param: Type);`
+
+In Turbo Pascal, parameters are passed by value by default. The procedure or function receives a copy of the argument. Any modifications made to the parameter within the routine are strictly local and do not affect the original variable passed by the caller.
+
+**Example:**
+```pascal
+procedure AddTen(X: Integer);
+begin
+  X := X + 10;
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validation of memory isolation for value parameters.
+
+```pascal
+OriginalVal := 5;
+Ref_PassByValue(OriginalVal);
+```
+**Memory State (End of Execution):**
+```text
+OriginalVal = 5            (integer)
+```
+
+---
+
+### VAR Parameters (Pass by Reference)
+
+**Syntax:** `procedure RoutineName(VAR Param: Type);`
+
+To pass a parameter by reference, the VAR keyword must precede the parameter declaration. The routine accesses the actual memory address of the argument. Any changes made to the parameter inside the routine will directly modify the original variable.
+
+**Example:**
+```pascal
+procedure AddTen(VAR X: Integer);
+begin
+  X := X + 10;
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validation of memory mutation for reference parameters.
+
+```pascal
+OriginalRef := 5;
+Ref_PassByRef(OriginalRef);
+```
+**Memory State (End of Execution):**
+```text
+OriginalRef = 15           (integer)
+```
+
+---
+
+### Scope (Global Visibility)
+
+**Syntax:** `var GlobalVar: Type;`
+
+Variables declared in the main VAR block of a program are global. They are visible and can be directly accessed or modified by any procedure or function, provided they are declared before the routine in the source code.
+
+**Example:**
+```pascal
+procedure MutateGlobal;
+begin
+  GlobalVar := 99;
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validation of outer scope traversal and mutation.
+
+```pascal
+GlobalTarget := 21;
+Ref_GlobalAccess;
+```
+**Memory State (End of Execution):**
+```text
+GlobalTarget = 42           (integer)
+```
+
+---
+
+### Scope (Local and Variable Shadowing)
+
+**Syntax:** `procedure RoutineName;
+var LocalVar: Type;
+begin ... end;`
+
+Variables declared within a procedure or function are local to that routine. If a local variable has the exact same name as a global variable, the local declaration 'shadows' (hides) the global one. Any operations on that identifier within the routine will only affect the local instance.
+
+**Example:**
+```pascal
+procedure ShadowGlobal;
+var X: Integer;
+begin
+  X := 99; { Modifies local X, not global X }
+end;
+```
+**Output:**
+```text
+
+```
+
+#### 🔬 Hardware Quirks & Edge Cases
+
+Validation of scope priority (Local over Global) during identifier resolution.
+
+```pascal
+ShadowTarget := 10;
+Ref_Shadowing;
+```
+**Memory State (End of Execution):**
+```text
+ShadowTarget = 10           (integer)
 ```
 
 ---

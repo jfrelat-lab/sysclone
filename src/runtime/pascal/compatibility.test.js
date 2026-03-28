@@ -10,21 +10,90 @@ import { test, assertEqual, registerSuite } from '../../test_runner.js';
 */
 
 /*
-// registerSuite('Pascal Truth Vector: STDLIB: Math & Floating-Point Unit (Turbo Pascal)', () => {
+// registerSuite('Pascal Truth Vector: STDLIB: Formatting Engine (Str)', () => {
+//     test('Str (Integer Basic Conversion)', () => { ... });
+//     test('Str (Integer Width Padding)', () => { ... });
+//     test('Str (Integer Width Overflow)', () => { ... });
+//     test('Str (Real Fixed-Point Conversion)', () => { ... });
+//     test('Str (Real Fixed-Point Padding)', () => { ... });
+//     test('Str (Real Fixed-Point Rounding)', () => { ... });
+// });
+// registerSuite('Pascal Truth Vector: CORE: Logic, Boolean & Bitwise', () => {
+//     test('Boolean Type Fundamentals', () => { ... });
+//     test('Logical NOT Operator', () => { ... });
+//     test('Logical AND Operator', () => { ... });
+//     test('Logical OR Operator', () => { ... });
+//     test('Logical XOR Operator', () => { ... });
+//     test('Bitwise NOT Operator', () => { ... });
+//     test('Bitwise AND Operator', () => { ... });
+//     test('Bitwise OR Operator', () => { ... });
+//     test('Bitwise XOR Operator', () => { ... });
+//     test('Bit Shift Left (SHL)', () => { ... });
+//     test('Bit Shift Right (SHR)', () => { ... });
+// });
+// registerSuite('Pascal Truth Vector: STDLIB: Math Built-ins', () => {
 //     test('Int Function', () => { ... });
 //     test('Trunc Function', () => { ... });
 //     test('Round Function', () => { ... });
-//     test('Div Operator (Integer Division)', () => { ... });
-//     test('Mod Operator (Modulo)', () => { ... });
+//     test('Integer Division (DIV)', () => { ... });
+//     test('Modulo Operator (MOD)', () => { ... });
 // });
-// registerSuite('Pascal Truth Vector: STDLIB: Strings & Type Casting (Turbo Pascal)', () => {
-//     test('Length Function', () => { ... });
-//     test('Copy Function', () => { ... });
-//     test('Pos Function', () => { ... });
-//     test('Delete Procedure', () => { ... });
-//     test('Insert Procedure', () => { ... });
-//     test('Str Procedure (Number to String)', () => { ... });
-//     test('Val Procedure (String to Number)', () => { ... });
-//     test('Direct Index Access & Length Byte', () => { ... });
+// registerSuite('Pascal Truth Vector: CORE: Operators & Precedence', () => {
+//     test('Unary Minus Operator (-)', () => { ... });
+//     test('Address Operator (@)', () => { ... });
+//     test('Dereference Operator (^)', () => { ... });
+//     test('Multiplication Operator (*)', () => { ... });
+//     test('Real Division Operator (/)', () => { ... });
+//     test('Addition Operator (+)', () => { ... });
+//     test('Subtraction Operator (-)', () => { ... });
+//     test('String Concatenation Operator (+)', () => { ... });
+//     test('Equality Operator (=)', () => { ... });
+//     test('Inequality Operator (<>)', () => { ... });
+//     test('Less Than Operator (<)', () => { ... });
+//     test('Greater Than Operator (>)', () => { ... });
+//     test('Less Than or Equal Operator (<=)', () => { ... });
+//     test('Greater Than or Equal Operator (>=)', () => { ... });
+//     test('Set Membership Operator (IN)', () => { ... });
+//     test('Operator Precedence Matrix', () => { ... });
+// });
+// registerSuite('Pascal Truth Vector: STDLIB: String Manipulation & Casting', () => {
+//     test('Copy (Function)', () => { ... });
+//     test('Delete (Procedure)', () => { ... });
+//     test('Insert (Procedure)', () => { ... });
+//     test('Length (Function)', () => { ... });
+//     test('Pos (Function)', () => { ... });
+//     test('String (1-Based Access & Length Byte)', () => { ... });
+//     test('Val (Procedure: String to Number)', () => { ... });
+// });
+// registerSuite('Pascal Truth Vector: STDLIB: System & Ordinal Routines', () => {
+//     test('Inc Procedure', () => { ... });
+//     test('Dec Procedure', () => { ... });
+//     test('Succ and Pred Functions', () => { ... });
+//     test('Ord Function', () => { ... });
+//     test('Chr Function', () => { ... });
+//     test('SizeOf Function', () => { ... });
+// });
+// registerSuite('Pascal Truth Vector: CORE: Control Flow & Loops', () => {
+//     test('CASE..OF (Multiple Branching)', () => { ... });
+//     test('FOR..DOWNTO (Decrementing Loop)', () => { ... });
+//     test('FOR..TO (Incrementing Loop)', () => { ... });
+//     test('IF..THEN..ELSE (Conditional Branching)', () => { ... });
+//     test('REPEAT..UNTIL (Post-Condition Loop)', () => { ... });
+//     test('WHILE..DO (Pre-Condition Loop)', () => { ... });
+// });
+// registerSuite('Pascal Truth Vector: CORE: Data Structures (Arrays & Records)', () => {
+//     test('ARRAY (Arbitrary Integer Bounds)', () => { ... });
+//     test('ARRAY (Character Bounds)', () => { ... });
+//     test('ARRAY (Multi-Dimensional)', () => { ... });
+//     test('RECORD (Basic Field Access)', () => { ... });
+//     test('WITH (Record Scope Resolution)', () => { ... });
+// });
+// registerSuite('Pascal Truth Vector: CORE: Procedures, Functions & Scope', () => {
+//     test('Procedure (Declaration and Call)', () => { ... });
+//     test('Function (Declaration and Return)', () => { ... });
+//     test('Parameters (Pass by Value)', () => { ... });
+//     test('VAR Parameters (Pass by Reference)', () => { ... });
+//     test('Scope (Global Visibility)', () => { ... });
+//     test('Scope (Local and Variable Shadowing)', () => { ... });
 // });
 */
