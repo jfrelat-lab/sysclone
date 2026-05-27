@@ -363,6 +363,56 @@
           { "var": "OutBoundsIdx", "val": 0, "type": "number" }
         ]
       }
+    },
+    {
+      "name": "MKI$ and CVI (16-bit Integer Packing)",
+      "syntax": "MKI$(integer_expression) / CVI(2_byte_string)",
+      "description": "MKI$ converts a 16-bit signed integer into a 2-byte string using x86 Little-Endian byte order. CVI reverses this process.",
+      "example": {
+        "code": [
+          "PRINT CVI(MKI$(258))"
+        ],
+        "output": " 258 "
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: Validates strict Little-Endian packing and two's complement for negative numbers. 258 (0x0102) must pack as CHR$(2) + CHR$(1).",
+        "setup": [
+          "PackedStr$ = MKI$(258)",
+          "Length = LEN(PackedStr$)",
+          "RestoredPos = CVI(PackedStr$)",
+          "RestoredNeg = CVI(MKI$(-1))"
+        ],
+        "assertions": [
+          { "var": "Length", "val": 2, "type": "number", "message": "MKI$ must strictly return a 2-byte string." },
+          { "var": "RestoredPos", "val": 258, "type": "number", "message": "CVI must perfectly restore the 16-bit integer." },
+          { "var": "RestoredNeg", "val": -1, "type": "number", "message": "Must respect 16-bit two's complement for negative numbers." }
+        ]
+      }
+    },
+    {
+      "name": "MKS$ and CVS (32-bit Float Packing)",
+      "syntax": "MKS$(single_expression) / CVS(4_byte_string)",
+      "description": "MKS$ converts a single-precision floating-point number into a 4-byte string using IEEE-754 Little-Endian format. CVS reverses this.",
+      "example": {
+        "code": [
+          "PRINT CVS(MKS$(3.14))"
+        ],
+        "output": " 3.14 "
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: Validates 32-bit floating-point binary packing. Used heavily in demomaking to pack data structures into raw strings.",
+        "setup": [
+          "PackedSng$ = MKS$(1.5)",
+          "SngLength = LEN(PackedSng$)",
+          "RestoredSng! = CVS(PackedSng$)",
+          "RestoredZero! = CVS(MKS$(0))"
+        ],
+        "assertions": [
+          { "var": "SngLength", "val": 4, "type": "number", "message": "MKS$ must strictly return a 4-byte string." },
+          { "var": "RestoredSng!", "val": 1.5, "type": "number", "message": "CVS must perfectly restore the IEEE-754 single precision float." },
+          { "var": "RestoredZero!", "val": 0, "type": "number" }
+        ]
+      }
     }
   ]
 }

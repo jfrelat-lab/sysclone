@@ -48,6 +48,7 @@ export const BuiltInTokens = {
     RTRIM$: 'RTRIM$', SPACE$: 'SPACE$', SPC: 'SPC', STRING$: 'STRING$', 
     STR$: 'STR$', HEX$: 'HEX$', RIGHT$: 'RIGHT$', LEFT$: 'LEFT$', MID$: 'MID$', 
     CHR$: 'CHR$', ASC: 'ASC', INSTR: 'INSTR', VAL: 'VAL',
+    MKI$: 'MKI$', MKS$: 'MKS$', CVI: 'CVI', CVS: 'CVS',
     
     // Mathematics
     INT: 'INT', FIX: 'FIX', CINT: 'CINT', RND: 'RND', SIN: 'SIN', 

@@ -142,20 +142,23 @@
     {
       "name": "ABS Function",
       "syntax": "ABS(numeric_expression)",
-      "description": "Returns the absolute value of a numeric expression.",
+      "description": "Returns the absolute (positive) value of a numeric expression.",
       "example": {
         "code": [
-          "PRINT ABS(-42)"
+          "PRINT ABS(-42)",
+          "PRINT ABS(3.14)"
         ],
-        "output": " 42 "
+        "output": " 42 \n 3.14 "
       },
       "quirks_and_tests": {
-        "description": "Standard arithmetic absolute conversion.",
+        "description": "Validates absolute arithmetic conversion. Proves that single-precision float formatting is retained by casting the result to a string.",
         "setup": [
-          "AbsVal = ABS(-42)"
+          "AbsInt = ABS(-42)",
+          "AbsFloatStr$ = LTRIM$(STR$(ABS(-3.14159)))"
         ],
         "assertions": [
-          { "var": "AbsVal", "val": 42, "type": "number" }
+          { "var": "AbsInt", "val": 42, "type": "number" },
+          { "var": "AbsFloatStr$", "val": "3.14159", "type": "string", "message": "Must strictly retain the float formatting." }
         ]
       }
     },

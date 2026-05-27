@@ -85,11 +85,13 @@ registerSuite('Truth Vector: STDLIB: Math & Floating-Point Unit', () => {
 
     test('ABS Function', () => {
         const code = `
-            AbsVal = ABS(-42)
+            AbsInt = ABS(-42)
+            AbsFloatStr$ = LTRIM$(STR$(ABS(-3.14159)))
         `;
         const env = executeToEnv(code);
 
-        assertEqual(env.lookup('AbsVal'), 42, "AbsVal assertion failed");
+        assertEqual(env.lookup('AbsInt'), 42, "AbsInt assertion failed");
+        assertEqual(env.lookup('AbsFloatStr$'), "3.14159", "AbsFloatStr$ assertion failed");
     });
 
     test('SQR Function', () => {
@@ -343,6 +345,34 @@ registerSuite('Truth Vector: STDLIB: Strings & Type Casting', () => {
         assertEqual(env.lookup('OffsetIdx'), 14, "OffsetIdx assertion failed");
         assertEqual(env.lookup('NotFoundIdx'), 0, "NotFoundIdx assertion failed");
         assertEqual(env.lookup('OutBoundsIdx'), 0, "OutBoundsIdx assertion failed");
+    });
+
+    test('MKI$ and CVI (16-bit Integer Packing)', () => {
+        const code = `
+            PackedStr$ = MKI$(258)
+            Length = LEN(PackedStr$)
+            RestoredPos = CVI(PackedStr$)
+            RestoredNeg = CVI(MKI$(-1))
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('Length'), 2, "Length assertion failed");
+        assertEqual(env.lookup('RestoredPos'), 258, "RestoredPos assertion failed");
+        assertEqual(env.lookup('RestoredNeg'), -1, "RestoredNeg assertion failed");
+    });
+
+    test('MKS$ and CVS (32-bit Float Packing)', () => {
+        const code = `
+            PackedSng$ = MKS$(1.5)
+            SngLength = LEN(PackedSng$)
+            RestoredSng! = CVS(PackedSng$)
+            RestoredZero! = CVS(MKS$(0))
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('SngLength'), 4, "SngLength assertion failed");
+        assertEqual(env.lookup('RestoredSng!'), 1.5, "RestoredSng! assertion failed");
+        assertEqual(env.lookup('RestoredZero!'), 0, "RestoredZero! assertion failed");
     });
 });
 

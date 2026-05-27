@@ -7,6 +7,7 @@ import { test, assertEqual, registerSuite } from '../../test_runner.js';
 const { 
     LEN, UCASE$, LCASE$, LTRIM$, RTRIM$, SPACE$, SPC, STRING$, STR$, HEX$, 
     RIGHT$, LEFT$, MID$, CHR$, ASC, INSTR, VAL,
+    MKI$, CVI, MKS$, CVS,
     INT, FIX, CINT, RND, SIN, COS, TAN, ATN, ABS, SQR, EXP, LOG
 } = BuiltIns;
 
@@ -84,6 +85,24 @@ registerSuite('STDLIB: String Built-ins', () => {
         assertEqual(VAL("&O10"), 8, "Should parse octal numbers");
     });
 
+    test('MKI$, CVI, MKS$, CVS Memory Packing (Little-Endian IEEE/Int)', () => {
+        // 16-bit Integer packing (258 = 0x0102)
+        // Little-Endian means Least Significant Byte (02) comes first, then (01).
+        const packedInt = MKI$(258);
+        assertEqual(LEN(packedInt), 2);
+        assertEqual(CVI(packedInt), 258);
+        
+        // Two's complement for negatives (-1 = 0xFFFF)
+        assertEqual(CVI(MKI$(-1)), -1);
+
+        // 32-bit Float packing
+        const packedFloat = MKS$(1.5);
+        assertEqual(LEN(packedFloat), 4);
+        assertEqual(CVS(packedFloat), 1.5);
+        
+        // Fallback for partial string passing
+        assertEqual(CVI(""), 0, "Empty string should safely yield 0");
+    });
 });
 
 registerSuite('STDLIB: Math Built-ins', () => {

@@ -91,6 +91,57 @@ const executeVAL = (valArg) => {
 };
 
 /**
+ * Emulates MKI$ (Make Integer String).
+ * Packs a 16-bit integer into a 2-byte string using strict x86 Little-Endian order.
+ */
+const executeMKI$ = (val) => {
+    const buffer = new ArrayBuffer(2);
+    // true = Little-Endian encoding (Crucial for MS-DOS compatibility)
+    new DataView(buffer).setInt16(0, Number(val) || 0, true); 
+    const bytes = new Uint8Array(buffer);
+    return getCharFromCP437(bytes[0]) + getCharFromCP437(bytes[1]);
+};
+
+/**
+ * Emulates CVI (Convert to Integer).
+ * Unpacks a 2-byte Little-Endian string back into a 16-bit signed integer.
+ */
+const executeCVI = (str) => {
+    const s = String(str || "");
+    const buffer = new ArrayBuffer(2);
+    const bytes = new Uint8Array(buffer);
+    bytes[0] = s.length > 0 ? getCP437FromChar(s.charAt(0)) : 0;
+    bytes[1] = s.length > 1 ? getCP437FromChar(s.charAt(1)) : 0;
+    return new DataView(buffer).getInt16(0, true);
+};
+
+/**
+ * Emulates MKS$ (Make Single-Precision String).
+ * Packs an IEEE-754 32-bit float into a 4-byte string (Little-Endian).
+ */
+const executeMKS$ = (val) => {
+    const buffer = new ArrayBuffer(4);
+    new DataView(buffer).setFloat32(0, Number(val) || 0, true);
+    const bytes = new Uint8Array(buffer);
+    return getCharFromCP437(bytes[0]) + getCharFromCP437(bytes[1]) + 
+           getCharFromCP437(bytes[2]) + getCharFromCP437(bytes[3]);
+};
+
+/**
+ * Emulates CVS (Convert to Single).
+ * Unpacks a 4-byte string back into a 32-bit float.
+ */
+const executeCVS = (str) => {
+    const s = String(str || "");
+    const buffer = new ArrayBuffer(4);
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < 4; i++) {
+        bytes[i] = s.length > i ? getCP437FromChar(s.charAt(i)) : 0;
+    }
+    return new DataView(buffer).getFloat32(0, true);
+};
+
+/**
  * Sysclone Native Standard Library (STDLIB).
  * Contains pure functions that do not require access to hardware state.
  */
@@ -113,6 +164,10 @@ export const BuiltIns = {
     [BuiltInTokens.ASC]: (str) => getCP437FromChar(String(str).charAt(0) || 0),
     [BuiltInTokens.INSTR]: executeINSTR,
     [BuiltInTokens.VAL]: executeVAL,
+    [BuiltInTokens.MKI$]: executeMKI$,
+    [BuiltInTokens.CVI]: executeCVI,
+    [BuiltInTokens.MKS$]: executeMKS$,
+    [BuiltInTokens.CVS]: executeCVS,
     
     // --- Mathematics ---
     [BuiltInTokens.INT]: (n) => Math.floor(n || 0),
