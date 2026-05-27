@@ -3,27 +3,46 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * Formats JSON values into valid strings.
+ * Formats JSON values into valid strings for the documentation.
  */
 function formatValue(val, type) {
     if (type === 'string') return `"${val}"`;
+    if (type === 'boolean') return val ? 'true' : 'false';
+    if (val === null || type === 'nil') return 'nil';
     return val; 
 }
+
+// --- 1. Strategy Pattern (Documentation Metadata) ---
+const MARKDOWN_STRATEGIES = {
+    qbasic: {
+        filename: 'QBASIC_REFERENCE.MD',
+        label: 'QBasic',
+        codeTag: 'basic'
+    },
+    pascal: {
+        filename: 'PASCAL_REFERENCE.MD',
+        label: 'Turbo Pascal',
+        codeTag: 'pascal'
+    }
+};
 
 /**
  * Generates the official Markdown documentation from the Truth Vectors.
  */
 export function buildMarkdownDoc(suites, rootDir, target) {
-    const docName = target === 'pascal' ? 'PASCAL_REFERENCE.MD' : 'QBASIC_REFERENCE.MD';
-    const OUT_MD = path.resolve(rootDir, `../docs/${docName}`);
-    const languageLabel = target === 'pascal' ? 'Turbo Pascal' : 'QBasic';
+    const strategy = MARKDOWN_STRATEGIES[target];
+    if (!strategy) {
+        throw new Error(`Unknown markdown strategy for target: ${target}`);
+    }
 
+    const OUT_MD = path.resolve(rootDir, `../docs/${strategy.filename}`);
+    
     const lines = [
-        `# Sysclone ${languageLabel} Compatibility Reference`,
+        `# Sysclone ${strategy.label} Compatibility Reference`,
         "",
-        `> **Auto-generated** from Truth Vectors. This document serves as the absolute specification for MS-DOS ${languageLabel} behavior.`,
+        `> **Auto-generated** from Truth Vectors. This document serves as the absolute specification for ${strategy.label} behavior.`,
         "",
-        "## 🔠 Alphabetical Index",
+        "## Alphabetical Index",
         ""
     ];
 
@@ -42,7 +61,7 @@ export function buildMarkdownDoc(suites, rootDir, target) {
     allVectors.sort((a, b) => a.name.localeCompare(b.name));
     
     // Generate a compact inline list separated by bullets
-    lines.push(allVectors.map(v => `[${v.name}](#${v.anchor})`).join(' • '), "", "---", "", "## 📚 Thematic Contents", "");
+    lines.push(allVectors.map(v => `[${v.name}](#${v.anchor})`).join(' • '), "", "---", "", "## Thematic Contents", "");
 
     // Build the categorized table of contents
     suites.forEach(suite => {
@@ -54,9 +73,8 @@ export function buildMarkdownDoc(suites, rootDir, target) {
     lines.push("", "---", "");
 
     // Variables to bypass conversational UI interception of markdown code blocks
-    const mdBasic = "```" + "basic";
-    const mdPascal = "```" + "pascal";
-    const mdText = "```" + "text";
+    const mdCode = "```" + strategy.codeTag;
+    const mdText = "```text";
     const mdClose = "```";
 
     // Build the core body content
@@ -71,10 +89,9 @@ export function buildMarkdownDoc(suites, rootDir, target) {
             
             // Restore the example block rendering
             if (vec.example) {
-                const langTag = target === 'pascal' ? mdPascal : mdBasic;
                 lines.push(
                     "**Example:**",
-                    langTag,
+                    mdCode,
                     ...vec.example.code,
                     mdClose,
                     "**Output:**",
@@ -86,16 +103,15 @@ export function buildMarkdownDoc(suites, rootDir, target) {
             }
             
             if (vec.quirks_and_tests) {
-                lines.push("#### 🔬 Hardware Quirks & Edge Cases", "");
+                lines.push("#### Hardware Quirks & Edge Cases", "");
                 
                 // Restore the pedagogical description of quirks
                 if (vec.quirks_and_tests.description) {
                     lines.push(vec.quirks_and_tests.description, "");
                 }
                 
-                const langTag = target === 'pascal' ? mdPascal : mdBasic;
                 lines.push(
-                    langTag, 
+                    mdCode, 
                     ...vec.quirks_and_tests.setup, 
                     mdClose, 
                     "**Memory State (End of Execution):**", 
