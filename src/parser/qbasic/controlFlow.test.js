@@ -87,6 +87,30 @@ registerSuite('QBasic Control Flow (AST)', () => {
         assertEqual(success.result.elseBlock[0].values[0].value, 'Alive');
     });
 
+    test('singleLineIfStmt() should recursively parse nested ELSE IF blocks (ball.bas quirk)', () => {
+        // The legendary line from Antoni Gual's ball.bas
+        const code = `IF p >= 16 THEN 3 ELSE IF p = 0 THEN SCREEN 12 ELSE PALETTE p, b`;
+        const success = ifStmt.run(code);
+        
+        assertEqual(success.isError, false);
+        assertEqual(success.result.type, 'IF');
+        
+        // THEN block is an implicit GOTO 3
+        assertEqual(success.result.thenBlock[0].type, 'GOTO');
+        assertEqual(success.result.thenBlock[0].label, '3');
+        
+        // ELSE block contains the nested IF
+        const nestedIf = success.result.elseBlock[0];
+        assertEqual(nestedIf.type, 'IF');
+        
+        // Nested THEN is SCREEN 12
+        assertEqual(nestedIf.thenBlock[0].type, 'SCREEN_STMT');
+        assertEqual(nestedIf.thenBlock[0].mode.value, 12);
+        
+        // Nested ELSE is PALETTE
+        assertEqual(nestedIf.elseBlock[0].type, 'PALETTE');
+    });
+
     test('selectCaseStmt() should parse SELECT CASE while ignoring empty lines', () => {
         const code = `SELECT CASE level
             

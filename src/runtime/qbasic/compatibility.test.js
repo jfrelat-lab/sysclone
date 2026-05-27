@@ -549,6 +549,39 @@ registerSuite('Truth Vector: CORE: Control Flow & Jumps', () => {
         assertEqual(env.lookup('Runs'), 2, "Runs assertion failed");
         assertEqual(env.lookup('FalseRuns'), 0, "FalseRuns assertion failed");
     });
+
+    test('Line Numbers (Archaic Labels)', () => {
+        const code = `
+            LineVal = 0
+            10 LineVal = 10
+            GOTO 30
+            20 LineVal = 20
+            30 FinalLine = LineVal
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('FinalLine'), 10, "FinalLine assertion failed");
+    });
+
+    test('Implicit GOTO (IF THEN Line Number)', () => {
+        const code = `
+            Flag = 1
+            IF Flag = 1 THEN 100 ELSE 200
+            100 ThenPath = 1
+            GOTO 300
+            200 ThenPath = 2
+            300 Flag = 0
+            IF Flag = 1 THEN 400 ELSE 500
+            400 ElsePath = 1
+            GOTO 600
+            500 ElsePath = 2
+            600 FinalEnd = 1
+        `;
+        const env = executeToEnv(code);
+
+        assertEqual(env.lookup('ThenPath'), 1, "ThenPath assertion failed");
+        assertEqual(env.lookup('ElsePath'), 2, "ElsePath assertion failed");
+    });
 });
 
 registerSuite('Truth Vector: CORE: Memory, Types & Structures', () => {

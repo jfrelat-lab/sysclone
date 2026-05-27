@@ -308,6 +308,67 @@
           { "var": "FalseRuns", "val": 0, "type": "number", "message": "WHILE must completely skip execution if the initial condition is 0" }
         ]
       }
+    },
+    {
+      "name": "Line Numbers (Archaic Labels)",
+      "syntax": "linenumber statement",
+      "description": "In older BASIC dialects, every line required a number. QBasic supports these numbers as archaic labels for control flow statements like GOTO, GOSUB, and RESTORE. They do not require a trailing colon.",
+      "example": {
+        "code": [
+          "10 PRINT \"START\"",
+          "GOTO 30",
+          "20 PRINT \"SKIPPED\"",
+          "30 PRINT \"END\""
+        ],
+        "output": "START\nEND"
+      },
+      "quirks_and_tests": {
+        "description": "Validates that a raw integer at the start of a statement acts as a valid jump target without requiring a trailing colon.",
+        "setup": [
+          "LineVal = 0",
+          "10 LineVal = 10",
+          "GOTO 30",
+          "20 LineVal = 20",
+          "30 FinalLine = LineVal"
+        ],
+        "assertions": [
+          { "var": "FinalLine", "val": 10, "type": "number", "message": "GOTO must successfully bypass line 20 and land on line 30 using numeric labels." }
+        ]
+      }
+    },
+    {
+      "name": "Implicit GOTO (IF THEN Line Number)",
+      "syntax": "IF condition THEN linenumber [ELSE linenumber]",
+      "description": "A legacy shorthand where providing a line number directly after THEN or ELSE implicitly executes a GOTO instruction.",
+      "example": {
+        "code": [
+          "IF 1 = 1 THEN 100 ELSE 200",
+          "100 PRINT \"TRUE\"",
+          "END",
+          "200 PRINT \"FALSE\""
+        ],
+        "output": "TRUE"
+      },
+      "quirks_and_tests": {
+        "description": "CRITICAL QUIRK: This implicit jump ONLY works with numeric line numbers, not text labels. It is heavily used in code golf and demoscene programs.",
+        "setup": [
+          "Flag = 1",
+          "IF Flag = 1 THEN 100 ELSE 200",
+          "100 ThenPath = 1",
+          "GOTO 300",
+          "200 ThenPath = 2",
+          "300 Flag = 0",
+          "IF Flag = 1 THEN 400 ELSE 500",
+          "400 ElsePath = 1",
+          "GOTO 600",
+          "500 ElsePath = 2",
+          "600 FinalEnd = 1"
+        ],
+        "assertions": [
+          { "var": "ThenPath", "val": 1, "type": "number", "message": "Implicit THEN jump must successfully land on line 100." },
+          { "var": "ElsePath", "val": 2, "type": "number", "message": "Implicit ELSE jump must successfully land on line 500." }
+        ]
+      }
     }
   ]
 }

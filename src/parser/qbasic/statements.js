@@ -163,17 +163,35 @@ export const callStmt = sequenceObj([
     ]).map(obj => obj.args || [])))
 ]).map(obj => ({ type: 'CALL', callee: obj.callee, args: obj.argsOpt || [] }));
 
-export const labelDef = sequenceObj([
-    capture('name', identifier), optWs, str(':')
-]).map(obj => ({ type: 'LABEL', name: obj.name.value }));
+/**
+ * Reusable parser for jump targets.
+ * Supports modern text labels ("MainLoop") and archaic line numbers ("10").
+ */
+const labelTarget = choice([
+    identifier.map(id => id.value),
+    signedNumberLiteral.map(num => String(num.value))
+]);
+
+/**
+ * Parses either a modern text label (MyLabel:) or an archaic line number (10).
+ * Archaic line numbers do NOT have a trailing colon.
+ */
+export const labelDef = choice([
+    sequenceObj([
+        capture('name', identifier), optWs, str(':')
+    ]).map(obj => ({ type: 'LABEL', name: obj.name.value })),
+    
+    // Convert numeric line numbers to string labels for the GOTO resolver
+    signedNumberLiteral.map(node => ({ type: 'LABEL', name: String(node.value) }))
+]);
 
 export const gotoStmt = sequenceObj([
-    keyword(Tokens.GOTO), ws, capture('label', identifier)
-]).map(obj => ({ type: 'GOTO', label: obj.label.value }));
+    keyword(Tokens.GOTO), ws, capture('label', labelTarget)
+]).map(obj => ({ type: 'GOTO', label: obj.label }));
 
 export const gosubStmt = sequenceObj([
-    keyword(Tokens.GOSUB), ws, capture('label', identifier)
-]).map(obj => ({ type: 'GOSUB', label: obj.label.value }));
+    keyword(Tokens.GOSUB), ws, capture('label', labelTarget)
+]).map(obj => ({ type: 'GOSUB', label: obj.label }));
 
 export const returnStmt = keyword(Tokens.RETURN).map(() => ({ type: 'RETURN' }));
 
@@ -255,7 +273,7 @@ export const readStmt = sequenceObj([
 
 export const restoreStmt = sequenceObj([
     keyword(Tokens.RESTORE), 
-    capture('label', optional(sequenceOf([ws, identifier]).map(arr => arr[1].value)))
+    capture('label', optional(sequenceOf([ws, labelTarget]).map(arr => arr[1])))
 ]).map(obj => ({ 
     type: 'RESTORE', 
     label: obj.label || null 
@@ -425,21 +443,14 @@ export const onErrorStmt = sequenceObj([
  */
 export const resumeStmt = sequenceObj([
     keyword(Tokens.RESUME),
-    // The target is optional. It can be the keyword NEXT, or a label identifier.
+    // Target can be the keyword NEXT, a text label, or a line number
     capture('targetOpt', optional(sequenceOf([
-        ws, choice([keyword(Tokens.NEXT), identifier])
+        ws, choice([keyword(Tokens.NEXT), labelTarget])
     ]).map(arr => arr[1])))
-]).map(obj => {
-    let target = null;
-    if (obj.targetOpt) {
-        // If it's an identifier (label), extract its value. Otherwise, it's the string 'NEXT'
-        target = obj.targetOpt.type === 'IDENTIFIER' ? obj.targetOpt.value : 'NEXT';
-    }
-    return {
-        type: 'RESUME',
-        target: target // Will be null, 'NEXT', or a string (label name)
-    };
-});
+]).map(obj => ({
+    type: 'RESUME',
+    target: obj.targetOpt || null // Already extracts 'NEXT', 'MainLabel', or '10'
+}));
 
 /**
  * Parses the 'PALETTE' statement.

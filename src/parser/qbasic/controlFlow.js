@@ -1,7 +1,7 @@
 // src/parser/controlFlow.js
 import { choice, many, regex, optional, capture, sequenceObj, lazy, sequenceOf } from '../monad.js';
 import { Tokens } from './tokens.js';
-import { identifier, keyword, optWs, ws, eos } from './lexers.js';
+import { identifier, keyword, optWs, ws, eos, signedNumberLiteral } from './lexers.js';
 import { expression } from './expressions.js';
 import { 
     labelDef, clsStmt, viewPrintStmt, playStmt, beepStmt, soundStmt, sleepStmt, printStmt, locateStmt, colorStmt, 
@@ -198,14 +198,32 @@ const multiLineIfStmt = sequenceObj([
 }));
 
 /**
+ * Parses an implicit GOTO when a line number is provided directly after THEN or ELSE.
+ * Wraps the result in an array to perfectly mimic a standard statementList.
+ */
+const implicitGotoLine = signedNumberLiteral.map(node => [{ type: 'GOTO', label: String(node.value) }]);
+
+/**
+ * Defines the valid payload for a THEN or ELSE clause on a single line.
+ * Evaluated lazily to allow mutual recursion with singleLineIfStmt.
+ */
+const singleLineClause = lazy(() => choice([
+    implicitGotoLine,
+    singleLineIfStmt.map(ast => [ast]), // Clean recursion for nested IFs (e.g., ELSE IF)
+    statementList
+]));
+
+/**
  * Single-line IF. Statements follow immediately on the same line.
+ * Supports archaic implicit GOTO jumps (e.g., IF X THEN 10) 
+ * and recursive nested IFs (e.g., IF A THEN B ELSE IF C THEN D).
  */
 const singleLineIfStmt = sequenceObj([
     keyword(Tokens.IF), ws, capture('condition', expression), ws, keyword(Tokens.THEN), optWs,
-    capture('thenBlock', statementList),
+    capture('thenBlock', singleLineClause),
     capture('elseBlockOpt', optional(sequenceObj([
         optWs, keyword(Tokens.ELSE), optWs,
-        capture('elseBlock', statementList)
+        capture('elseBlock', singleLineClause)
     ]).map(obj => obj.elseBlock)))
 ]).map(obj => ({
     type: 'IF',
